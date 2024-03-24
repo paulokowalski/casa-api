@@ -1,0 +1,22 @@
+server:
+    servlet:
+        context-path: /casa-api
+
+spring:
+    jpa:
+        database: POSTGRESQL
+        show-sql: false
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        username: postgres
+        password: postgres
+        url: jdbc:postgresql://192.168.68.116:5432/casa
+    jackson:
+        serialization:
+            FAIL_ON_EMPTY_BEANS: false
+    kafka:
+        bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:192.168.68.116:9092}
+        groupId: ${KAFKA_GROUP_ID:casa-group}
+        retry:
+            initialInterval: ${KAFKA_RETRY_INITIAL_INTERNAL:500}
+            maxAttempts: ${KAFKA_RETRY_MAX_ATTEMPTS:15}
