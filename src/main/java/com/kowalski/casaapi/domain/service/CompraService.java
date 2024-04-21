@@ -5,6 +5,7 @@ import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.domain.model.Compra;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface CompraService {
 
@@ -13,4 +14,6 @@ public interface CompraService {
     CompraResponse buscarPorMesENome(String ano, String mes, String pessoa, String cartao, String ultimaParcelaSelecionado);
 
     Compra salvar(CompraInput compraInput);
+
+    void remover(UUID id);
 }

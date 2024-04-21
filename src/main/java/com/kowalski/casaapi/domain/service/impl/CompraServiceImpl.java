@@ -47,6 +47,11 @@ public class CompraServiceImpl implements CompraService {
         return compra;
     }
 
+    @Override
+    public void remover(UUID id) {
+        System.out.println(id);
+    }
+
     private Compra salvarCompra(CompraInput compraInput) {
         var compra = Compra.builder()
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())

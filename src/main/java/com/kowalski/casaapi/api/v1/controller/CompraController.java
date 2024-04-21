@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,5 +32,10 @@ public class CompraController {
     @PostMapping
     public Compra salvar(@Validated @RequestBody CompraInput compraInput) {
         return compraService.salvar(compraInput);
+    }
+
+    @DeleteMapping("/{id}")
+    public void remover(@PathVariable String id) {
+        compraService.remover(UUID.fromString(id));
     }
 }

@@ -44,6 +44,7 @@ public record CompraResponse (
 
     private CompraParcelaResponse newCompraParcelaResponse(CompraParcela cp) {
         return new CompraParcelaResponse(
+                cp.getCompra().getId().toString(),
                 cp.getCompra().getNomeProduto().toUpperCase(),
                 cp.getValorParcela().doubleValue(),
                 cp.getDataParcela(),
