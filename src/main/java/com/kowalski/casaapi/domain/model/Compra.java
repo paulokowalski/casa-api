@@ -6,6 +6,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -39,5 +40,8 @@ public class Compra {
 
     @Column(name = "dt_cadastrato")
     private LocalDateTime dataCadastro;
+
+    @OneToMany(mappedBy = "compra", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    private List<CompraParcela> parcelas;
 
 }

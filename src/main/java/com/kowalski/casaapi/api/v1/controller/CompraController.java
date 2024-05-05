@@ -30,8 +30,9 @@ public class CompraController {
     }
 
     @PostMapping
-    public Compra salvar(@Validated @RequestBody CompraInput compraInput) {
-        return compraService.salvar(compraInput);
+    public String salvar(@Validated @RequestBody CompraInput compraInput) {
+        compraService.salvar(compraInput);
+        return "Cadastro realizado com sucesso.";
     }
 
     @DeleteMapping("/{id}")

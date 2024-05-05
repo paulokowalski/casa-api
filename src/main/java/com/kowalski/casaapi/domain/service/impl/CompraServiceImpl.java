@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,19 +42,23 @@ public class CompraServiceImpl implements CompraService {
     }
 
     @Transactional
-    public Compra salvar(CompraInput compraInput) {
-        var compra = salvarCompra(compraInput);
-        salvarParcelaEnviarEvento(compraInput, compra);
-        return compra;
+    public void salvar(CompraInput compraInput) {
+        var compra = criarCompra(compraInput);
+        criarParcelas(compraInput, compra);
+        compraRepository.save(compra);
+        enviarEvento();
     }
 
     @Override
     public void remover(UUID id) {
-        System.out.println(id);
+        var compra = compraRepository.findById(id);
+        compra.ifPresent(compraRepository::delete);
+        enviarEvento();
     }
 
-    private Compra salvarCompra(CompraInput compraInput) {
-        var compra = Compra.builder()
+    private Compra criarCompra(CompraInput compraInput) {
+        return Compra.builder()
+                .id(UUID.randomUUID())
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())
                 .nomeCartao(compraInput.nomeCartao().toUpperCase())
                 .valorProduto(compraInput.valorProduto())
@@ -62,23 +67,31 @@ public class CompraServiceImpl implements CompraService {
                 .numeroParcelas(compraInput.numeroParcelas())
                 .dataCadastro(LocalDateTime.now())
                 .build();
-        compraRepository.save(compra);
-        return compra;
     }
 
-    private void salvarParcelaEnviarEvento(CompraInput compraInput, Compra compra) {
-        LocalDate dtInstallment = compra.getDataCompra();
+    private void criarParcelas(CompraInput compraInput, Compra compra) {
+        compra.setParcelas(new ArrayList<>());
+
+        var dataParcela = compra.getDataCompra();
         for(int x = 0; x < compraInput.numeroParcelas(); x++){
             var big = BigDecimal.valueOf(compraInput.numeroParcelas());
             var compraParcela = CompraParcela.builder()
                     .id(UUID.randomUUID())
                     .compra(compra)
-                    .dataParcela(dtInstallment.plusMonths(x+1L))
+                    .dataParcela(dataParcela.plusMonths(x+1L))
                     .numeroParcela(x+1)
                     .valorParcela(compraInput.valorProduto().divide(big, 2, RoundingMode.CEILING))
                     .build();
-            compraParcelaRepository.save(compraParcela);
+            compra.getParcelas().add(compraParcela);
         }
-        kafkaTemplate.send("compra-realizada-mensal-ha-topic", compraParcelaRepository.somatorioPorMesENomeEPessoa(String.valueOf(compra.getDataCompra().getYear()), String.valueOf(compra.getDataCompra().getMonthValue() + 1), "PAULO"));
+
     }
+
+    public void enviarEvento(){
+        var month = LocalDate.now().getMonth().ordinal() + 2;
+        var year = LocalDate.now().getYear();
+        var response = compraParcelaRepository.somatorioPorMesENomeEPessoa(String.valueOf(year), String.valueOf(month), "PAULO");
+        kafkaTemplate.send("compra-realizada-mensal-ha-topic", response);
+    }
+
 }

@@ -13,7 +13,9 @@ public interface CompraService {
 
     CompraResponse buscarPorMesENome(String ano, String mes, String pessoa, String cartao, String ultimaParcelaSelecionado);
 
-    Compra salvar(CompraInput compraInput);
+    void salvar(CompraInput compraInput);
 
     void remover(UUID id);
+
+    void enviarEvento();
 }

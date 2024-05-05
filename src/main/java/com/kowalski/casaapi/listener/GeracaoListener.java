@@ -19,7 +19,6 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class GeracaoListener {
 
-
     private final KafkaTemplate<String, Serializable> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final GeracaoService geracaoService;
