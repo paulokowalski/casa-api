@@ -5,12 +5,14 @@ import com.kowalski.casaapi.api.v1.dto.RastreamentoDto;
 import com.kowalski.casaapi.api.v1.input.RastreamentoInput;
 import com.kowalski.casaapi.domain.service.RastreamentoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(path = "/v1/rastreamento", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -31,6 +33,7 @@ public class RastreamentoController {
 
     @PutMapping("/{codigo}")
     public void atualizar(@PathVariable UUID codigo, @RequestBody RastreamentoInput rastreamentoInput) {
+        log.info("Recebendo atualizaçao: {}, {}", codigo, rastreamentoInput.toString());
         rastreamentoService.atualizar(codigo, rastreamentoAssembler.to(rastreamentoInput));
     }
 

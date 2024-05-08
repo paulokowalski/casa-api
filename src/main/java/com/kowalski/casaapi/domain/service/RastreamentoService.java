@@ -8,6 +8,7 @@ import java.util.UUID;
 public interface RastreamentoService {
 
     List<Rastreamento> listar();
+
     void salvar(Rastreamento rastreamento);
 
     void atualizar(UUID codigo, Rastreamento rastreamento);
