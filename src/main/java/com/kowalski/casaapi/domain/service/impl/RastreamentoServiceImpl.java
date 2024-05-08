@@ -38,8 +38,8 @@ public class RastreamentoServiceImpl implements RastreamentoService {
     }
 
     @Override
-    public void atualizar(UUID codigo, Rastreamento rastreamento) {
-        var rastreamentoOpt = rastreamentoRepository.findById(codigo);
+    public void atualizar(String codigo, Rastreamento rastreamento) {
+        var rastreamentoOpt = rastreamentoRepository.findByCodigo(codigo);
         if(rastreamentoOpt.isPresent()) {
             var rastreamentoDB = rastreamentoOpt.get();
             rastreamentoDB.setStatus(rastreamento.getStatus());

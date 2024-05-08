@@ -11,7 +11,7 @@ public interface RastreamentoService {
 
     void salvar(Rastreamento rastreamento);
 
-    void atualizar(UUID codigo, Rastreamento rastreamento);
+    void atualizar(String codigo, Rastreamento rastreamento);
 
     void deletar(UUID codigo);
 
