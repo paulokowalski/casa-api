@@ -32,9 +32,9 @@ public class RastreamentoController {
     }
 
     @PutMapping("/{codigo}")
-    public void atualizar(@PathVariable UUID codigo, @RequestBody RastreamentoInput rastreamentoInput) {
+    public void atualizar(@PathVariable String codigo, @RequestBody RastreamentoInput rastreamentoInput) {
         log.info("Recebendo atualizaçao: {}, {}", codigo, rastreamentoInput.toString());
-        rastreamentoService.atualizar(codigo, rastreamentoAssembler.to(rastreamentoInput));
+        rastreamentoService.atualizar(UUID.fromString(codigo), rastreamentoAssembler.to(rastreamentoInput));
     }
 
     @DeleteMapping("/{codigo}")
