@@ -16,8 +16,8 @@ spring:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
     kafka:
-        bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:192.168.68.116:9092}
-        groupId: ${KAFKA_GROUP_ID:casa-group}
+        bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:localhost:9092}
+        groupId: casa-group
         retry:
-            initialInterval: ${KAFKA_RETRY_INITIAL_INTERNAL:500}
-            maxAttempts: ${KAFKA_RETRY_MAX_ATTEMPTS:15}
+            initialInterval: 500
+            maxAttempts: 15
