@@ -9,9 +9,9 @@ spring:
         show-sql: false
     datasource:
         driver-class-name: org.postgresql.Driver
-        username: ${DB_USER:postgres}
-        password: ${DD_PASSWORD:postgres}
-        url: ${DB_URL:jdbc:postgresql://localhost:5432/casa}
+        username: ${SPRING_DATASOURCE_USERNAME}
+        password: ${SPRING_DATASOURCE_PASSWORD}
+        url: ${SPRING_DATASOURCE_URL}
     jackson:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
