@@ -6,6 +6,7 @@ import com.kowalski.casaapi.domain.model.Compra;
 import com.kowalski.casaapi.domain.model.CompraParcela;
 import com.kowalski.casaapi.domain.repository.CompraParcelaRepository;
 import com.kowalski.casaapi.domain.repository.CompraRepository;
+import com.kowalski.casaapi.domain.service.CartaoService;
 import com.kowalski.casaapi.domain.service.CompraService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,9 +27,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CompraServiceImpl implements CompraService {
 
-    private final KafkaTemplate<String, Serializable> kafkaTemplate;
     private final CompraRepository compraRepository;
+    private final CartaoService cartaoService;
     private final CompraParcelaRepository compraParcelaRepository;
+    private final KafkaTemplate<String, Serializable> kafkaTemplate;
 
     public List<Compra> buscarTodos(){
         return compraRepository.findAll();
@@ -57,10 +59,14 @@ public class CompraServiceImpl implements CompraService {
     }
 
     private Compra criarCompra(CompraInput compraInput) {
+
+        var cartao = cartaoService.findByNome(compraInput.nomeCartao());
+
         return Compra.builder()
                 .id(UUID.randomUUID())
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())
-                .nomeCartao(compraInput.nomeCartao().toUpperCase())
+                .nomeCartao(cartao.getNome())
+                .cartao(cartao)
                 .valorProduto(compraInput.valorProduto())
                 .nomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase())
                 .dataCompra(compraInput.dataCompra())
@@ -72,15 +78,18 @@ public class CompraServiceImpl implements CompraService {
     private void criarParcelas(CompraInput compraInput, Compra compra) {
         compra.setParcelas(new ArrayList<>());
 
+        var numeroParcelas = BigDecimal.valueOf(compraInput.numeroParcelas());
+        var valorParcela = compraInput.valorProduto().divide(numeroParcelas, 2, RoundingMode.DOWN);
+//        var resto = compraInput.valorProduto().subtract(valorParcela.multiply(valorParcela));
+
         var dataParcela = compra.getDataCompra();
         for(int x = 0; x < compraInput.numeroParcelas(); x++){
-            var big = BigDecimal.valueOf(compraInput.numeroParcelas());
             var compraParcela = CompraParcela.builder()
                     .id(UUID.randomUUID())
                     .compra(compra)
                     .dataParcela(dataParcela.plusMonths(x+1L))
                     .numeroParcela(x+1)
-                    .valorParcela(compraInput.valorProduto().divide(big, 2, RoundingMode.CEILING))
+                    .valorParcela(valorParcela)
                     .build();
             compra.getParcelas().add(compraParcela);
         }

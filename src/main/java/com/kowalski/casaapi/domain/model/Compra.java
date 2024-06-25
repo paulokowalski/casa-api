@@ -44,4 +44,8 @@ public class Compra {
     @OneToMany(mappedBy = "compra", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private List<CompraParcela> parcelas;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cartao_id", nullable = false)
+    private Cartao cartao;
+
 }
