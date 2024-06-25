@@ -11,12 +11,12 @@ spring:
         driver-class-name: org.postgresql.Driver
         username: ${SPRING_DATASOURCE_USERNAME:postgres}
         password: ${SPRING_DATASOURCE_PASSWORD:postgres}
-        url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/casa}
+        url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.68.116:5432/casa}
     jackson:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
     kafka:
-        bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:localhost:9092}
+        bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:192.168.68.116:9092}
         groupId: casa-group
         retry:
             initialInterval: 500
