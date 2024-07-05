@@ -7,6 +7,7 @@ public record CompraParcelaResponse(
         String nomeCompra,
         Double valorParcela,
         LocalDate dataParcela,
+        LocalDate dataCompra,
         int numeroTotalParcela,
         int numeroParcela,
         String ultimaParcela,

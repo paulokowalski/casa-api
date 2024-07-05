@@ -25,7 +25,7 @@ public record CompraResponse (
         return new CompraResponse(compraParcelaResponse, montarResponseGrafico(compraParcelaResponse));
     }
 
-    private Map<String, Object> montarResponseGrafico(List<CompraParcelaResponse> compras){
+    private Map<String, Object> montarResponseGrafico(List<CompraParcelaResponse> compras) {
         Map<String, Object> data = new HashMap<>();
 
         Map<String, Double> agrupamento = compras.stream().collect(Collectors.groupingBy(CompraParcelaResponse::nomeCartao, Collectors.summingDouble(CompraParcelaResponse::valorParcela)));
@@ -48,6 +48,7 @@ public record CompraResponse (
                 cp.getCompra().getNomeProduto().toUpperCase(),
                 cp.getValorParcela().doubleValue(),
                 cp.getDataParcela(),
+                cp.getCompra().getDataCompra(),
                 cp.getCompra().getNumeroParcelas(),
                 cp.getNumeroParcela(),
                 cp.isUltimaParcela() ? "SIM" : "NÃO",

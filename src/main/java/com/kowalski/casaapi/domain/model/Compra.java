@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -41,9 +42,11 @@ public class Compra {
     @Column(name = "dt_cadastrato")
     private LocalDateTime dataCadastro;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "compra", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private List<CompraParcela> parcelas;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cartao_id", nullable = false)
     private Cartao cartao;
