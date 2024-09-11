@@ -4,7 +4,6 @@ import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.domain.model.Compra;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,5 +17,5 @@ public interface CompraService {
 
     void remover(UUID id);
 
-    BigDecimal consultarValorMes();
+    void enviarEvento();
 }

@@ -48,12 +48,14 @@ public class CompraServiceImpl implements CompraService {
         var compra = criarCompra(compraInput);
         criarParcelas(compraInput, compra);
         compraRepository.save(compra);
+        enviarEvento();
     }
 
     @Override
     public void remover(UUID id) {
         var compra = compraRepository.findById(id);
         compra.ifPresent(compraRepository::delete);
+        enviarEvento();
     }
 
     private Compra criarCompra(CompraInput compraInput) {
@@ -93,10 +95,11 @@ public class CompraServiceImpl implements CompraService {
 
     }
 
-    public BigDecimal consultarValorMes() {
+    public void enviarEvento(){
         var month = LocalDate.now().getMonth().ordinal() + 2;
         var year = LocalDate.now().getYear();
-        return compraParcelaRepository.somatorioPorMesENomeEPessoa(String.valueOf(year), String.valueOf(month), "PAULO");
+        var response = compraParcelaRepository.somatorioPorMesENomeEPessoa(String.valueOf(year), String.valueOf(month), "PAULO");
+        kafkaTemplate.send("compra-realizada-mensal-ha-topic", response);
     }
 
 }

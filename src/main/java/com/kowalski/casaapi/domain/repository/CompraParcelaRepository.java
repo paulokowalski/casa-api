@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UUID> {
 
-    @Query( " SELECT sum(distinct cp.valorParcela) FROM CompraParcela cp " +
+    @Query( " SELECT sum(cp.valorParcela) FROM CompraParcela cp " +
             " WHERE cast(date_part('month', cp.dataParcela) as text) = remove_zeros_esquerda(:mes) " +
             " AND   cast(date_part('year', cp.dataParcela) as text) = remove_zeros_esquerda(:ano) " +
             " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) "
