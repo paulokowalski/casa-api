@@ -24,6 +24,12 @@ public class CompraController {
         return compraService.buscarTodos();
     }
 
+    @GetMapping("/mes-atual")
+    public void buscarMesAtual(){
+        compraService.enviarEvento();
+    }
+
+
     @GetMapping("/{ano}/{mes}/{pessoa}/{cartao}/{ultimaParcelaSelecionado}")
     public CompraResponse buscarPorMesENome(@PathVariable String ano, @PathVariable String mes, @PathVariable String pessoa, @PathVariable String cartao, @PathVariable String ultimaParcelaSelecionado){
         return compraService.buscarPorMesENome(ano, mes, pessoa, cartao, ultimaParcelaSelecionado);

@@ -96,8 +96,8 @@ public class CompraServiceImpl implements CompraService {
     }
 
     public void enviarEvento(){
-        var month = LocalDate.now().getMonth().ordinal() + 2;
-        var year = LocalDate.now().getYear();
+        var month = LocalDate.now().getMonth().ordinal() == 11 ? 1 : LocalDate.now().getMonth().ordinal() + 2;
+        var year = LocalDate.now().getMonth().ordinal() == 11 ? LocalDate.now().getYear() + 1 : LocalDate.now().getYear();
         var response = compraParcelaRepository.somatorioPorMesENomeEPessoa(String.valueOf(year), String.valueOf(month), "PAULO");
         kafkaTemplate.send("compra-realizada-mensal-ha-topic", response);
     }
