@@ -6,7 +6,7 @@ server:
 spring:
     jpa:
         database: POSTGRESQL
-        show-sql: false
+        show-sql: true
     datasource:
         driver-class-name: org.postgresql.Driver
         username: ${SPRING_DATASOURCE_USERNAME:postgres}
