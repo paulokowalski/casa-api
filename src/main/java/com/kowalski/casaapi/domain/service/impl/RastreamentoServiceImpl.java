@@ -22,7 +22,7 @@ public class RastreamentoServiceImpl implements RastreamentoService {
     private final RastreamentoDetalheRepository rastreamentoDetalheRepository;
 
     public List<Rastreamento> listar () {
-        return rastreamentoRepository.findAll();
+        return rastreamentoRepository.findAllByFinalizado(Boolean.FALSE);
     }
 
     @Override
@@ -56,12 +56,18 @@ public class RastreamentoServiceImpl implements RastreamentoService {
     @Override
     public void deletar(UUID codigo) {
         var rastreamentoOpt = rastreamentoRepository.findById(codigo);
-        rastreamentoOpt.ifPresent(rastreamentoRepository::delete);
+        rastreamentoOpt.ifPresent(rastreamento -> {
+            rastreamento.setFinalizado(Boolean.TRUE);
+            rastreamentoRepository.save(rastreamento);
+        });
     }
 
     @Override
     public void deletar(String rastreio) {
         var rastreamentoOpt = rastreamentoRepository.findByCodigo(rastreio);
-        rastreamentoOpt.ifPresent(rastreamentoRepository::delete);
+        rastreamentoOpt.ifPresent(rastreamento -> {
+            rastreamento.setFinalizado(Boolean.TRUE);
+            rastreamentoRepository.save(rastreamento);
+        });
     }
 }

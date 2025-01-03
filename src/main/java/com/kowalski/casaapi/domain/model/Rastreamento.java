@@ -25,6 +25,8 @@ public class Rastreamento implements Serializable {
 
     private String status;
 
+    private boolean finalizado;
+
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "rastreamento", cascade = CascadeType.ALL)
     private List<RastreamentoDetalhe> detalhes;
 

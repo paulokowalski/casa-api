@@ -5,6 +5,7 @@ import com.kowalski.casaapi.domain.model.Rastreamento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,5 +13,7 @@ import java.util.UUID;
 public interface RastreamentoRepository extends JpaRepository<Rastreamento, UUID> {
 
     Optional<Rastreamento> findByCodigo(String codigo);
+
+    List<Rastreamento> findAllByFinalizado(boolean finalizado);
 
 }
