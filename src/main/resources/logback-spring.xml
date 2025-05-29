@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <!-- Desabilitar logs do Kafka -->
+    <logger name="org.apache.kafka" level="OFF"/>
+    <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="OFF"/>
+    <logger name="org.apache.kafka.clients.producer.ProducerConfig" level="OFF"/>
+    <logger name="org.apache.kafka.clients.admin.AdminClientConfig" level="OFF"/>
+    <logger name="org.springframework.kafka" level="OFF"/>
+
+    <!-- Configuração raiz -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration> 

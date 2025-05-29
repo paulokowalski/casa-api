@@ -1,7 +1,7 @@
 package com.kowalski.casaapi.config.kafka;
 
-
-import com.kowalski.casaapi.config.kafka.event.GeracaoDiariaEvent;
+import com.kowalski.casaapi.config.kafka.event.Event;
+import com.kowalski.casaapi.config.kafka.serializer.EventDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.IsolationLevel;
@@ -15,11 +15,9 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-
 
 @Configuration
 @EnableKafka
@@ -38,7 +36,7 @@ public class KafkaConfiguration {
     private String maxAttempts;
 
     @Bean
-    public ProducerFactory<String, Serializable> jsonProducerFactory() {
+    public ProducerFactory<String, Event> producerFactory() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
         configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -47,11 +45,10 @@ public class KafkaConfiguration {
     }
 
     @Bean
-    public KafkaTemplate<String, Serializable> jsonKafkaTemplate() {
-        return new KafkaTemplate<>(jsonProducerFactory());
+    public KafkaTemplate<String, Event> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
     }
 
-    // consumer
     @Bean
     public Map<String, Object> consumerConfigs() {
         Map<String, Object> props = new HashMap<>();
@@ -60,20 +57,19 @@ public class KafkaConfiguration {
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
         props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, IsolationLevel.READ_COMMITTED.toString().toLowerCase(Locale.ROOT));
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EventDeserializer.class);
         return props;
     }
 
     @Bean
-    public ConsumerFactory<String, GeracaoDiariaEvent> consumerFactory() {
+    public ConsumerFactory<String, Event> consumerFactory() {
         return new DefaultKafkaConsumerFactory<>(consumerConfigs());
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, GeracaoDiariaEvent> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, GeracaoDiariaEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, Event> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Event> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         return factory;
     }
-
 }

@@ -4,20 +4,67 @@ server:
         context-path: /casa-api
 
 spring:
-    jpa:
-        database: POSTGRESQL
-        show-sql: false
     datasource:
         driver-class-name: org.postgresql.Driver
         username: ${SPRING_DATASOURCE_USERNAME:postgres}
         password: ${SPRING_DATASOURCE_PASSWORD:postgres}
         url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.68.116:5432/casa}
+        hikari:
+            maximum-pool-size: 10
+            minimum-idle: 5
+            idle-timeout: 300000
+            connection-timeout: 20000
+    jpa:
+        database: POSTGRESQL
+        open-in-view: false
+        show-sql: false
+        properties:
+            hibernate:
+                jdbc:
+                    batch_size: 50
+                    batch_versioned_data: true
+                    time_zone: America/Sao_Paulo
+                order_inserts: true
+                order_updates: true
+                connection:
+                    provider_disables_autocommit: false
+                generate_statistics: false
+                query:
+                    in_clause_parameter_padding: true
+                    fail_on_pagination_over_collection_fetch: true
+                session:
+                    events:
+                        log:
+                            LOG_QUERIES_SLOWER_THAN_MS: 1000
+    hibernate:
+        ddl-auto: none
     jackson:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
     kafka:
         bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:192.168.68.116:9092}
-        groupId: casa-group
+        groupId: ${KAFKA_GROUP_ID:casa-group}
         retry:
-            initialInterval: 500
-            maxAttempts: 15
+            initialInterval: ${KAFKA_RETRY_INITIAL_INTERVAL:500}
+            maxAttempts: ${KAFKA_RETRY_MAX_ATTEMPTS:15}
+        producer:
+            acks: 1
+            batch-size: 16384
+            buffer-memory: 33554432
+            compression-type: snappy
+            retries: 3
+        consumer:
+            auto-offset-reset: earliest
+            enable-auto-commit: false
+            isolation-level: read_committed
+            max-poll-records: 500
+
+logging:
+    level:
+        root: WARN
+        com.kowalski.casaapi: INFO
+        org.hibernate: WARN
+        org.hibernate.SQL: OFF
+        org.hibernate.type.descriptor.sql.BasicBinder: OFF
+        com.zaxxer.hikari: WARN
+        org.springframework: WARN

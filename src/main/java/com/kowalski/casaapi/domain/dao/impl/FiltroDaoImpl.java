@@ -41,8 +41,16 @@ public class FiltroDaoImpl implements FiltroDao {
         List<Object[]> rows = query.getResultList();
         List<FiltroResponse> responses = new ArrayList<>();
         for (Object[] row : rows) {
-            responses.add(new FiltroResponse((String) row[0], Arrays.asList(Meses.values()).get(Integer.parseInt((String) row[1])).toString()));
+            int mesNumero = Integer.parseInt((String) row[0]);
+            responses.add(new FiltroResponse(
+                String.format("%02d", mesNumero),
+                Arrays.asList(Meses.values()).get(mesNumero).toString()
+            ));
         }
+        responses.sort((a, b) -> Integer.compare(
+            Integer.parseInt(a.codigo()),
+            Integer.parseInt(b.codigo())
+        ));
         return responses;
     }
 

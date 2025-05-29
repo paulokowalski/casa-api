@@ -3,7 +3,7 @@ package com.kowalski.casaapi.config.kafka.event;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
-import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -11,16 +11,15 @@ import java.io.Serializable;
 @AllArgsConstructor
 @RequiredArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class GeracaoDiariaEvent implements Serializable, Event {
-
-    private String dia;
-
-    private String mes;
+public class CompraRealizadaEvent implements Event {
 
     private String ano;
+    private String mes;
+    private String pessoa;
+    private BigDecimal valor;
 
     @Override
     public String getEventType() {
-        return "GERACAO_DIARIA";
+        return "COMPRA_REALIZADA";
     }
-}
+} 
