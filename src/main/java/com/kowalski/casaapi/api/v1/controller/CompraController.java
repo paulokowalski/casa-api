@@ -2,6 +2,7 @@ package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
+import com.kowalski.casaapi.domain.MensagemResponse;
 import com.kowalski.casaapi.domain.model.Compra;
 import com.kowalski.casaapi.domain.service.CompraService;
 import lombok.RequiredArgsConstructor;
@@ -35,13 +36,19 @@ public class CompraController {
     }
 
     @PostMapping
-    public String salvar(@Validated @RequestBody CompraInput compraInput) {
+    public MensagemResponse salvar(@Validated @RequestBody CompraInput compraInput) {
         compraService.salvar(compraInput);
-        return "Cadastro realizado com sucesso.";
+        return new MensagemResponse("Cadastro realizado com sucesso.");
     }
 
     @DeleteMapping("/{id}")
     public void remover(@PathVariable String id) {
         compraService.remover(UUID.fromString(id));
+    }
+
+    @PutMapping("/{id}")
+    public MensagemResponse editar(@PathVariable String id, @Validated @RequestBody CompraInput compraInput) {
+        compraService.editar(UUID.fromString(id), compraInput);
+        return new MensagemResponse("Compra editada com sucesso.");
     }
 }

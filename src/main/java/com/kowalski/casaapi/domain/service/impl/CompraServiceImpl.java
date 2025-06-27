@@ -185,4 +185,38 @@ public class CompraServiceImpl implements CompraService {
         kafkaTemplate.send(TOPICO_KAFKA, evento);
         log.info("Evento enviado com sucesso para o tópico {}", TOPICO_KAFKA);
     }
+
+    @Override
+    @Transactional
+    public void editar(UUID id, CompraInput compraInput) {
+        validarCompraInput(compraInput);
+
+        log.debug("Editando compra com ID: {}", id);
+
+        // Busca a compra existente
+        Compra compra = compraRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Compra não encontrada"));
+
+        // Atualiza os campos principais
+        compra.setNomeProduto(compraInput.nomeProduto().toUpperCase());
+        compra.setNomeCartao(compraInput.nomeCartao());
+        compra.setCartao(cartaoService.findByNome(compraInput.nomeCartao()));
+        compra.setValorProduto(compraInput.valorProduto());
+        compra.setNomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase());
+        compra.setDataCompra(compraInput.dataCompra());
+        compra.setNumeroParcelas(compraInput.numeroParcelas());
+
+        // Remove as parcelas antigas do banco e da entidade
+        compraParcelaRepository.deleteByCompraId(compra.getId());
+        compra.getParcelas().clear();
+
+        // Cria novas parcelas conforme o novo parcelamento
+        criarParcelas(compraInput, compra);
+
+        // Salva a compra editada
+        compraRepository.save(compra);
+
+        log.info("Compra editada com sucesso. ID: {}", compra.getId());
+        enviarEvento();
+    }
 }

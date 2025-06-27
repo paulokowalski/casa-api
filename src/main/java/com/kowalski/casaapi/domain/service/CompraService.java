@@ -18,4 +18,6 @@ public interface CompraService {
     void remover(UUID id);
 
     void enviarEvento();
+
+    public void editar(UUID id, CompraInput compraInput);
 }

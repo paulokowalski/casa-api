@@ -36,5 +36,7 @@ public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UU
     )
     List<CompraParcela> buscarPorMesENomeEPessoaCartao(String ano, String mes, String pessoa, String cartao);
 
+    void deleteByCompraId(UUID compraId);
+
 
 }
