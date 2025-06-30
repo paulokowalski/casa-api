@@ -19,4 +19,5 @@ public class TransacaoDTO {
     private Integer mes;
     private Long pessoa; // apenas o id da pessoa
     private String idSerie;
+    private Boolean paga = false;
 }

@@ -87,6 +87,7 @@ public class TransacaoController {
         transacao.setFixa(dto.getFixa());
         transacao.setAno(dto.getData().getYear());
         transacao.setMes(dto.getData().getMonthValue());
+        transacao.setPaga(dto.getPaga());
         transacaoRepository.save(transacao);
         return ResponseEntity.ok(transacao);
     }

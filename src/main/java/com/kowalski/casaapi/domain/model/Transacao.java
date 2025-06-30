@@ -15,6 +15,10 @@ public class Transacao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne
+    @JoinColumn(name = "pessoa_id")
+    private Pessoa pessoa;
+
     private String tipo;
     private String descricao;
     private BigDecimal valor;
@@ -22,13 +26,7 @@ public class Transacao {
     private Boolean fixa;
     private Integer ano;
     private Integer mes;
-
-    // NOVO: identificador da série de recorrência
     private String idSerie;
+    private Boolean paga = false;
 
-    @ManyToOne
-    @JoinColumn(name = "pessoa_id")
-    private Pessoa pessoa;
-
-    // getters e setters
 }
