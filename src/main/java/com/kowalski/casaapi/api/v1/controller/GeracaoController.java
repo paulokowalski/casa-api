@@ -3,8 +3,9 @@ package com.kowalski.casaapi.api.v1.controller;
 import com.kowalski.casaapi.api.v1.dto.GeradoDTO;
 import com.kowalski.casaapi.api.v1.response.GeracaoDiariaDTO;
 import com.kowalski.casaapi.business.service.GeracaoService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,11 +16,12 @@ import java.util.Optional;
 
 @Slf4j
 @RestController
-@RequiredArgsConstructor
 @RequestMapping(path = "/v1/geracao-solar", produces = MediaType.APPLICATION_JSON_VALUE)
 public class GeracaoController {
 
-    private final GeracaoService geracaoService;
+    @Autowired
+    @Qualifier("geracaoServiceImpl")
+    private GeracaoService geracaoService;
 
     @GetMapping
     public ResponseEntity<GeracaoDiariaDTO> buscarPorData(
