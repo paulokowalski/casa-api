@@ -1,7 +1,7 @@
 package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.response.FiltroResponse;
-import com.kowalski.casaapi.domain.service.FiltroService;
+import com.kowalski.casaapi.business.service.FiltroService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

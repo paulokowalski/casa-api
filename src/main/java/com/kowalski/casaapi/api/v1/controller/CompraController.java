@@ -2,9 +2,9 @@ package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
-import com.kowalski.casaapi.domain.MensagemResponse;
-import com.kowalski.casaapi.domain.model.Compra;
-import com.kowalski.casaapi.domain.service.CompraService;
+import com.kowalski.casaapi.business.MensagemResponse;
+import com.kowalski.casaapi.business.model.Compra;
+import com.kowalski.casaapi.business.service.CompraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;

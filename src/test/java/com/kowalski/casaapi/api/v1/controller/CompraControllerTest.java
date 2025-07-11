@@ -2,8 +2,8 @@ package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
-import com.kowalski.casaapi.domain.model.Compra;
-import com.kowalski.casaapi.domain.service.CompraService;
+import com.kowalski.casaapi.business.model.Compra;
+import com.kowalski.casaapi.business.service.CompraService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

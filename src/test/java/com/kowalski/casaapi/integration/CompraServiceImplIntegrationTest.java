@@ -1,11 +1,11 @@
 package com.kowalski.casaapi.integration;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
-import com.kowalski.casaapi.domain.model.Cartao;
-import com.kowalski.casaapi.domain.repository.CartaoRepository;
-import com.kowalski.casaapi.domain.repository.CompraParcelaRepository;
-import com.kowalski.casaapi.domain.repository.CompraRepository;
-import com.kowalski.casaapi.domain.service.CompraService;
+import com.kowalski.casaapi.business.model.Cartao;
+import com.kowalski.casaapi.business.repository.CartaoRepository;
+import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
+import com.kowalski.casaapi.business.repository.CompraRepository;
+import com.kowalski.casaapi.business.service.CompraService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.response.DespesaResponse;
 import com.kowalski.casaapi.api.v1.response.DespesaAnualResponse;
-import com.kowalski.casaapi.domain.service.DespesaService;
+import com.kowalski.casaapi.business.service.DespesaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

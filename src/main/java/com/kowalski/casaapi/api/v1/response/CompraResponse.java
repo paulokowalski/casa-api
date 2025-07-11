@@ -1,7 +1,7 @@
 package com.kowalski.casaapi.api.v1.response;
 
 import com.kowalski.casaapi.api.v1.dto.DatasetDto;
-import com.kowalski.casaapi.domain.model.CompraParcela;
+import com.kowalski.casaapi.business.model.CompraParcela;
 import io.micrometer.common.util.StringUtils;
 
 import java.util.ArrayList;

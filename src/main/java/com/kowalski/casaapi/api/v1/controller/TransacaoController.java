@@ -1,11 +1,10 @@
 package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.dto.TransacaoDTO;
-import com.kowalski.casaapi.domain.model.Pessoa;
-import com.kowalski.casaapi.domain.model.Transacao;
-import com.kowalski.casaapi.domain.repository.PessoaRepository;
-import com.kowalski.casaapi.domain.repository.TransacaoRepository;
-import com.kowalski.casaapi.domain.service.impl.TransacaoService;
+import com.kowalski.casaapi.business.model.Pessoa;
+import com.kowalski.casaapi.business.model.Transacao;
+import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.business.repository.TransacaoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -2,7 +2,7 @@ package com.kowalski.casaapi.integration;
 
 import com.kowalski.casaapi.api.v1.response.DespesaResponse;
 import com.kowalski.casaapi.api.v1.response.DespesaAnualResponse;
-import com.kowalski.casaapi.domain.service.DespesaService;
+import com.kowalski.casaapi.business.service.DespesaService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,9 +13,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.math.BigDecimal;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

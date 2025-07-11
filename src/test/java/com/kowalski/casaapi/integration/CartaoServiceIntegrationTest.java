@@ -1,9 +1,9 @@
 package com.kowalski.casaapi.integration;
 
-import com.kowalski.casaapi.domain.exception.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.domain.model.Cartao;
-import com.kowalski.casaapi.domain.repository.CartaoRepository;
-import com.kowalski.casaapi.domain.service.CartaoService;
+import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.business.model.Cartao;
+import com.kowalski.casaapi.business.repository.CartaoRepository;
+import com.kowalski.casaapi.business.service.CartaoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -60,12 +60,6 @@ spring:
             isolation-level: read_committed
             max-poll-records: 500
 
-logging:
-    level:
-        root: WARN
-        com.kowalski.casaapi: INFO
-        org.hibernate: WARN
-        org.hibernate.SQL: OFF
-        org.hibernate.type.descriptor.sql.BasicBinder: OFF
-        com.zaxxer.hikari: WARN
-        org.springframework: WARN
+kafka:
+    topics:
+        geracao-solar: geracao-solar-ha-topic
