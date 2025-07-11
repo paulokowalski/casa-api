@@ -21,4 +21,6 @@ public class Geracao {
 
     private Double geracao;
 
+    private Double potencia;
+
 }

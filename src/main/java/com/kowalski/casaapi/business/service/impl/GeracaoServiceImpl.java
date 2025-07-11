@@ -15,7 +15,7 @@ public class GeracaoServiceImpl implements GeracaoService {
 
     @Override
     public void salvar(GeradoDTO dto) {
-        var geracao = Geracao.builder().geracao(dto.getGerado()).build();
+        var geracao = Geracao.builder().geracao(dto.getGerado()).potencia(dto.getPotencia()).build();
         geracaoRepository.save(geracao);
     }
 }

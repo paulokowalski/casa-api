@@ -7,4 +7,7 @@ import lombok.Setter;
 public class GeradoDTO {
 
     private Double gerado;
+
+    private Double potencia;
+
 }
