@@ -16,7 +16,7 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping(path = "/v1/geracao-solar", consumes = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/v1/geracao-solar", produces = MediaType.APPLICATION_JSON_VALUE)
 public class GeracaoController {
 
     private final GeracaoService geracaoService;
@@ -29,7 +29,7 @@ public class GeracaoController {
         return ResponseEntity.of(Optional.ofNullable(geracaoService.buscarGeracao(data)));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public void salvar(@RequestBody GeradoDTO dto) {
       geracaoService.salvar(dto);
     }
