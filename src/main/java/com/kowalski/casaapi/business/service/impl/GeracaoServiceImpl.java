@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.service.impl;
 
+import com.kowalski.casaapi.api.v1.dto.GeradoDTO;
 import com.kowalski.casaapi.business.model.Geracao;
 import com.kowalski.casaapi.business.repository.GeracaoRepository;
 import com.kowalski.casaapi.business.service.GeracaoService;
@@ -13,8 +14,8 @@ public class GeracaoServiceImpl implements GeracaoService {
     private final GeracaoRepository geracaoRepository;
 
     @Override
-    public void salvar(Double gerado) {
-        var geracao = Geracao.builder().geracao(gerado).build();
+    public void salvar(GeradoDTO dto) {
+        var geracao = Geracao.builder().geracao(dto.getGerado()).build();
         geracaoRepository.save(geracao);
     }
 }
