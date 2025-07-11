@@ -2,53 +2,54 @@ package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.business.service.PessoaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(path = "/v1/pessoas", produces = MediaType.APPLICATION_JSON_VALUE)
 public class PessoaController {
 
-    private final PessoaRepository pessoaRepository;
+    private final PessoaService pessoaService;
 
     @GetMapping
     public List<Pessoa> listar() {
-        return pessoaRepository.findAll();
+        return pessoaService.listar();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Pessoa> buscarPorId(@PathVariable Long id) {
-        return pessoaRepository.findById(id)
+        return pessoaService.buscarPorId(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public Pessoa criar(@RequestBody Pessoa pessoa) {
-        return pessoaRepository.save(pessoa);
+        return pessoaService.salvar(pessoa);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Pessoa> atualizar(@PathVariable Long id, @RequestBody Pessoa pessoaAtualizada) {
-        return pessoaRepository.findById(id)
+        return pessoaService.buscarPorId(id)
                 .map(pessoa -> {
-                    pessoa.setNome(pessoaAtualizada.getNome());
-                    pessoa.setEmail(pessoaAtualizada.getEmail());
-                    return ResponseEntity.ok(pessoaRepository.save(pessoa));
+                    pessoaService.atualizar(pessoa, pessoaAtualizada);
+                    return ResponseEntity.ok(pessoaAtualizada);
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
-        return pessoaRepository.findById(id)
+        return pessoaService.buscarPorId(id)
                 .map(pessoa -> {
-                    pessoaRepository.delete(pessoa);
+                    pessoaService.deletar(pessoa);
                     return ResponseEntity.noContent().<Void>build();
                 })
                 .orElse(ResponseEntity.notFound().build());

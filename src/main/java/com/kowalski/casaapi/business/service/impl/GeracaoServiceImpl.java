@@ -8,7 +8,6 @@ import com.kowalski.casaapi.business.repository.GeracaoRepository;
 import com.kowalski.casaapi.business.service.GeracaoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -30,4 +29,5 @@ public class GeracaoServiceImpl implements GeracaoService {
         var geracao = Geracao.builder().data(LocalDateTime.now()).geracao(dto.getGerado()).potencia(dto.getPotencia()).build();
         geracaoRepository.save(geracao);
     }
+
 }
