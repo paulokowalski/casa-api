@@ -6,6 +6,8 @@ import com.kowalski.casaapi.business.service.GeracaoDiariaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class GeracaoDiariaServiceImpl implements GeracaoDiariaService {
@@ -18,5 +20,15 @@ public class GeracaoDiariaServiceImpl implements GeracaoDiariaService {
             geracao.setGeracao(geracaoDiaria.getGeracao());
             return geracaoDiariaRepository.save(geracao);
         }).orElseGet(() -> geracaoDiariaRepository.save(geracaoDiaria));
+    }
+
+    @Override
+    public List<GeracaoDiaria> buscarPorAnoMes(int ano, int mes) {
+        return geracaoDiariaRepository.buscarPorAnoMes(mes, ano);
+    }
+
+    @Override
+    public List<GeracaoDiaria> buscarPorAno(int ano) {
+        return geracaoDiariaRepository.buscarPorAno(ano);
     }
 }
