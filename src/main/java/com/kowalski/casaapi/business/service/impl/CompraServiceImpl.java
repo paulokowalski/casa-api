@@ -113,7 +113,6 @@ public class CompraServiceImpl implements CompraService {
         Assert.notNull(compraInput.valorProduto(), "O valor do produto é obrigatório");
         Assert.notNull(compraInput.dataCompra(), "A data da compra é obrigatória");
         Assert.isTrue(compraInput.numeroParcelas() > 0, "O número de parcelas deve ser maior que zero");
-        Assert.isTrue(compraInput.valorProduto().compareTo(BigDecimal.ZERO) > 0, "O valor do produto deve ser maior que zero");
     }
 
     private Compra criarCompra(CompraInput compraInput) {
