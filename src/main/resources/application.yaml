@@ -67,5 +67,6 @@ kafka:
 telegram:
     user: ${TELEGRAM_USER:user}
     token: ${TELEGRAM_TOKEN:token}
+    chatid: ${TELEGRAM_CHAT_ID:chatId}
 api:
     key: ${API_KEY:api-token}
