@@ -13,8 +13,6 @@ import com.kowalski.casaapi.business.service.GeracaoService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
 import java.time.*;
 import java.util.List;
 import java.util.Map;
@@ -53,11 +51,9 @@ public class GeracaoServiceImpl implements GeracaoService {
                                 .sum()
                 ));
 
-        List<GeracaoMesAnoResponse> lista = totalPorMes.entrySet().stream()
+        return totalPorMes.entrySet().stream()
                 .map(e -> new GeracaoMesAnoResponse(e.getKey(), Year.of(year), e.getValue()))
                 .collect(Collectors.toList());
-
-        return lista;
     }
 
     @Override

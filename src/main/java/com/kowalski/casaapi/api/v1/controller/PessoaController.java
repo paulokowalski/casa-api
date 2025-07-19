@@ -1,15 +1,12 @@
 package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.business.service.PessoaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequiredArgsConstructor

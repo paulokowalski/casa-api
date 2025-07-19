@@ -4,7 +4,6 @@ import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.business.service.PessoaService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
