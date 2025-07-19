@@ -65,5 +65,5 @@ kafka:
         geracao-solar: geracao-solar-ha-topic
 
 telegram:
-    user: ${TELEGRAM_USER:KowalskiBot}
+    user: ${TELEGRAM_USER:user}
     token: ${TELEGRAM_TOKEN:token}
