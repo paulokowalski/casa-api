@@ -28,7 +28,6 @@ public class GeracaoController {
     public ResponseEntity<GeracaoDiariaResponse> buscarPorData(
             @RequestParam("data") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data
     ) {
-        log.info("Buscando geração para data: {}", data);
         return ResponseEntity.of(Optional.ofNullable(geracaoService.buscarGeracao(data)));
     }
 
@@ -49,7 +48,6 @@ public class GeracaoController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public void salvar(@RequestBody GeradoDTO dto) {
-        log.info("Recebendo dados... {}", dto.toString());
         geracaoService.salvar(dto);
     }
 
