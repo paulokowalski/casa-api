@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.business.telegram;
 
-import lombok.RequiredArgsConstructor;
+import com.kowalski.casaapi.business.service.ListaCompraService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -8,12 +8,17 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import static com.kowalski.casaapi.config.telegram.MenuStatic.BTN_VOLTAR;
 
 @Component
-@RequiredArgsConstructor
 public class CommandDispatcher {
 
     private final BotStateManager stateManager;
     private final MainMenuHandler mainMenuHandler;
     private final ListaCompraMenuHandler shoppingMenuHandler;
+
+    public CommandDispatcher(ListaCompraService listaCompraService) {
+        this.stateManager = new BotStateManager();
+        this.mainMenuHandler = new MainMenuHandler(stateManager);
+        this.shoppingMenuHandler = new ListaCompraMenuHandler(stateManager, listaCompraService);
+    }
 
     public SendMessage dispatch(Update update) {
         try {
