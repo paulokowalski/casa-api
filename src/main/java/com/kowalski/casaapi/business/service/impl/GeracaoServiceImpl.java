@@ -53,7 +53,7 @@ public class GeracaoServiceImpl implements GeracaoService {
 
         return totalPorMes.entrySet().stream()
                 .map(e -> new GeracaoMesAnoResponse(e.getKey(), Year.of(year), e.getValue()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

@@ -4,7 +4,7 @@ import com.kowalski.casaapi.api.v1.response.DespesaResponse;
 import com.kowalski.casaapi.business.dao.DespesaDao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -12,10 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class DespesaDaoImpl implements DespesaDao {
 
-    @Autowired
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
     public DespesaResponse findByNomePessoaAndMesAnoReferencia(String nomePessoa, String mes, String ano) {
         var sql =   " SELECT " +

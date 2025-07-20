@@ -27,27 +27,17 @@ public class DespesaServiceImpl implements DespesaService {
         Assert.hasText(mes, "O mês não pode estar vazio");
         Assert.hasText(pessoa, "O nome da pessoa não pode estar vazio");
 
-        log.debug("Buscando despesa para pessoa {} no período {}/{}", pessoa, mes, ano);
-        
-        DespesaResponse response = despesaDao.findByNomePessoaAndMesAnoReferencia(
+        return despesaDao.findByNomePessoaAndMesAnoReferencia(
             pessoa.toUpperCase(), 
             mes, 
             ano
         );
-
-        if (response == null) {
-            log.info("Nenhuma despesa encontrada para pessoa {} no período {}/{}", pessoa, mes, ano);
-        }
-
-        return response;
     }
 
     @Override
     public DespesaAnualResponse buscarDespesasAnuais(String ano, String pessoa) {
         Assert.hasText(ano, "O ano não pode estar vazio");
         Assert.hasText(pessoa, "O nome da pessoa não pode estar vazio");
-
-        log.debug("Buscando despesas anuais para pessoa {} no ano {}", pessoa, ano);
         
         Map<String, DespesaResponse> despesasPorMes = new TreeMap<>();
         String pessoaUpperCase = pessoa.toUpperCase();
@@ -58,13 +48,6 @@ public class DespesaServiceImpl implements DespesaService {
                 despesasPorMes.put(mes, despesa);
             }
         });
-
-        if (despesasPorMes.isEmpty()) {
-            log.info("Nenhuma despesa encontrada para pessoa {} no ano {}", pessoa, ano);
-        } else {
-            log.debug("Encontradas {} despesas para pessoa {} no ano {} (meses: {})", 
-                despesasPorMes.size(), pessoa, ano, String.join(", ", despesasPorMes.keySet()));
-        }
 
         return new DespesaAnualResponse(
             pessoaUpperCase,

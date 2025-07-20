@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 @Repository
@@ -47,10 +48,7 @@ public class FiltroDaoImpl implements FiltroDao {
                 Arrays.asList(Meses.values()).get(mesNumero).toString()
             ));
         }
-        responses.sort((a, b) -> Integer.compare(
-            Integer.parseInt(a.codigo()),
-            Integer.parseInt(b.codigo())
-        ));
+        responses.sort(Comparator.comparingInt(a -> Integer.parseInt(a.codigo())));
         return responses;
     }
 

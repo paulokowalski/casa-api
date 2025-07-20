@@ -3,18 +3,16 @@ package com.kowalski.casaapi.business.service.impl;
 import com.kowalski.casaapi.business.model.ListaCompra;
 import com.kowalski.casaapi.business.repository.ListaCompraRepository;
 import com.kowalski.casaapi.business.service.ListaCompraService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ListaCompraServiceImpl implements ListaCompraService {
 
     private final ListaCompraRepository listaCompraRepository;
-
-    public ListaCompraServiceImpl(ListaCompraRepository listaCompraRepository){
-        this.listaCompraRepository = listaCompraRepository;
-    }
 
     @Override
     public void salvar(String item) {

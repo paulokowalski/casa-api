@@ -5,7 +5,7 @@ import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.model.Transacao;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.business.repository.TransacaoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,27 +14,21 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/v1/transacoes")
 public class TransacaoController {
 
-    @Autowired
-    private TransacaoRepository transacaoRepository;
+    private final TransacaoRepository transacaoRepository;
 
-    @Autowired
-    private PessoaRepository pessoaRepository;
-
-    // NOVO: Geração de UUID para série
-    private String gerarIdSerie() {
-        return UUID.randomUUID().toString();
-    }
+    private final PessoaRepository pessoaRepository;
 
     @PostMapping
-    public ResponseEntity<?> criar(@RequestBody TransacaoDTO dto) {
+    public ResponseEntity<Transacao> criar(@RequestBody TransacaoDTO dto) {
         Pessoa pessoa = pessoaRepository.findById(dto.getPessoa())
                 .orElseThrow(() -> new RuntimeException("Pessoa não encontrada"));
 
         if (Boolean.TRUE.equals(dto.getFixa())) {
-            String idSerie = gerarIdSerie();
+            String idSerie = UUID.randomUUID().toString();
             for (int i = 0; i < 12; i++) {
                 Transacao transacao = new Transacao();
                 transacao.setTipo(dto.getTipo());
@@ -74,9 +68,8 @@ public class TransacaoController {
         return transacaoRepository.findByPessoaIdAndDataAnoAndDataMes(pessoaId, ano, mes);
     }
 
-    // NOVO: Editar uma transação individual
     @PutMapping("/{id}")
-    public ResponseEntity<?> editar(@PathVariable Long id, @RequestBody TransacaoDTO dto) {
+    public ResponseEntity<Transacao> editar(@PathVariable Long id, @RequestBody TransacaoDTO dto) {
         Transacao transacao = transacaoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transação não encontrada"));
         transacao.setTipo(dto.getTipo());
@@ -91,12 +84,11 @@ public class TransacaoController {
         return ResponseEntity.ok(transacao);
     }
 
-    // NOVO: Editar toda a série (ou a partir de uma data)
     @PutMapping("/serie/{idSerie}")
-    public ResponseEntity<?> editarSerie(
+    public ResponseEntity<Void> editarSerie(
             @PathVariable String idSerie,
             @RequestBody TransacaoDTO dto,
-            @RequestParam(required = false) LocalDate aPartirDe // opcional
+            @RequestParam(required = false) LocalDate aPartirDe
     ) {
         List<Transacao> transacoes = transacaoRepository.findByIdSerie(idSerie);
         for (Transacao t : transacoes) {
@@ -104,7 +96,6 @@ public class TransacaoController {
                 t.setTipo(dto.getTipo());
                 t.setDescricao(dto.getDescricao());
                 t.setValor(dto.getValor());
-                // Se quiser atualizar a data, pode ajustar aqui
                 t.setFixa(dto.getFixa());
                 transacaoRepository.save(t);
             }
@@ -112,18 +103,16 @@ public class TransacaoController {
         return ResponseEntity.ok().build();
     }
 
-    // NOVO: Excluir uma transação individual
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> excluir(@PathVariable Long id) {
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
         transacaoRepository.deleteById(id);
         return ResponseEntity.ok().build();
     }
 
-    // NOVO: Excluir toda a série (ou a partir de uma data)
     @DeleteMapping("/serie/{idSerie}")
-    public ResponseEntity<?> excluirSerie(
+    public ResponseEntity<Void> excluirSerie(
             @PathVariable String idSerie,
-            @RequestParam(required = false) LocalDate aPartirDe // opcional
+            @RequestParam(required = false) LocalDate aPartirDe
     ) {
         List<Transacao> transacoes = transacaoRepository.findByIdSerie(idSerie);
         for (Transacao t : transacoes) {

@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.telegram;
 
+import lombok.RequiredArgsConstructor;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
@@ -10,12 +11,10 @@ import java.util.List;
 import static com.kowalski.casaapi.config.telegram.MenuStatic.BTN_AJUDA;
 import static com.kowalski.casaapi.config.telegram.MenuStatic.BTN_COMPRAS;
 
+@RequiredArgsConstructor
 public class MainMenuHandler {
-    private final BotStateManager stateManager;
 
-    public MainMenuHandler(BotStateManager stateManager) {
-        this.stateManager = stateManager;
-    }
+    private final BotStateManager stateManager;
 
     public SendMessage handleMainMenu(Long chatId, String messageText) {
         if (messageText.equals(BTN_COMPRAS)) {

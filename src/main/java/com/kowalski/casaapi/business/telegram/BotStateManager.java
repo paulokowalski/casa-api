@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BotStateManager {
+
     private final Map<Long, BotState> userStates = new ConcurrentHashMap<>();
 
     public enum BotState {
@@ -25,4 +26,5 @@ public class BotStateManager {
     public void resetToMainMenu(Long chatId) {
         userStates.put(chatId, BotState.MAIN_MENU);
     }
+
 }

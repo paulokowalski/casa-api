@@ -44,7 +44,6 @@ public class CompraServiceImpl implements CompraService {
 
     @Override
     public List<Compra> buscarTodos() {
-        log.debug("Buscando todas as compras");
         return compraRepository.findAll();
     }
 
@@ -55,9 +54,6 @@ public class CompraServiceImpl implements CompraService {
         Assert.hasText(pessoa, "A pessoa é obrigatória");
         Assert.hasText(cartao, "O cartão é obrigatório");
 
-        log.debug("Buscando compras para pessoa {} no período {}/{} com cartão {}", 
-            pessoa, mes, ano, cartao);
-
         var compras = buscarComprasFiltradas(ano, mes, pessoa, cartao, ultimaParcelaSelecionado);
         return new CompraResponse(null, null).to(compras, ultimaParcelaSelecionado);
     }
@@ -67,14 +63,10 @@ public class CompraServiceImpl implements CompraService {
     public void salvar(CompraInput compraInput) {
         validarCompraInput(compraInput);
 
-        log.debug("Salvando nova compra para o produto {} no valor de {}", 
-            compraInput.nomeProduto(), compraInput.valorProduto());
-
         var compra = criarCompra(compraInput);
         criarParcelas(compraInput, compra);
         compraRepository.save(compra);
         
-        log.info("Compra salva com sucesso. ID: {}", compra.getId());
         enviarEvento();
     }
 
@@ -83,12 +75,9 @@ public class CompraServiceImpl implements CompraService {
     public void remover(UUID id) {
         Assert.notNull(id, "O ID da compra é obrigatório");
 
-        log.debug("Removendo compra com ID: {}", id);
-        
         Optional<Compra> compra = compraRepository.findById(id);
         compra.ifPresent(c -> {
             compraRepository.delete(c);
-            log.info("Compra removida com sucesso. ID: {}", id);
             enviarEvento();
         });
     }
@@ -165,8 +154,6 @@ public class CompraServiceImpl implements CompraService {
         int proximoMes = mesAtual.ordinal() == 11 ? 1 : mesAtual.ordinal() + 2;
         int anoProximoMes = mesAtual.ordinal() == 11 ? dataAtual.getYear() + 1 : dataAtual.getYear();
 
-        log.debug("Enviando evento para o Kafka referente ao mês {}/{}", proximoMes, anoProximoMes);
-
         var response = compraParcelaRepository.somatorioPorMesENomeEPessoa(
             String.valueOf(anoProximoMes),
             String.valueOf(proximoMes),
@@ -181,7 +168,6 @@ public class CompraServiceImpl implements CompraService {
         );
 
         kafkaTemplate.send(TOPICO_KAFKA, evento);
-        log.info("Evento enviado com sucesso para o tópico {}", TOPICO_KAFKA);
     }
 
     @Override
@@ -189,13 +175,9 @@ public class CompraServiceImpl implements CompraService {
     public void editar(UUID id, CompraInput compraInput) {
         validarCompraInput(compraInput);
 
-        log.debug("Editando compra com ID: {}", id);
-
-        // Busca a compra existente
         Compra compra = compraRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Compra não encontrada"));
 
-        // Atualiza os campos principais
         compra.setNomeProduto(compraInput.nomeProduto().toUpperCase());
         compra.setNomeCartao(compraInput.nomeCartao());
         compra.setCartao(cartaoService.findByNome(compraInput.nomeCartao()));
@@ -204,17 +186,13 @@ public class CompraServiceImpl implements CompraService {
         compra.setDataCompra(compraInput.dataCompra());
         compra.setNumeroParcelas(compraInput.numeroParcelas());
 
-        // Remove as parcelas antigas do banco e da entidade
         compraParcelaRepository.deleteByCompraId(compra.getId());
         compra.getParcelas().clear();
 
-        // Cria novas parcelas conforme o novo parcelamento
         criarParcelas(compraInput, compra);
 
-        // Salva a compra editada
         compraRepository.save(compra);
 
-        log.info("Compra editada com sucesso. ID: {}", compra.getId());
         enviarEvento();
     }
 }

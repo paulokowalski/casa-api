@@ -2,6 +2,7 @@ package com.kowalski.casaapi.business.telegram;
 
 import com.kowalski.casaapi.business.model.ListaCompra;
 import com.kowalski.casaapi.business.service.ListaCompraService;
+import lombok.RequiredArgsConstructor;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
@@ -11,14 +12,11 @@ import java.util.List;
 
 import static com.kowalski.casaapi.config.telegram.MenuStatic.*;
 
+@RequiredArgsConstructor
 public class ListaCompraMenuHandler {
+
     private final BotStateManager stateManager;
     private final ListaCompraService listaCompraService;
-
-    public ListaCompraMenuHandler(BotStateManager stateManager, ListaCompraService listaCompraService) {
-        this.stateManager = stateManager;
-        this.listaCompraService = listaCompraService;
-    }
 
     public SendMessage handleShoppingMenu(Long chatId, String messageText) {
         if (messageText.equals(BTN_ADICIONAR_ITEM)) {
