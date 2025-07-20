@@ -49,7 +49,8 @@ public class GeracaoController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public void salvar(@RequestBody GeradoDTO dto) {
-      geracaoService.salvar(dto);
+        log.info("Recebendo dados... {}", dto.toString());
+        geracaoService.salvar(dto);
     }
 
 }
