@@ -70,3 +70,22 @@ telegram:
     chatid: ${TELEGRAM_CHAT_ID:chatId}
 api:
     key: ${API_KEY:api-token}
+
+# API Football Data
+futebol:
+    api:
+        token: ${FUTEBOL_API_TOKEN:apiToken}
+
+# Configurações do Feign
+feign:
+    client:
+        config:
+            footballDataApi:
+                connectTimeout: 5000
+                readTimeout: 30000
+
+
+app:
+    cors:
+        allowed-origins:
+            - ${CORS_URL:http://localhost:3000}

@@ -27,7 +27,8 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            response.setStatus(HttpServletResponse.SC_OK);
+            // Permite que o filtro CORS do Spring adicione os headers necessários
+            filterChain.doFilter(request, response);
             return;
         }
 
