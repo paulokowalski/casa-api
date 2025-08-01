@@ -24,4 +24,10 @@ public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
             @Param("idSerie") String idSerie,
             @Param("data") LocalDate data
     );
+
+    @Query("SELECT t FROM Transacao t WHERE t.data BETWEEN :dataInicio AND :dataFim AND t.paga = false AND t.tipo = 'despesa' ORDER BY t.data ASC ")
+    List<Transacao> findByData(
+            @Param("dataInicio") LocalDate dataInicio,
+            @Param("dataFim") LocalDate dataFim
+    );
 }
