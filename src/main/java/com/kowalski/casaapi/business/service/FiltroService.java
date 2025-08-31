@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface FiltroService {
 
+    List<FiltroResponse> buscarCategorias();
     List<FiltroResponse> buscarAnos();
     List<FiltroResponse> buscarMeses(String ano);
     List<FiltroResponse> buscarPessoas(String ano, String mes);

@@ -1,5 +1,7 @@
 package com.kowalski.casaapi.api.v1.response;
 
+import com.kowalski.casaapi.business.model.Categorias;
+
 import java.time.LocalDate;
 
 public record CompraParcelaResponse(
@@ -14,4 +16,5 @@ public record CompraParcelaResponse(
         String nomeCartao,
         Double valorFaltante,
         String nomePessoa,
-        Double valorTotal) { }
+        Double valorTotal,
+        String categoria) { }

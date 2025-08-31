@@ -14,6 +14,11 @@ public class FiltroServiceImpl implements FiltroService {
 
     private final FiltroDao filtroDao;
 
+    @Override
+    public List<FiltroResponse> buscarCategorias() {
+        return filtroDao.buscarCategorias();
+    }
+
     public List<FiltroResponse> buscarAnos() {
         return filtroDao.buscarAnos();
     }

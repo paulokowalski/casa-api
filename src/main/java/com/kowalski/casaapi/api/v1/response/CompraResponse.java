@@ -4,10 +4,7 @@ import com.kowalski.casaapi.api.v1.dto.DatasetDto;
 import com.kowalski.casaapi.business.model.CompraParcela;
 import io.micrometer.common.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.kowalski.casaapi.util.Util.removerAcentos;
@@ -55,7 +52,8 @@ public record CompraResponse (
                 cp.getCompra().getNomeCartao().toUpperCase(),
                 calculaValorFalta(cp),
                 cp.getCompra().getNomePessoaCompra().toUpperCase(),
-                cp.getCompra().getValorProduto().doubleValue());
+                cp.getCompra().getValorProduto().doubleValue(),
+                Objects.nonNull(cp.getCompra().getCategoria()) ? cp.getCompra().getCategoria().getNome().toUpperCase() : "");
     }
 
     private Double calculaValorFalta(CompraParcela cp) {

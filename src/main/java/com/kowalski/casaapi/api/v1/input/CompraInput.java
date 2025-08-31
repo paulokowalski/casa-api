@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record CompraInput(
         String nomeProduto,
@@ -12,5 +13,6 @@ public record CompraInput(
         LocalDate dataCompra,
         Integer numeroParcelas,
         String nomePessoaCompra,
-        String nomeCartao) {
+        String nomeCartao,
+        UUID categoriaId) {
 }

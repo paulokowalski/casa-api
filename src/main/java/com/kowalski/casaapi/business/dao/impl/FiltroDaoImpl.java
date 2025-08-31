@@ -8,16 +8,24 @@ import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 @Repository
 @RequiredArgsConstructor
 public class FiltroDaoImpl implements FiltroDao {
 
     private final EntityManager entityManager;
+
+    public List<FiltroResponse> buscarCategorias(){
+        String sql = " SELECT id, nome FROM categorias ";
+        Query query = entityManager.createNativeQuery(sql);
+        List<Object[]> rows = query.getResultList();
+        List<FiltroResponse> responses = new ArrayList<>();
+        for (Object[] row : rows) {
+            responses.add(new FiltroResponse(String.valueOf(row[0]), (String) row[1]));
+        }
+        return responses;
+    }
 
     public List<FiltroResponse> buscarAnos(){
         String sql = " select distinct cast(tb01.ano as text), cast(tb01.ano as text) from ( " +

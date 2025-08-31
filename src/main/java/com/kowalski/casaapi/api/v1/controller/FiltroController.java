@@ -20,6 +20,11 @@ public class FiltroController {
 
     private final FiltroService filtroService;
 
+    @GetMapping("/categorias")
+    public ResponseEntity<List<FiltroResponse>> buscarCategorias(){
+        return ResponseEntity.of(Optional.ofNullable(filtroService.buscarCategorias()));
+    }
+
     @GetMapping("/anos")
     public ResponseEntity<List<FiltroResponse>> buscarAnos(){
         return ResponseEntity.of(Optional.ofNullable(filtroService.buscarAnos()));

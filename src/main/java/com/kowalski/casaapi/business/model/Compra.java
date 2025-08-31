@@ -51,4 +51,9 @@ public class Compra {
     @JoinColumn(name = "cartao_id", nullable = false)
     private Cartao cartao;
 
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    private Categorias categoria;
+
 }

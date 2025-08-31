@@ -2,6 +2,7 @@ package com.kowalski.casaapi.business.service.impl;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
+import com.kowalski.casaapi.business.service.CategoriasService;
 import com.kowalski.casaapi.config.kafka.event.CompraRealizadaEvent;
 import com.kowalski.casaapi.config.kafka.event.Event;
 import com.kowalski.casaapi.business.model.Compra;
@@ -39,6 +40,7 @@ public class CompraServiceImpl implements CompraService {
 
     private final CompraRepository compraRepository;
     private final CartaoService cartaoService;
+    private final CategoriasService categoriasService;
     private final CompraParcelaRepository compraParcelaRepository;
     private final KafkaTemplate<String, Event> kafkaTemplate;
 
@@ -106,12 +108,14 @@ public class CompraServiceImpl implements CompraService {
 
     private Compra criarCompra(CompraInput compraInput) {
         var cartao = cartaoService.findByNome(compraInput.nomeCartao());
+        var categoria = categoriasService.findByUUid(compraInput.categoriaId());
 
         return Compra.builder()
                 .id(UUID.randomUUID())
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())
                 .nomeCartao(cartao.getNome())
                 .cartao(cartao)
+                .categoria(categoria)
                 .valorProduto(compraInput.valorProduto())
                 .nomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase())
                 .dataCompra(compraInput.dataCompra())
@@ -181,6 +185,7 @@ public class CompraServiceImpl implements CompraService {
         compra.setNomeProduto(compraInput.nomeProduto().toUpperCase());
         compra.setNomeCartao(compraInput.nomeCartao());
         compra.setCartao(cartaoService.findByNome(compraInput.nomeCartao()));
+        compra.setCategoria(categoriasService.findByUUid(compraInput.categoriaId()));
         compra.setValorProduto(compraInput.valorProduto());
         compra.setNomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase());
         compra.setDataCompra(compraInput.dataCompra());
