@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.config.telegram;
 
 import com.kowalski.casaapi.business.telegram.CommandDispatcher;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -8,6 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Component
+@RequiredArgsConstructor
 public class MyGenericBot extends TelegramLongPollingBot {
     
     private final CommandDispatcher commandDispatcher;
@@ -17,10 +19,6 @@ public class MyGenericBot extends TelegramLongPollingBot {
 
     @Value("${telegram.token}")
     private String token;
-    
-    public MyGenericBot(CommandDispatcher commandDispatcher) {
-        this.commandDispatcher = commandDispatcher;
-    }
     
     @Override
     public String getBotUsername() {

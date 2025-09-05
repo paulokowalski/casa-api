@@ -3,8 +3,6 @@ package com.kowalski.casaapi.business.service.impl;
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.business.service.CategoriasService;
-import com.kowalski.casaapi.config.kafka.event.CompraRealizadaEvent;
-import com.kowalski.casaapi.config.kafka.event.Event;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
 import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
@@ -15,7 +13,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -23,7 +20,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -36,13 +32,11 @@ public class CompraServiceImpl implements CompraService {
 
     private static final String CARTAO_TODOS = "TODOS";
     private static final int ESCALA_DECIMAL = 2;
-    private static final String TOPICO_KAFKA = "compra-realizada-mensal-ha-topic";
 
     private final CompraRepository compraRepository;
     private final CartaoService cartaoService;
     private final CategoriasService categoriasService;
     private final CompraParcelaRepository compraParcelaRepository;
-    private final KafkaTemplate<String, Event> kafkaTemplate;
 
     @Override
     public List<Compra> buscarTodos() {
@@ -69,24 +63,14 @@ public class CompraServiceImpl implements CompraService {
         criarParcelas(compraInput, compra);
         compraRepository.save(compra);
         
-        enviarEvento();
     }
 
     @Override
     @Transactional
     public void remover(UUID id) {
         Assert.notNull(id, "O ID da compra é obrigatório");
-
         Optional<Compra> compra = compraRepository.findById(id);
-        compra.ifPresent(c -> {
-            compraRepository.delete(c);
-            enviarEvento();
-        });
-    }
-
-    @Override
-    public void enviarEvento() {
-        enviarEventoKafka();
+        compra.ifPresent(compraRepository::delete);
     }
 
     private List<CompraParcela> buscarComprasFiltradas(String ano, String mes, String pessoa, String cartao, String ultimaParcelaSelecionado) {
@@ -151,29 +135,6 @@ public class CompraServiceImpl implements CompraService {
                 .build();
     }
 
-    private void enviarEventoKafka() {
-        LocalDate dataAtual = LocalDate.now();
-        Month mesAtual = dataAtual.getMonth();
-        
-        int proximoMes = mesAtual.ordinal() == 11 ? 1 : mesAtual.ordinal() + 2;
-        int anoProximoMes = mesAtual.ordinal() == 11 ? dataAtual.getYear() + 1 : dataAtual.getYear();
-
-        var response = compraParcelaRepository.somatorioPorMesENomeEPessoa(
-            String.valueOf(anoProximoMes),
-            String.valueOf(proximoMes),
-            "PAULO"
-        );
-
-        var evento = new CompraRealizadaEvent(
-            String.valueOf(anoProximoMes),
-            String.valueOf(proximoMes),
-            "PAULO",
-            response
-        );
-
-        kafkaTemplate.send(TOPICO_KAFKA, evento);
-    }
-
     @Override
     @Transactional
     public void editar(UUID id, CompraInput compraInput) {
@@ -197,7 +158,5 @@ public class CompraServiceImpl implements CompraService {
         criarParcelas(compraInput, compra);
 
         compraRepository.save(compra);
-
-        enviarEvento();
     }
 }
