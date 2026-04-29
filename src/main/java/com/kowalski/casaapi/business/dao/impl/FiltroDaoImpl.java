@@ -17,7 +17,7 @@ public class FiltroDaoImpl implements FiltroDao {
     private final EntityManager entityManager;
 
     public List<FiltroResponse> buscarCategorias(){
-        String sql = " SELECT id, nome FROM categorias ";
+        String sql = " SELECT id, nome FROM categorias ORDER BY nome ";
         Query query = entityManager.createNativeQuery(sql);
         List<Object[]> rows = query.getResultList();
         List<FiltroResponse> responses = new ArrayList<>();

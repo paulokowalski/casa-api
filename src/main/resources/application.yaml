@@ -42,32 +42,12 @@ spring:
     jackson:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
-    kafka:
-        bootstrapServers: ${KAFKA_BOOTSTRAP_ADDRESS:localhost:9092}
-        groupId: ${KAFKA_GROUP_ID:casa-group}
-        retry:
-            initialInterval: ${KAFKA_RETRY_INITIAL_INTERVAL:500}
-            maxAttempts: ${KAFKA_RETRY_MAX_ATTEMPTS:15}
-        producer:
-            acks: 1
-            batch-size: 16384
-            buffer-memory: 33554432
-            compression-type: snappy
-            retries: 3
-        consumer:
-            auto-offset-reset: earliest
-            enable-auto-commit: false
-            isolation-level: read_committed
-            max-poll-records: 500
-
-kafka:
-    topics:
-        geracao-solar: geracao-solar-ha-topic
 
 telegram:
     user: ${TELEGRAM_USER:user}
     token: ${TELEGRAM_TOKEN:token}
     chatid: ${TELEGRAM_CHAT_ID:chatId}
+    enabled: ${TELEGRAM_ENABLED:false}
 api:
     key: ${API_KEY:api-token}
 
