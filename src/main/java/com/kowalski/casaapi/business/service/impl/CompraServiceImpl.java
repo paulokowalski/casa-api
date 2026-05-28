@@ -20,10 +20,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -59,10 +57,27 @@ public class CompraServiceImpl implements CompraService {
     public void salvar(CompraInput compraInput) {
         validarCompraInput(compraInput);
 
-        var compra = criarCompra(compraInput);
-        criarParcelas(compraInput, compra);
-        compraRepository.save(compra);
-        
+        List<CompraInput> pessoas = dividirValorPorItens(compraInput);
+
+        pessoas.forEach(cp -> {
+            var compra = criarCompra(cp);
+            criarParcelas(cp, compra);
+            compraRepository.save(compra);
+        });
+    }
+
+    public static List<CompraInput> dividirValorPorItens(CompraInput compraInput) {
+
+        List<String> itens = Arrays.stream(compraInput.nomePessoaCompra().split(","))
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .toList();
+
+        BigDecimal valorPorItem = compraInput.valorProduto().divide(BigDecimal.valueOf(itens.size()), 2, RoundingMode.HALF_UP);
+
+        return itens.stream()
+                .map(item -> compraInput.comNomePessoaEValor(item, valorPorItem))
+                .collect(Collectors.toList());
     }
 
     @Override

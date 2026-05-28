@@ -21,9 +21,11 @@ public class DespesaDaoImpl implements DespesaDao {
         var sql =   " SELECT " +
                     " sum(cp.valorParcela) valorMes, " +
                     " sum(case when cp.numeroParcela <> c.numeroParcelas then cp.valorParcela else 0 end) valorProximoMes, " +
-                    " sum(case when cp.numeroParcela = c.numeroParcelas and c.numeroParcelas = 1 then cp.valorParcela else 0 end) valorSaindo, " +
                     " sum(case when cp.numeroParcela = c.numeroParcelas and c.numeroParcelas > 1 then cp.valorParcela else 0 end) valorParcelaSaindo, " +
-                    " sum(case when cp.numeroParcela = c.numeroParcelas then cp.valorParcela else 0 end) valorSaindoTotal " +
+                    " sum(case when cp.numeroParcela = c.numeroParcelas then cp.valorParcela else 0 end) valorSaindoTotal, " +
+                    " sum(case when cp.numeroParcela = 1 and c.numeroParcelas > 1 then cp.valorParcela else 0 end) valorParcelaEntrando, " +
+                    " sum(case when cp.numeroParcela = 1 and c.numeroParcelas = 1 and cp.valorParcela > 0 then cp.valorParcela else 0 end) gastoNoCartao, " +
+                    " sum(case when cp.numeroParcela > 1 and c.numeroParcelas > 1 and cp.valorParcela > 0 then cp.valorParcela else 0 end) residual " +
                     " From CompraParcela cp" +
                     " JOIN cp.compra c " +
                     " WHERE UPPER(c.nomePessoaCompra) = UPPER(:nomePessoa) " +
@@ -37,7 +39,7 @@ public class DespesaDaoImpl implements DespesaDao {
         List<Object[]> rows = query.getResultList();
         List<DespesaResponse> responses = new ArrayList<>();
         for (Object[] row : rows) {
-            responses.add(new DespesaResponse((BigDecimal) row[0], (BigDecimal) row[1], (BigDecimal) row[2], (BigDecimal) row[3], (BigDecimal) row[4]));
+            responses.add(new DespesaResponse((BigDecimal) row[0], (BigDecimal) row[1], (BigDecimal) row[2], (BigDecimal) row[3], (BigDecimal) row[4], (BigDecimal) row[5], (BigDecimal) row[6]));
         }
         return responses.get(0);
     }

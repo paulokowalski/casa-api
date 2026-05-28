@@ -15,4 +15,16 @@ public record CompraInput(
         String nomePessoaCompra,
         String nomeCartao,
         UUID categoriaId) {
+
+        public CompraInput comNomePessoaEValor(String nomePessoa, BigDecimal valor) {
+                return new CompraInput(
+                        this.nomeProduto,
+                        valor,
+                        this.dataCompra,
+                        this.numeroParcelas,
+                        nomePessoa,
+                        this.nomeCartao,
+                        this.categoriaId
+                );
+        }
 }

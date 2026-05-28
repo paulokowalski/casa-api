@@ -5,7 +5,9 @@ import java.math.BigDecimal;
 public record DespesaResponse(
     BigDecimal valorMes,
     BigDecimal valorProximoMes,
-    BigDecimal valorSaindo,
     BigDecimal valorParcelaSaindo,
-    BigDecimal valorSaindoTotal
+    BigDecimal valorSaindoTotal,
+    BigDecimal valorParcelaEntrando,
+    BigDecimal gastoNoCartao,
+    BigDecimal residual
 ) { }
