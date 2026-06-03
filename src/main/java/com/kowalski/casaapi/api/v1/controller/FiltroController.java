@@ -30,6 +30,11 @@ public class FiltroController {
         return ResponseEntity.of(Optional.ofNullable(filtroService.buscarAnos()));
     }
 
+    @GetMapping("/tipos-lancamentos")
+    public ResponseEntity<List<FiltroResponse>> buscarTiposDeLancamentos(){
+        return ResponseEntity.of(Optional.ofNullable(filtroService.buscarTiposDeLancamentos()));
+    }
+
     @GetMapping("/meses/{ano}")
     public ResponseEntity<List<FiltroResponse>> buscarMeses(@PathVariable String ano){
         return ResponseEntity.of(Optional.ofNullable(filtroService.buscarMeses(ano)));

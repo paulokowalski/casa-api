@@ -49,7 +49,7 @@ public class Compra {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cartao_id", nullable = false)
-    private Cartao cartao;
+    private TipoLancamento tipoLancamento;
 
     @JsonIgnore
     @ManyToOne

@@ -35,4 +35,8 @@ public class FiltroServiceImpl implements FiltroService {
         return filtroDao.buscarCartoes(ano, mes, pessoa);
     }
 
+    public List<FiltroResponse> buscarTiposDeLancamentos() {
+        return filtroDao.buscarTiposDeLancamentos();
+    }
+
 }

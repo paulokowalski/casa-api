@@ -9,10 +9,10 @@ import java.util.UUID;
 @Builder
 @Getter
 @Setter
-@Table(schema = "financa")
+@Table
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class Cartao {
+public class TipoLancamento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

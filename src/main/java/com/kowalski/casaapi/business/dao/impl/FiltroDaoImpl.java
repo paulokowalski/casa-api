@@ -94,4 +94,15 @@ public class FiltroDaoImpl implements FiltroDao {
         return responses;
     }
 
+    public List<FiltroResponse> buscarTiposDeLancamentos(){
+        String sql = " select distinct id, nome from tipo_lancamento c ORDER BY c.nome ASC ";
+        Query query = entityManager.createNativeQuery(sql);
+        List<Object[]> rows = query.getResultList();
+        List<FiltroResponse> responses = new ArrayList<>();
+        for (Object[] row : rows) {
+            responses.add(new FiltroResponse(String.valueOf(row[0]), (String) row[1]));
+        }
+        return responses;
+    }
+
 }

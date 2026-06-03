@@ -6,8 +6,6 @@ import com.kowalski.casaapi.business.repository.CategoriaRepository;
 import com.kowalski.casaapi.business.service.CategoriasService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 import java.util.UUID;
 
 @Service

@@ -7,7 +7,7 @@ import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
 import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
 import com.kowalski.casaapi.business.repository.CompraRepository;
-import com.kowalski.casaapi.business.service.CartaoService;
+import com.kowalski.casaapi.business.service.TipoLancamentoService;
 import com.kowalski.casaapi.business.service.CompraService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class CompraServiceImpl implements CompraService {
     private static final int ESCALA_DECIMAL = 2;
 
     private final CompraRepository compraRepository;
-    private final CartaoService cartaoService;
+    private final TipoLancamentoService tipoLancamentoService;
     private final CategoriasService categoriasService;
     private final CompraParcelaRepository compraParcelaRepository;
 
@@ -98,7 +98,7 @@ public class CompraServiceImpl implements CompraService {
     private void validarCompraInput(CompraInput compraInput) {
         Assert.notNull(compraInput, "Os dados da compra são obrigatórios");
         Assert.hasText(compraInput.nomeProduto(), "O nome do produto é obrigatório");
-        Assert.hasText(compraInput.nomeCartao(), "O nome do cartão é obrigatório");
+        Assert.notNull(compraInput.tipoLancamentoId(), "O tipo de lançamento é obrigatório");
         Assert.hasText(compraInput.nomePessoaCompra(), "O nome da pessoa é obrigatório");
         Assert.notNull(compraInput.valorProduto(), "O valor do produto é obrigatório");
         Assert.notNull(compraInput.dataCompra(), "A data da compra é obrigatória");
@@ -106,14 +106,14 @@ public class CompraServiceImpl implements CompraService {
     }
 
     private Compra criarCompra(CompraInput compraInput) {
-        var cartao = cartaoService.findByNome(compraInput.nomeCartao());
+        var tipoLancamento = tipoLancamentoService.findById(compraInput.tipoLancamentoId());
         var categoria = categoriasService.findByUUid(compraInput.categoriaId());
 
         return Compra.builder()
                 .id(UUID.randomUUID())
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())
-                .nomeCartao(cartao.getNome())
-                .cartao(cartao)
+                .nomeCartao(tipoLancamento.getNome())
+                .tipoLancamento(tipoLancamento)
                 .categoria(categoria)
                 .valorProduto(compraInput.valorProduto())
                 .nomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase())
@@ -158,9 +158,11 @@ public class CompraServiceImpl implements CompraService {
         Compra compra = compraRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Compra não encontrada"));
 
+        var tipoLancamento = tipoLancamentoService.findById(compraInput.tipoLancamentoId());
+
         compra.setNomeProduto(compraInput.nomeProduto().toUpperCase());
-        compra.setNomeCartao(compraInput.nomeCartao());
-        compra.setCartao(cartaoService.findByNome(compraInput.nomeCartao()));
+        compra.setTipoLancamento(tipoLancamento);
+        compra.setNomeCartao(tipoLancamento.getNome());
         compra.setCategoria(categoriasService.findByUUid(compraInput.categoriaId()));
         compra.setValorProduto(compraInput.valorProduto());
         compra.setNomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase());

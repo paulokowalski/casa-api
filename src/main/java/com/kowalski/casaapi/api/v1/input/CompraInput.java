@@ -13,7 +13,7 @@ public record CompraInput(
         LocalDate dataCompra,
         Integer numeroParcelas,
         String nomePessoaCompra,
-        String nomeCartao,
+        UUID tipoLancamentoId,
         UUID categoriaId) {
 
         public CompraInput comNomePessoaEValor(String nomePessoa, BigDecimal valor) {
@@ -23,7 +23,7 @@ public record CompraInput(
                         this.dataCompra,
                         this.numeroParcelas,
                         nomePessoa,
-                        this.nomeCartao,
+                        this.tipoLancamentoId,
                         this.categoriaId
                 );
         }
