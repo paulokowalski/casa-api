@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** Uma conta em um mês: valor, vencimento e situação de pagamento. */
 @Entity
 @Table(name = "conta_lancamento", uniqueConstraints = @UniqueConstraint(name = "uq_lancamento_mes", columnNames = {"conta_id", "competencia"}))
 @Getter
@@ -23,7 +22,6 @@ public class ContaLancamento {
     @JoinColumn(name = "conta_id", nullable = false)
     private Conta conta;
 
-    /** Mês de referência (dia 1) */
     @Column(nullable = false)
     private LocalDate competencia;
 
@@ -45,7 +43,6 @@ public class ContaLancamento {
     @Column(name = "data_pagamento")
     private LocalDate dataPagamento;
 
-    /** true depois que a pessoa marca ou desmarca: o débito automático deixa de mexer neste mês */
     @Column(name = "baixa_manual", nullable = false)
     private boolean baixaManual;
 }

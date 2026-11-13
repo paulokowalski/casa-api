@@ -1,0 +1,430 @@
+package com.kowalski.casaapi.api.v1.controller;
+
+import com.kowalski.casaapi.api.v1.response.*;
+import com.kowalski.casaapi.business.auth.AuthService;
+import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.business.model.Pessoa;
+import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.business.service.*;
+import com.kowalski.casaapi.support.Login;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.Year;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest
+@AutoConfigureMockMvc(addFilters = false)
+@Import(UsuarioLogado.class)
+class ContratoEndpointsTest {
+
+    private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
+
+    @Autowired MockMvc mvc;
+
+    @MockitoBean CompraService compraService;
+    @MockitoBean DespesaService despesaService;
+    @MockitoBean FiltroService filtroService;
+    @MockitoBean FaturaService faturaService;
+    @MockitoBean RendaService rendaService;
+    @MockitoBean GeracaoService geracaoService;
+    @MockitoBean PessoaService pessoaService;
+    @MockitoBean ContaService contaService;
+    @MockitoBean CarroService carroService;
+    @MockitoBean AuthService authService;
+    @MockitoBean PessoaRepository pessoaRepository;
+
+    @BeforeEach
+    void ana() {
+        Login.comoAna();
+    }
+
+    @AfterEach
+    void sair() {
+        Login.sair();
+    }
+
+    private static final String COMPRA = """
+            {"nomeProduto":"tv","valorProduto":100,"dataCompra":"2026-01-10","numeroParcelas":2,
+             "nomePessoaCompra":"ANA","tipoLancamentoId":"%s","categoriaId":"%s"}
+            """.formatted(UUID.randomUUID(), UUID.randomUUID());
+
+    @Nested
+    class Compras {
+
+        @Test
+        void listar() throws Exception {
+            mvc.perform(get("/v1/compras")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+            verify(compraService).buscarTodos();
+        }
+
+        @Test
+        void parcelasDoMesUsaTODOSComoPadrao() throws Exception {
+            when(compraService.buscarPorMesENome(any(), any(), any(), any(), any()))
+                    .thenReturn(new CompraResponse(List.of(), Map.of()));
+
+            mvc.perform(get("/v1/compras/parcelas/2026/11").param("pessoa", "ANA"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.compras").isArray());
+            verify(compraService).buscarPorMesENome("2026", "11", "ANA", "TODOS", "TODOS");
+        }
+
+        @Test
+        void parcelasDoMesComCartaoEUltimaParcela() throws Exception {
+            mvc.perform(get("/v1/compras/parcelas/2026/01")
+                    .param("pessoa", "ANA").param("cartao", "NUBANK").param("ultimaParcela", "SIM"));
+            verify(compraService).buscarPorMesENome("2026", "01", "ANA", "NUBANK", "SIM");
+        }
+
+        @Test
+        void parcelasSemPessoaDa400ComMensagem() throws Exception {
+            mvc.perform(get("/v1/compras/parcelas/2026/11"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensagem").value("O parâmetro pessoa é obrigatório"));
+        }
+
+        @Test
+        void parcelasDeOutraPessoaDa403() throws Exception {
+            mvc.perform(get("/v1/compras/parcelas/2026/11").param("pessoa", "BRUNO"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.mensagem").exists());
+            verifyNoInteractions(compraService);
+        }
+
+        @Test
+        void criarDa201ComMensagem() throws Exception {
+            mvc.perform(post("/v1/compras").contentType(JSON).content(COMPRA))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.mensagem").value("Cadastro realizado com sucesso."));
+            verify(compraService).salvar(any());
+        }
+
+        @Test
+        void criarInvalidaDa400ComAMensagemDoServico() throws Exception {
+            doThrow(new IllegalArgumentException("O nome do produto é obrigatório")).when(compraService).salvar(any());
+
+            mvc.perform(post("/v1/compras").contentType(JSON).content(COMPRA))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensagem").value("O nome do produto é obrigatório"));
+        }
+
+        @Test
+        void corpoIlegivelDa400() throws Exception {
+            mvc.perform(post("/v1/compras").contentType(JSON).content("{nao é json"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensagem").value("Dados inválidos na requisição"));
+        }
+
+        @Test
+        void editar() throws Exception {
+            UUID id = UUID.randomUUID();
+            mvc.perform(put("/v1/compras/" + id).contentType(JSON).content(COMPRA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.mensagem").value("Compra editada com sucesso."));
+            verify(compraService).editar(eq(id), any());
+        }
+
+        @Test
+        void idInvalidoDa400() throws Exception {
+            mvc.perform(delete("/v1/compras/abc")).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensagem").exists());
+        }
+
+        @Test
+        void excluirDa204() throws Exception {
+            UUID id = UUID.randomUUID();
+            mvc.perform(delete("/v1/compras/" + id)).andExpect(status().isNoContent());
+            verify(compraService).remover(id);
+        }
+
+        @Test
+        void excluirInexistenteDa404() throws Exception {
+            doThrow(new RecursoNaoEncontradoException("Compra não encontrada")).when(compraService).remover(any());
+
+            mvc.perform(delete("/v1/compras/" + UUID.randomUUID()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.mensagem").value("Compra não encontrada"));
+        }
+
+        @Test
+        void urlAntigaNaoExisteMais() throws Exception {
+            mvc.perform(get("/v1/compra/2026/11/ANA/TODOS/TODOS")).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.mensagem").exists());
+        }
+    }
+
+    @Nested
+    class Despesas {
+
+        @Test
+        void doMes() throws Exception {
+            when(despesaService.buscarPorAnoMesNome("2026", "11", "ANA"))
+                    .thenReturn(new DespesaResponse(new BigDecimal("10.50"), BigDecimal.ONE, BigDecimal.TEN));
+
+            mvc.perform(get("/v1/despesas/2026/11").param("pessoa", "ANA"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.valorMes").value(10.5))
+                    .andExpect(jsonPath("$.comprasParceladas").value(1))
+                    .andExpect(jsonPath("$.gastosNoCartao").value(10));
+        }
+
+        @Test
+        void mesSemDespesaDa404() throws Exception {
+            mvc.perform(get("/v1/despesas/2026/11").param("pessoa", "ANA")).andExpect(status().isNotFound());
+        }
+
+        @Test
+        void doAno() throws Exception {
+            when(despesaService.buscarDespesasAnuais("2026", "ANA")).thenReturn(new DespesaAnualResponse("ANA", "2026",
+                    Map.of("01", new DespesaResponse(BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO))));
+
+            mvc.perform(get("/v1/despesas/2026").param("pessoa", "ANA"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.despesasPorMes.01.valorMes").value(1));
+        }
+
+        @Test
+        void anoSemDespesaDa404() throws Exception {
+            when(despesaService.buscarDespesasAnuais("2026", "ANA")).thenReturn(new DespesaAnualResponse("ANA", "2026", Map.of()));
+            mvc.perform(get("/v1/despesas/2026").param("pessoa", "ANA")).andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    class Filtros {
+
+        private final List<FiltroResponse> itens = List.of(new FiltroResponse("A", "a"));
+
+        @Test
+        void cadaFiltroChamaOServicoCerto() throws Exception {
+            when(filtroService.buscarAnos()).thenReturn(itens);
+            when(filtroService.buscarMeses("2026")).thenReturn(itens);
+            when(filtroService.buscarCartoes("2026", "11", "ANA")).thenReturn(itens);
+            when(filtroService.buscarCategorias()).thenReturn(itens);
+            when(filtroService.buscarTiposDeLancamentos()).thenReturn(itens);
+
+            for (String url : List.of("/v1/filtros/anos", "/v1/filtros/meses?ano=2026",
+                    "/v1/filtros/cartoes?ano=2026&mes=11&pessoa=ANA", "/v1/filtros/categorias", "/v1/filtros/tipos-lancamento")) {
+                mvc.perform(get(url)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$[0].codigo").value("A"))
+                        .andExpect(jsonPath("$[0].descricao").value("a"));
+            }
+        }
+
+        @Test
+        void pessoasFiltraParaQuemNaoEAdmin() throws Exception {
+            when(filtroService.buscarPessoas("2026", "11"))
+                    .thenReturn(List.of(new FiltroResponse("ANA", "ANA"), new FiltroResponse("BRUNO", "BRUNO")));
+
+            mvc.perform(get("/v1/filtros/pessoas").param("ano", "2026").param("mes", "11"))
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].codigo").value("ANA"));
+
+            Login.comoAdmin();
+            mvc.perform(get("/v1/filtros/pessoas").param("ano", "2026").param("mes", "11"))
+                    .andExpect(jsonPath("$.length()").value(2));
+        }
+
+        @Test
+        void cartoesDeOutraPessoaDa403() throws Exception {
+            mvc.perform(get("/v1/filtros/cartoes").param("ano", "2026").param("mes", "11").param("pessoa", "BRUNO"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    class FaturasERendas {
+
+        @Test
+        void fatura() throws Exception {
+            when(faturaService.obter(1L, LocalDate.of(2026, 11, 1))).thenReturn(new FaturaResponse("2026-11", true, LocalDate.of(2026, 11, 5)));
+
+            mvc.perform(get("/v1/faturas/2026/11").param("pessoaId", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.competencia").value("2026-11"))
+                    .andExpect(jsonPath("$.paga").value(true))
+                    .andExpect(jsonPath("$.dataPagamento").value("2026-11-05"));
+
+            mvc.perform(put("/v1/faturas/2026/11").param("pessoaId", "1").contentType(JSON).content("{\"paga\":false}"))
+                    .andExpect(status().isOk());
+            verify(faturaService).salvar(eq(1L), eq(LocalDate.of(2026, 11, 1)), any());
+        }
+
+        @Test
+        void renda() throws Exception {
+            when(rendaService.obter(1L, LocalDate.of(2026, 2, 1)))
+                    .thenReturn(new RendaResponse("2026-02", new BigDecimal("5000.00"), "2026-01", true));
+
+            mvc.perform(get("/v1/rendas/2026/2").param("pessoaId", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.valor").value(5000.0))
+                    .andExpect(jsonPath("$.herdada").value(true));
+
+            mvc.perform(put("/v1/rendas/2026/2").param("pessoaId", "1").contentType(JSON).content("{\"valor\":10}"))
+                    .andExpect(status().isOk());
+            verify(rendaService).salvar(eq(1L), eq(LocalDate.of(2026, 2, 1)), any());
+        }
+
+        @Test
+        void dadosDeOutraPessoaDa403() throws Exception {
+            mvc.perform(get("/v1/faturas/2026/11").param("pessoaId", "2")).andExpect(status().isForbidden());
+            mvc.perform(get("/v1/rendas/2026/11").param("pessoaId", "2")).andExpect(status().isForbidden());
+        }
+
+        @Test
+        void mesInvalidoDa400() throws Exception {
+            mvc.perform(get("/v1/rendas/2026/13").param("pessoaId", "1"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.mensagem").value("Mês inválido: 13"));
+            mvc.perform(get("/v1/faturas/2026/xx").param("pessoaId", "1")).andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    class Contas {
+
+        @Test
+        void listarECriar() throws Exception {
+            mvc.perform(get("/v1/contas").param("pessoaId", "1")).andExpect(status().isOk());
+            verify(contaService).listar(1L);
+
+            mvc.perform(post("/v1/contas").contentType(JSON).content("{\"descricao\":\"x\"}")).andExpect(status().isCreated());
+        }
+
+        @Test
+        void lancamentosConvertemAsCompetencias() throws Exception {
+            mvc.perform(get("/v1/contas/lancamentos").param("pessoaId", "1").param("de", "2026-01").param("ate", "2026-03"))
+                    .andExpect(status().isOk());
+            verify(contaService).lancamentos(1L, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 3, 1));
+        }
+
+        @Test
+        void competenciaMalFormadaDa400() throws Exception {
+            mvc.perform(get("/v1/contas/lancamentos").param("pessoaId", "1").param("de", "jan").param("ate", "2026-03"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensagem").value("O campo de deve estar no formato aaaa-mm"));
+        }
+
+        @Test
+        void excluirDa204() throws Exception {
+            UUID id = UUID.randomUUID();
+            mvc.perform(delete("/v1/contas/" + id).param("aPartirDe", "2026-05")).andExpect(status().isNoContent());
+            verify(contaService).excluir(id, LocalDate.of(2026, 5, 1));
+        }
+    }
+
+    @Nested
+    class GeracaoSolar {
+
+        @Test
+        void doMesPassaAnoEMesNaOrdem() throws Exception {
+            when(geracaoService.buscarGeracaoMensal(2025, 3)).thenReturn(new GeracaoMensalResponse(List.of(), Year.of(2025), Month.MARCH));
+
+            mvc.perform(get("/v1/geracao-solar/2025/3"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("\"ano\":\"2025\"")))
+                    .andExpect(content().string(containsString("\"mes\":\"MARCH\"")));
+        }
+
+        @Test
+        void doAno() throws Exception {
+            when(geracaoService.buscarGeracaoAnual(2025)).thenReturn(List.of(new GeracaoMesAnoResponse(Month.JANUARY, Year.of(2025), 3.5)));
+
+            mvc.perform(get("/v1/geracao-solar/2025"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("\"month\":\"JANUARY\"")))
+                    .andExpect(content().string(containsString("\"year\":\"2025\"")))
+                    .andExpect(jsonPath("$[0].value").value(3.5));
+        }
+
+        @Test
+        void doDia() throws Exception {
+            when(geracaoService.buscarGeracao(LocalDate.of(2025, 1, 2))).thenReturn(new GeracaoDiariaResponse(List.of(), null));
+
+            mvc.perform(get("/v1/geracao-solar").param("data", "2025-01-02")).andExpect(status().isOk());
+            mvc.perform(get("/v1/geracao-solar").param("data", "02/01/2025")).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void integracaoEnviaLeituraERecebe200() throws Exception {
+            mvc.perform(post("/v1/geracao-solar").contentType(JSON).content("{\"gerado\":1.5,\"potencia\":300}"))
+                    .andExpect(status().isOk());
+            verify(geracaoService).salvar(argThat(d -> d.getGerado() == 1.5 && d.getPotencia() == 300.0));
+        }
+    }
+
+    @Nested
+    class Pessoas {
+
+        @Test
+        void buscarInexistenteDa404ComMensagem() throws Exception {
+            mvc.perform(get("/v1/pessoas/99")).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.mensagem").value("Pessoa não encontrada"));
+            mvc.perform(delete("/v1/pessoas/99")).andExpect(status().isNotFound());
+            verify(pessoaService, never()).deletar(any());
+        }
+
+        @Test
+        void criarAtualizarExcluir() throws Exception {
+            Pessoa ana = Login.pessoa(1L, "ANA");
+            when(pessoaService.buscarPorId(1L)).thenReturn(Optional.of(ana));
+            when(pessoaService.criar(any())).thenReturn(ana);
+            when(pessoaService.atualizar(eq(ana), any())).thenReturn(ana);
+            String corpo = "{\"nome\":\"Ana\",\"email\":\"ana@x.com\"}";
+
+            mvc.perform(post("/v1/pessoas").contentType(JSON).content(corpo)).andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.nome").value("ANA"))
+                    .andExpect(jsonPath("$.senhaHash").doesNotExist());
+            mvc.perform(put("/v1/pessoas/1").contentType(JSON).content(corpo)).andExpect(status().isOk());
+            mvc.perform(delete("/v1/pessoas/1")).andExpect(status().isNoContent());
+            verify(pessoaService).deletar(ana);
+        }
+    }
+
+    @Nested
+    class Geral {
+
+        @Test
+        void carroPorCodigoFipe() throws Exception {
+            mvc.perform(get("/v1/carros/001")).andExpect(status().isOk());
+            verify(carroService).buscarPorCodigoFipe("001");
+        }
+
+        @Test
+        void erroInesperadoDa500SemDetalhesInternos() throws Exception {
+            when(carroService.buscarPorCodigoFipe(any())).thenThrow(new IllegalStateException("senha do banco: xyz"));
+
+            mvc.perform(get("/v1/carros/001"))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.mensagem").value("Erro inesperado. Tente novamente."));
+        }
+
+        @Test
+        void metodoNaoSuportadoDa405() throws Exception {
+            mvc.perform(patch("/v1/compras")).andExpect(status().isMethodNotAllowed())
+                    .andExpect(jsonPath("$.mensagem").exists());
+        }
+    }
+}

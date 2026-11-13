@@ -4,46 +4,37 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException;
-import java.util.Collections;
-
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.List;
 
 @Component
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
-    private static final String API_KEY_HEADER = "X-API-KEY";
+    static final String API_KEY_HEADER = "X-API-KEY";
 
-    @Value("${api.key}")
+    @Value("${api.key:}")
     private String apiKey;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            // Permite que o filtro CORS do Spring adicione os headers necessários
-            filterChain.doFilter(request, response);
-            return;
+        String recebida = request.getHeader(API_KEY_HEADER);
+        if (recebida != null && apiKey != null && !apiKey.isBlank()
+                && MessageDigest.isEqual(apiKey.getBytes(StandardCharsets.UTF_8), recebida.getBytes(StandardCharsets.UTF_8))) {
+            var auth = new UsernamePasswordAuthenticationToken(
+                    "integracao", null, List.of(new SimpleGrantedAuthority("ROLE_INTEGRACAO")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
-
-        String apiKeyHeader = request.getHeader(API_KEY_HEADER);
-        if (apiKey != null && apiKey.equals(apiKeyHeader)) {
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            "apiKeyUser", null, Collections.emptyList()
-                    );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            filterChain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Unauthorized");
-        }
+        filterChain.doFilter(request, response);
     }
 }

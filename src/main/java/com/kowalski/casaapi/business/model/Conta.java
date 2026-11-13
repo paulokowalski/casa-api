@@ -10,7 +10,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** Definição de uma conta fora do cartão. Os valores de cada mês ficam em {@link ContaLancamento}. */
 @Entity
 @Table(name = "conta")
 @Getter
@@ -42,11 +41,9 @@ public class Conta {
     @Column(name = "dia_vencimento", nullable = false)
     private Integer diaVencimento;
 
-    /** Primeiro mês (sempre dia 1) */
     @Column(name = "competencia_inicio", nullable = false)
     private LocalDate competenciaInicio;
 
-    /** Último mês (dia 1); {@code null} para recorrente sem fim */
     @Column(name = "competencia_fim")
     private LocalDate competenciaFim;
 
@@ -56,7 +53,6 @@ public class Conta {
     @Column(name = "total_parcelas")
     private Integer totalParcelas;
 
-    /** Juros ao mês em percentual (1.49 = 1,49% a.m.) */
     @Column(name = "juros_mes", precision = 7, scale = 4)
     private BigDecimal jurosMes;
 

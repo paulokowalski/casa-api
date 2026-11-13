@@ -2,7 +2,7 @@ package com.kowalski.casaapi.api.v1.response;
 
 import com.kowalski.casaapi.api.v1.dto.DatasetDto;
 import com.kowalski.casaapi.business.model.CompraParcela;
-import io.micrometer.common.util.StringUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,7 +16,7 @@ public record CompraResponse (
 {
     public CompraResponse to(List<CompraParcela> compras, String ultimaParcelaSelecionado){
         var compraParcelaResponse = compras.stream().map(this::newCompraParcelaResponse).toList();
-        if(StringUtils.isNotBlank(ultimaParcelaSelecionado) && !ultimaParcelaSelecionado.equalsIgnoreCase("TODOS")){
+        if(StringUtils.hasText(ultimaParcelaSelecionado) && !ultimaParcelaSelecionado.equalsIgnoreCase("TODOS")){
             compraParcelaResponse = compraParcelaResponse.stream().filter(compra -> removerAcentos(compra.ultimaParcela()).equalsIgnoreCase(removerAcentos(ultimaParcelaSelecionado))).toList();
         }
         return new CompraResponse(compraParcelaResponse, montarResponseGrafico(compraParcelaResponse));

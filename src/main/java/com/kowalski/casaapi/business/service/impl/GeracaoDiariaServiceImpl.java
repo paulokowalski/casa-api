@@ -24,7 +24,7 @@ public class GeracaoDiariaServiceImpl implements GeracaoDiariaService {
 
     @Override
     public List<GeracaoDiaria> buscarPorAnoMes(int ano, int mes) {
-        return geracaoDiariaRepository.buscarPorAnoMes(mes, ano);
+        return geracaoDiariaRepository.buscarPorAnoMes(ano, mes);
     }
 
     @Override

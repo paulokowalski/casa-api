@@ -4,6 +4,7 @@ import com.kowalski.casaapi.api.v1.input.ContaInput;
 import com.kowalski.casaapi.api.v1.input.LancamentoInput;
 import com.kowalski.casaapi.api.v1.response.ContaResponse;
 import com.kowalski.casaapi.api.v1.response.LancamentoResponse;
+import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.enumerator.TipoConta;
 import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.Conta;
@@ -28,15 +29,14 @@ import static com.kowalski.casaapi.util.Competencias.*;
 @RequiredArgsConstructor
 public class ContaServiceImpl implements ContaService {
 
-    /** Limite de meses por consulta de lançamentos */
     private static final int MAX_MESES_CONSULTA = 36;
 
     private final ContaRepository contaRepository;
     private final ContaLancamentoRepository lancamentoRepository;
     private final PessoaRepository pessoaRepository;
     private final CategoriasService categoriasService;
+    private final UsuarioLogado usuarioLogado;
 
-    // ------------------------------------------------------------------ contas
 
     @Override
     @Transactional(readOnly = true)
@@ -63,7 +63,6 @@ public class ContaServiceImpl implements ContaService {
         aplicar(conta, input);
         contaRepository.save(conta);
 
-        // Meses não pagos são gerados de novo, com os dados atuais, na próxima consulta
         LocalDate desde = aPartirDe != null ? aPartirDe : atual();
         lancamentoRepository.removerNaoPagosAPartirDe(id, desde);
         lancamentoRepository.removerNaoPagosForaDoPeriodo(id, conta.getCompetenciaInicio(), fimOuSemFim(conta));
@@ -75,7 +74,7 @@ public class ContaServiceImpl implements ContaService {
     public void excluir(UUID id, LocalDate aPartirDe) {
         Conta conta = buscarConta(id);
         if (aPartirDe == null || !aPartirDe.isAfter(conta.getCompetenciaInicio())) {
-            contaRepository.delete(conta); // lançamentos saem por ON DELETE CASCADE
+            contaRepository.delete(conta);
             return;
         }
         LocalDate novoFim = aPartirDe.minusMonths(1);
@@ -86,7 +85,6 @@ public class ContaServiceImpl implements ContaService {
         lancamentoRepository.removerNaoPagosAPartirDe(id, aPartirDe);
     }
 
-    // ------------------------------------------------------------- lançamentos
 
     @Override
     @Transactional
@@ -115,7 +113,6 @@ public class ContaServiceImpl implements ContaService {
         }
         lancamentos.addAll(lancamentoRepository.saveAll(novos));
 
-        // Débito automático: considera paga quando o vencimento chega
         LocalDate hoje = LocalDate.now();
         lancamentos.stream()
                 .filter(l -> l.getConta().isDebitoAutomatico() && !l.isPaga() && !l.isBaixaManual()
@@ -138,6 +135,7 @@ public class ContaServiceImpl implements ContaService {
     public LancamentoResponse atualizarLancamento(UUID id, LancamentoInput input) {
         Assert.notNull(input, "Informe o que alterar");
         ContaLancamento lancamento = lancamentoRepository.findById(id)
+                .filter(l -> usuarioLogado.podeAcessar(l.getConta().getPessoa().getId()))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento " + id + " não encontrado"));
 
         if (input.valor() != null) {
@@ -161,17 +159,17 @@ public class ContaServiceImpl implements ContaService {
         return paraResponse(lancamentoRepository.save(lancamento));
     }
 
-    // ---------------------------------------------------------------- internos
 
     private Conta buscarConta(UUID id) {
         return contaRepository.findById(id)
+                .filter(c -> usuarioLogado.podeAcessar(c.getPessoa().getId()))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Conta " + id + " não encontrada"));
     }
 
-    /** Valida o input e copia para a conta, calculando o último mês. */
     private void aplicar(Conta conta, ContaInput in) {
         Assert.notNull(in, "Os dados da conta são obrigatórios");
         Assert.notNull(in.pessoaId(), "A pessoa é obrigatória");
+        usuarioLogado.pessoaId(in.pessoaId());
         Assert.hasText(in.descricao(), "A descrição é obrigatória");
         Assert.isTrue(in.descricao().trim().length() <= 120, "A descrição deve ter até 120 caracteres");
         Assert.notNull(in.tipo(), "O tipo é obrigatório (RECORRENTE, PARCELADA ou UNICA)");
@@ -226,7 +224,6 @@ public class ContaServiceImpl implements ContaService {
             l.setNumeroParcela(parcelaNoMes(conta, competencia));
         }
         if (conta.isValorVariavel()) {
-            // Estimativa: o último valor real informado, ou o valor cadastrado
             l.setValor(lancamentoRepository
                     .findFirstByContaIdAndCompetenciaBeforeAndValorEstimadoFalseOrderByCompetenciaDesc(conta.getId(), competencia)
                     .map(ContaLancamento::getValor)

@@ -7,7 +7,6 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Renda líquida de uma pessoa em um mês. */
 @Entity
 @Table(name = "renda_mensal")
 @Getter
@@ -32,7 +31,6 @@ public class RendaMensal {
         @Column(name = "pessoa_id", nullable = false)
         private Long pessoaId;
 
-        /** Mês de referência (dia 1) */
         @Column(nullable = false)
         private LocalDate competencia;
     }

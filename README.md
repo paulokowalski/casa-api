@@ -7,7 +7,6 @@ API para gerenciamento de despesas domésticas desenvolvida com Spring Boot.
 - Java 17
 - Spring Boot
 - PostgreSQL
-- Apache Kafka
 - Docker
 - Maven
 
@@ -17,7 +16,6 @@ API para gerenciamento de despesas domésticas desenvolvida com Spring Boot.
 - Docker e Docker Compose
 - Maven
 - PostgreSQL
-- Apache Kafka
 
 ## 🔧 Configuração do Ambiente
 
@@ -28,12 +26,6 @@ API para gerenciamento de despesas domésticas desenvolvida com Spring Boot.
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/casa
-
-# Kafka
-KAFKA_BOOTSTRAP_ADDRESS=localhost:9092
-KAFKA_GROUP_ID=casa-group
-KAFKA_RETRY_INITIAL_INTERVAL=500
-KAFKA_RETRY_MAX_ATTEMPTS=15
 ```
 
 ### Configurações do Banco de Dados
@@ -43,13 +35,11 @@ O projeto utiliza PostgreSQL com as seguintes configurações otimizadas:
 - Configurações de batch para melhor performance
 - Timezone configurado para America/Sao_Paulo
 
-### Configurações do Kafka
+## 💻 Ambiente de desenvolvimento
 
-O projeto utiliza uma implementação genérica para eventos Kafka:
-- Deserialização automática de eventos
-- Interface base `Event` para todos os eventos
-- Retry policies configuráveis
-- Configurações otimizadas para producer e consumer
+1. Copie `config/dev-secrets.example.yaml` para `config/dev-secrets.yaml` (fora do git) e preencha o segredo JWT e o e-mail/senha inicial do admin.
+2. Suba a API normalmente (pelo IntelliJ ou `mvn spring-boot:run`), com o diretório de trabalho na raiz do `casa-api`. O arquivo `config/dev-secrets.yaml` é lido automaticamente quando existe; em servidor/Docker ele não existe e valem as variáveis de ambiente.
+3. No frontend (`casa`), com Node 26 (`nvm use 26`): `npm run dev` (porta 3000, `VITE_API_BASE_URL=http://localhost:8080/casa-api/` no `.env.local`).
 
 ## 🏃‍♂️ Executando o Projeto
 
@@ -81,10 +71,8 @@ src/
 ├── main/
 │   ├── java/
 │   │   └── com/kowalski/casaapi/
-│   │       ├── config/         # Configurações (Kafka, Database)
+│   │       ├── config/         # Configurações (segurança, CORS)
 │   │       ├── domain/         # Entidades e regras de negócio
-│   │       ├── event/          # Eventos Kafka
-│   │       ├── listener/       # Consumidores Kafka
 │   │       └── repository/     # Repositórios JPA
 │   └── resources/
 │       └── application.yaml    # Configurações da aplicação
@@ -111,7 +99,6 @@ A API está disponível em `http://localhost:8080/casa-api`
 
 * [Spring Boot](https://spring.io/projects/spring-boot)
 * [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
-* [Apache Kafka](https://kafka.apache.org/)
 * [PostgreSQL](https://www.postgresql.org/)
 * [HikariCP](https://github.com/brettwooldridge/HikariCP)
 * [Maven](https://maven.apache.org/)

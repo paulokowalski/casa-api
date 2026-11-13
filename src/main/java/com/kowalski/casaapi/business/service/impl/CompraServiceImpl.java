@@ -2,6 +2,8 @@ package com.kowalski.casaapi.business.service.impl;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
+import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.service.CategoriasService;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
@@ -12,7 +14,7 @@ import com.kowalski.casaapi.business.service.CompraService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
+import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
@@ -35,10 +37,12 @@ public class CompraServiceImpl implements CompraService {
     private final TipoLancamentoService tipoLancamentoService;
     private final CategoriasService categoriasService;
     private final CompraParcelaRepository compraParcelaRepository;
+    private final UsuarioLogado usuarioLogado;
 
     @Override
     public List<Compra> buscarTodos() {
-        return compraRepository.findAll();
+        if (usuarioLogado.isAdmin()) return compraRepository.findAll();
+        return compraRepository.findByNomePessoaCompraIgnoreCase(usuarioLogado.atual().getNome().trim());
     }
 
     @Override
@@ -84,12 +88,17 @@ public class CompraServiceImpl implements CompraService {
     @Transactional
     public void remover(UUID id) {
         Assert.notNull(id, "O ID da compra é obrigatório");
-        Optional<Compra> compra = compraRepository.findById(id);
-        compra.ifPresent(compraRepository::delete);
+        compraRepository.delete(buscarDoUsuario(id));
+    }
+
+    private Compra buscarDoUsuario(UUID id) {
+        return compraRepository.findById(id)
+                .filter(c -> usuarioLogado.podeAcessarNome(c.getNomePessoaCompra()))
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Compra não encontrada"));
     }
 
     private List<CompraParcela> buscarComprasFiltradas(String ano, String mes, String pessoa, String cartao, String ultimaParcelaSelecionado) {
-        if (Strings.isNotBlank(ultimaParcelaSelecionado) && !CARTAO_TODOS.equals(cartao)) {
+        if (StringUtils.hasText(ultimaParcelaSelecionado) && !CARTAO_TODOS.equals(cartao)) {
             return compraParcelaRepository.buscarPorMesENomeEPessoaCartao(ano, mes, pessoa, cartao);
         }
         return compraParcelaRepository.buscarPorMesENomeEPessoa(ano, mes, pessoa);
@@ -155,8 +164,8 @@ public class CompraServiceImpl implements CompraService {
     public void editar(UUID id, CompraInput compraInput) {
         validarCompraInput(compraInput);
 
-        Compra compra = compraRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Compra não encontrada"));
+        Compra compra = buscarDoUsuario(id);
+        usuarioLogado.nomePessoa(compraInput.nomePessoaCompra());
 
         var tipoLancamento = tipoLancamentoService.findById(compraInput.tipoLancamentoId());
 

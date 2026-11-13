@@ -7,16 +7,13 @@ import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
-/** Datas de competência (mês de referência), guardadas no banco como o dia 1 do mês. */
 public final class Competencias {
 
-    /** Usado no lugar de "sem fim" em comparações */
     public static final LocalDate SEM_FIM = LocalDate.of(9999, 12, 1);
 
     private Competencias() {
     }
 
-    /** {@code "2026-11"} → 2026-11-01 */
     public static LocalDate parse(String valor, String campo) {
         Assert.hasText(valor, "O campo " + campo + " é obrigatório (formato aaaa-mm)");
         try {
@@ -39,7 +36,6 @@ public final class Competencias {
         return LocalDate.now().withDayOfMonth(1);
     }
 
-    /** 2026-11-01 → {@code "2026-11"} */
     public static String formatar(LocalDate competencia) {
         return competencia == null ? null : YearMonth.from(competencia).toString();
     }
@@ -48,7 +44,6 @@ public final class Competencias {
         return ChronoUnit.MONTHS.between(de.withDayOfMonth(1), ate.withDayOfMonth(1));
     }
 
-    /** Dia do vencimento no mês; dias que não existem no mês (31 em novembro) viram o último dia. */
     public static LocalDate vencimento(LocalDate competencia, int dia) {
         return competencia.withDayOfMonth(Math.min(dia, competencia.lengthOfMonth()));
     }

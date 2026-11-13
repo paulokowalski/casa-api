@@ -6,7 +6,6 @@ import lombok.*;
 import java.io.Serializable;
 import java.time.LocalDate;
 
-/** Fatura do cartão de uma pessoa marcada como paga em um mês. */
 @Entity
 @Table(name = "fatura_paga")
 @Getter
@@ -31,7 +30,6 @@ public class FaturaPaga {
         @Column(name = "pessoa_id", nullable = false)
         private Long pessoaId;
 
-        /** Mês da fatura (dia 1) */
         @Column(nullable = false)
         private LocalDate competencia;
     }

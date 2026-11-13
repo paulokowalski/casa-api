@@ -13,23 +13,23 @@ import java.util.UUID;
 public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UUID> {
 
     @Query( " SELECT sum(cp.valorParcela) FROM CompraParcela cp " +
-            " WHERE cast(date_part('month', cp.dataParcela) as text) = remove_zeros_esquerda(:mes) " +
-            " AND   cast(date_part('year', cp.dataParcela) as text) = remove_zeros_esquerda(:ano) " +
+            " WHERE cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
+            " AND   cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) " +
             " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) "
     )
     BigDecimal somatorioPorMesENomeEPessoa(String ano, String mes, String pessoa);
 
     @Query( " SELECT cp FROM CompraParcela cp " +
-            " WHERE cast(date_part('month', cp.dataParcela) as text) = remove_zeros_esquerda(:mes) " +
-            " AND   cast(date_part('year', cp.dataParcela) as text) = remove_zeros_esquerda(:ano) " +
+            " WHERE cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
+            " AND   cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) " +
             " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) " +
             " ORDER BY cp.compra.dataCadastro DESC "
     )
     List<CompraParcela> buscarPorMesENomeEPessoa(String ano, String mes, String pessoa);
 
     @Query( " SELECT cp FROM CompraParcela cp " +
-            " WHERE cast(date_part('month', cp.dataParcela) as text) = remove_zeros_esquerda(:mes) " +
-            " AND   cast(date_part('year', cp.dataParcela) as text) = remove_zeros_esquerda(:ano) " +
+            " WHERE cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
+            " AND   cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) " +
             " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) " +
             " AND upper(cp.compra.nomeCartao) like upper(:cartao) " +
             " ORDER BY cp.compra.dataCadastro DESC "

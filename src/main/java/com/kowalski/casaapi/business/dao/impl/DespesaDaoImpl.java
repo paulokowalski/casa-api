@@ -25,8 +25,8 @@ public class DespesaDaoImpl implements DespesaDao {
                     " From CompraParcela cp" +
                     " JOIN cp.compra c " +
                     " WHERE UPPER(c.nomePessoaCompra) = UPPER(:nomePessoa) " +
-                    "   AND cast(date_part('month', cp.dataParcela) as text) = remove_zeros_esquerda(:mes) " +
-                    "   AND cast(date_part('year', cp.dataParcela) as text) = remove_zeros_esquerda(:ano) ";
+                    "   AND cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
+                    "   AND cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) ";
 
         Query query = entityManager.createQuery(sql);
         query.setParameter("nomePessoa", nomePessoa);

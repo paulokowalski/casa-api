@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.service;
 
+import com.kowalski.casaapi.api.v1.input.PessoaInput;
 import com.kowalski.casaapi.business.model.Pessoa;
 
 import java.util.List;
@@ -11,9 +12,9 @@ public interface PessoaService {
 
     Optional<Pessoa> buscarPorId(Long id);
 
-    Pessoa atualizar(Pessoa pessoa, Pessoa pessoaAtualizada);
+    Pessoa criar(PessoaInput input);
 
-    Pessoa salvar(Pessoa pessoa);
+    Pessoa atualizar(Pessoa pessoa, PessoaInput input);
 
     void deletar(Pessoa pessoa);
 

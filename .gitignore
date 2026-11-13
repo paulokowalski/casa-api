@@ -1,3 +1,7 @@
-
 docker-compose.yml
 target/
+
+config/dev-secrets.yaml
+
+.idea/
+*.iml

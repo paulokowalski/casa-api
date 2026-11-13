@@ -4,23 +4,23 @@ server:
         context-path: /casa-api
 
 spring:
+    config:
+        import: optional:file:./config/dev-secrets.yaml
     datasource:
         driver-class-name: org.postgresql.Driver
-        username: ${SPRING_DATASOURCE_USERNAME:postgres}
-        password: ${SPRING_DATASOURCE_PASSWORD:postgres}
-        url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.68.116:5432/casa}
+        url: ${SPRING_DATASOURCE_URL}
+        username: ${SPRING_DATASOURCE_USERNAME}
+        password: ${SPRING_DATASOURCE_PASSWORD}
         hikari:
             maximum-pool-size: 10
             minimum-idle: 5
             idle-timeout: 300000
             connection-timeout: 20000
     jpa:
-        database: POSTGRESQL
         open-in-view: false
         show-sql: false
         properties:
             hibernate:
-                dialect: org.hibernate.dialect.PostgreSQLDialect
                 jdbc:
                     batch_size: 50
                     batch_versioned_data: true
@@ -43,27 +43,16 @@ spring:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
 
-telegram:
-    user: ${TELEGRAM_USER:user}
-    token: ${TELEGRAM_TOKEN:token}
-    chatid: ${TELEGRAM_CHAT_ID:chatId}
-    enabled: ${TELEGRAM_ENABLED:false}
 api:
-    key: ${API_KEY:api-token}
+    key: ${API_KEY:}
 
-# API Football Data
-futebol:
-    api:
-        token: ${FUTEBOL_API_TOKEN:apiToken}
-
-# Configurações do Feign
-feign:
-    client:
-        config:
-            footballDataApi:
-                connectTimeout: 5000
-                readTimeout: 30000
-
+auth:
+    jwt:
+        secret: ${JWT_SECRET:}
+        expiracao-horas: ${JWT_EXPIRACAO_HORAS:8}
+    admin:
+        email: ${AUTH_ADMIN_EMAIL:}
+        senha: ${AUTH_ADMIN_SENHA:}
 
 app:
     cors:

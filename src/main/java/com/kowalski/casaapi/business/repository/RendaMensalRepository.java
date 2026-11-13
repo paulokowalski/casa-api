@@ -10,7 +10,6 @@ import java.util.Optional;
 @Repository
 public interface RendaMensalRepository extends JpaRepository<RendaMensal, RendaMensal.Id> {
 
-    /** Renda do mês ou, se não informada, a mais recente antes dele */
     Optional<RendaMensal> findFirstByIdPessoaIdAndIdCompetenciaLessThanEqualOrderByIdCompetenciaDesc(
             Long pessoaId, LocalDate competencia);
 }

@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** Uma conta em um mês. {@code competencia} no formato {@code yyyy-MM}. */
 public record LancamentoResponse(
         UUID id,
         UUID contaId,

@@ -34,7 +34,7 @@ public class GeracaoServiceImpl implements GeracaoService {
 
     @Override
     public GeracaoMensalResponse buscarGeracaoMensal(int ano, int mes) {
-        var geracoes = geracaoDiariaService.buscarPorAnoMes(mes, ano).stream().map(ger -> new GeracaoResponse(ger.getGeracao(), LocalDateTime.of(ger.getData(), LocalTime.now()))).toList();
+        var geracoes = geracaoDiariaService.buscarPorAnoMes(ano, mes).stream().map(ger -> new GeracaoResponse(ger.getGeracao(), LocalDateTime.of(ger.getData(), LocalTime.now()))).toList();
         return new GeracaoMensalResponse(geracoes, Year.of(ano), Month.of(mes));
     }
 

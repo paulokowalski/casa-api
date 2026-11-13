@@ -15,7 +15,6 @@ public interface ContaRepository extends JpaRepository<Conta, UUID> {
 
     List<Conta> findByPessoaIdOrderByDescricaoAsc(Long pessoaId);
 
-    /** Contas da pessoa com algum mês dentro de [de, ate] */
     @Query("""
             select c from Conta c
             where c.pessoa.id = :pessoaId
