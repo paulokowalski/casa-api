@@ -68,7 +68,7 @@ class LeitorSistemaTest {
         return new LeitorSistema(new MonitorProperties(true, 365, proc.toString(), sys.toString(),
                 raiz.resolve("hostname").toString(),
                 List.of("Raiz=" + raiz, "Inexistente=/caminho/que/nao/existe", "Desmontado=" + raiz.resolve("proc")),
-                null, null, null));
+                null, null, raiz.resolve("smart.json").toString(), null));
     }
 
     @Test
@@ -195,6 +195,73 @@ class LeitorSistemaTest {
     }
 
     @Test
+    void decodificaMajorMinorDoDevT() {
+        assertThat(LeitorSistema.majorMinor(66305)).isEqualTo("259:1");  // nvme0n1p1
+        assertThat(LeitorSistema.majorMinor(2097)).isEqualTo("8:49");    // sdd1
+        assertThat(LeitorSistema.majorMinor(45826)).isEqualTo("179:2");  // mmcblk1p2
+        // números grandes usam os bits altos (regra do makedev da glibc)
+        assertThat(LeitorSistema.majorMinor(makedev(4096, 256))).isEqualTo("4096:256");
+        assertThat(LeitorSistema.majorMinor(makedev(300, 70000))).isEqualTo("300:70000");
+    }
+
+    private static long makedev(long major, long minor) {
+        return ((major & 0xfff) << 8) | ((major & ~0xfffL) << 32) | (minor & 0xff) | ((minor & ~0xffL) << 12);
+    }
+
+    private void smart(String lidoEm, String discos) throws IOException {
+        escrever(raiz.resolve("smart.json"), "{\"lidoEm\":\"" + lidoEm + "\",\"discos\":[" + discos + "]}");
+    }
+
+    @Test
+    void temperaturaDoDiscoVemDoSmartPeloDispositivo() throws IOException {
+        String dev = LeitorSistema.dispositivo(raiz);
+        assertThat(dev).matches("\\d+:\\d+");
+        smart(java.time.OffsetDateTime.now().toString(), """
+                {"dispositivo":"sdx","modelo":"OUTRO","tipo":"ssd","temperatura":30,"estado":"ativo","dispositivos":["999:0"]},
+                {"dispositivo":"sdd","modelo":"WDC WD30PURX","tipo":"hdd","temperatura":56,"estado":"ativo","dispositivos":["0:0","%s"]}
+                """.formatted(dev));
+
+        LeitorSistema.EspacoDisco d = leitor().instantaneo().discos().get(0);
+
+        assertThat(d.dispositivo()).isEqualTo(dev);
+        assertThat(d.modelo()).isEqualTo("WDC WD30PURX");
+        assertThat(d.tipo()).isEqualTo("hdd");
+        assertThat(d.temperatura()).isEqualTo(56.0);
+        assertThat(d.estadoTemperatura()).isEqualTo("ativo");
+    }
+
+    @Test
+    void discoEmRepousoFicaSemTemperatura() throws IOException {
+        smart(java.time.OffsetDateTime.now().toString(), """
+                {"dispositivo":"sdd","tipo":"hdd","temperatura":null,"estado":"repouso","dispositivos":["%s"]}
+                """.formatted(LeitorSistema.dispositivo(raiz)));
+
+        LeitorSistema.EspacoDisco d = leitor().instantaneo().discos().get(0);
+
+        assertThat(d.temperatura()).isNull();
+        assertThat(d.estadoTemperatura()).isEqualTo("repouso");
+    }
+
+    @Test
+    void smartVelhoInvalidoOuAusenteEhIgnorado() throws IOException {
+        Path arquivo = raiz.resolve("smart.json");
+        var agora = java.time.OffsetDateTime.parse("2026-11-15T12:00:00-03:00");
+        String disco = "{\"dispositivo\":\"sda\",\"temperatura\":40,\"dispositivos\":[\"8:1\"]}";
+
+        smart("2026-11-15T11:56:00-03:00", disco);
+        assertThat(LeitorSistema.lerSmart(arquivo, agora)).singleElement()
+                .satisfies(s -> assertThat(s.temperatura()).isEqualTo(40.0));
+
+        smart("2026-11-15T11:50:00-03:00", disco); // 10 minutos: o timer do host parou
+        assertThat(LeitorSistema.lerSmart(arquivo, agora)).isEmpty();
+
+        escrever(arquivo, "{ isto não é json");
+        assertThat(LeitorSistema.lerSmart(arquivo, agora)).isEmpty();
+        assertThat(LeitorSistema.lerSmart(raiz.resolve("nao-existe.json"), agora)).isEmpty();
+        assertThat(LeitorSistema.lerSmart(null, agora)).isEmpty();
+    }
+
+    @Test
     void nomeDoSensorSemSufixoThermal() {
         assertThat(LeitorSistema.nomeSensor("soc-thermal")).isEqualTo("soc");
         assertThat(LeitorSistema.nomeSensor("bigcore0_thermal")).isEqualTo("bigcore0");
@@ -204,7 +271,7 @@ class LeitorSistemaTest {
     @Test
     void discosConfiguradosComNome() {
         var props = new MonitorProperties(null, null, null, null, null,
-                List.of("NVMe=/", " Mídia = /host/discos/media ", "/sem/nome"), " http://proxy:2375/ ", null, null);
+                List.of("NVMe=/", " Mídia = /host/discos/media ", "/sem/nome"), " http://proxy:2375/ ", null, " ", null);
         assertThat(props.discosMonitorados()).containsExactly(
                 new MonitorProperties.DiscoMonitorado("NVMe", "/"),
                 new MonitorProperties.DiscoMonitorado("Mídia", "/host/discos/media"),
@@ -213,7 +280,8 @@ class LeitorSistemaTest {
         assertThat(props.habilitado()).isTrue();
         assertThat(props.dockerUrl()).isEqualTo("http://proxy:2375");
         assertThat(props.retencaoContainersDias()).isEqualTo(90);
-        assertThat(new MonitorProperties(null, null, null, null, null, null, " ", null, null).containersHabilitados()).isFalse();
+        assertThat(props.smartArquivo()).isNull();
+        assertThat(new MonitorProperties(null, null, null, null, null, null, " ", null, null, null).containersHabilitados()).isFalse();
     }
 
     private void zona(int n, String tipo, int miliGraus) throws IOException {

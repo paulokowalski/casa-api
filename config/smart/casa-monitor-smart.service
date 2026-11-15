@@ -1,0 +1,9 @@
+[Unit]
+Description=Temperatura dos discos (SMART) para o monitoramento do casa-api
+Documentation=file:///mnt/nvme/opt/projetos/casa-api/README.md
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/casa-monitor-smart
+Nice=10
+IOSchedulingClass=idle

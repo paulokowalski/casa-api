@@ -65,8 +65,30 @@ public class MonitorRepository {
                 total       BIGINT       NOT NULL,
                 usado       BIGINT       NOT NULL,
                 pct         DOUBLE       NOT NULL,
+                modelo      VARCHAR(120) NULL,
+                tipo        VARCHAR(10)  NULL,
+                temperatura DOUBLE       NULL,
+                estado      VARCHAR(12)  NULL,
                 KEY ix_amostra_disco_coletado (coletado_em, nome)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """;
+
+    /** Colunas de temperatura acrescentadas depois; o ALTER é idempotente para tabelas já criadas. */
+    private static final String COLUNAS_TEMPERATURA_DISCO = """
+            ALTER TABLE amostra_disco
+                ADD COLUMN IF NOT EXISTS modelo      VARCHAR(120) NULL,
+                ADD COLUMN IF NOT EXISTS tipo        VARCHAR(10)  NULL,
+                ADD COLUMN IF NOT EXISTS temperatura DOUBLE       NULL,
+                ADD COLUMN IF NOT EXISTS estado      VARCHAR(12)  NULL
+            """;
+
+    private static final String SERIE_DISCOS = """
+            SELECT nome, HOUR(coletado_em) * 60 + FLOOR(MINUTE(coletado_em) / 5) * 5 AS minuto,
+                   AVG(temperatura) AS temperatura
+              FROM amostra_disco
+             WHERE coletado_em >= ? AND coletado_em < ? AND temperatura IS NOT NULL
+             GROUP BY nome, minuto
+             ORDER BY nome, minuto
             """;
 
     private static final String TABELA_CONTAINER = """
@@ -154,10 +176,12 @@ public class MonitorRepository {
              ORDER BY minuto
             """;
 
+    /** Última medição do dia de cada disco, com a temperatura média e máxima do dia. */
     private static final String DISCOS_DO_DIA = """
-            SELECT d.nome, d.caminho, d.total, d.usado, d.pct
+            SELECT d.nome, d.caminho, d.total, d.usado, d.pct, d.modelo, d.tipo, d.temperatura, d.estado,
+                   u.temp_med, u.temp_max
               FROM amostra_disco d
-              JOIN (SELECT nome, MAX(coletado_em) AS ultima
+              JOIN (SELECT nome, MAX(coletado_em) AS ultima, AVG(temperatura) AS temp_med, MAX(temperatura) AS temp_max
                       FROM amostra_disco
                      WHERE coletado_em >= ? AND coletado_em < ?
                      GROUP BY nome) u ON u.nome = d.nome AND u.ultima = d.coletado_em
@@ -173,6 +197,7 @@ public class MonitorRepository {
     public void criarTabelas() {
         jdbc.execute(TABELA_AMOSTRA);
         jdbc.execute(TABELA_DISCO);
+        jdbc.execute(COLUNAS_TEMPERATURA_DISCO);
         jdbc.execute(TABELA_CONTAINER);
     }
 
@@ -185,8 +210,12 @@ public class MonitorRepository {
 
     public void inserirDiscos(LocalDateTime coletadoEm, List<LeitorSistema.EspacoDisco> discos) {
         if (discos.isEmpty()) return;
-        jdbc.batchUpdate("INSERT INTO amostra_disco (coletado_em, nome, caminho, total, usado, pct) VALUES (?, ?, ?, ?, ?, ?)",
-                discos.stream().map(d -> new Object[]{coletadoEm, d.nome(), d.caminho(), d.total(), d.usado(), d.pct()}).toList());
+        jdbc.batchUpdate("""
+                        INSERT INTO amostra_disco (coletado_em, nome, caminho, total, usado, pct, modelo, tipo, temperatura, estado)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                discos.stream().map(d -> new Object[]{coletadoEm, d.nome(), d.caminho(), d.total(), d.usado(), d.pct(),
+                        corte(d.modelo(), 120), corte(d.tipo(), 10), d.temperatura(), corte(d.estadoTemperatura(), 12)}).toList());
     }
 
     public void inserirContainers(List<AmostraContainer> amostras) {
@@ -227,8 +256,11 @@ public class MonitorRepository {
     }
 
     public ServidorEstatisticasResponse resumo(LocalDateTime de, LocalDateTime ate) {
-        return jdbc.queryForObject("SELECT " + AGREGADOS + " FROM amostra_servidor WHERE coletado_em >= ? AND coletado_em < ?",
+        ServidorEstatisticasResponse r = jdbc.queryForObject(
+                "SELECT " + AGREGADOS + " FROM amostra_servidor WHERE coletado_em >= ? AND coletado_em < ?",
                 (rs, i) -> estatisticas(rs), de, ate);
+        return r.comDiscoTemperaturaMax(temperaturaMaxDiscosPorDia(de, ate).values().stream()
+                .max(Double::compare).orElse(null));
     }
 
     public List<ServidorDiaResponse.Ponto> serie(LocalDateTime de, LocalDateTime ate) {
@@ -244,16 +276,45 @@ public class MonitorRepository {
 
     public List<ServidorDiscoResponse> discos(LocalDateTime de, LocalDateTime ate) {
         return jdbc.query(DISCOS_DO_DIA, (rs, i) -> new ServidorDiscoResponse(rs.getString("nome"), rs.getString("caminho"),
-                rs.getLong("total"), rs.getLong("usado"), rs.getDouble("pct")), de, ate);
+                rs.getLong("total"), rs.getLong("usado"), rs.getDouble("pct"), rs.getString("modelo"), rs.getString("tipo"),
+                numero(rs, "temperatura"), rs.getString("estado"), numero(rs, "temp_med"), numero(rs, "temp_max")), de, ate);
+    }
+
+    public List<ServidorDiaResponse.SerieDisco> serieDiscos(LocalDateTime de, LocalDateTime ate) {
+        Map<String, List<ServidorDiaResponse.PontoDisco>> porNome = new LinkedHashMap<>();
+        jdbc.query(SERIE_DISCOS, rs -> {
+            int minuto = rs.getInt("minuto");
+            porNome.computeIfAbsent(rs.getString("nome"), n -> new ArrayList<>())
+                    .add(new ServidorDiaResponse.PontoDisco("%02d:%02d".formatted(minuto / 60, minuto % 60),
+                            numero(rs, "temperatura")));
+        }, de, ate);
+        return porNome.entrySet().stream().map(e -> new ServidorDiaResponse.SerieDisco(e.getKey(), e.getValue())).toList();
+    }
+
+    /** Maior temperatura entre os discos em cada dia do período. */
+    public Map<LocalDate, Double> temperaturaMaxDiscosPorDia(LocalDateTime de, LocalDateTime ate) {
+        Map<LocalDate, Double> porDia = new LinkedHashMap<>();
+        jdbc.query("SELECT DATE(coletado_em) AS dia, MAX(temperatura) AS t FROM amostra_disco"
+                        + " WHERE coletado_em >= ? AND coletado_em < ? GROUP BY DATE(coletado_em)",
+                rs -> {
+                    Double t = numero(rs, "t");
+                    if (t != null) porDia.put(rs.getObject("dia", LocalDate.class), t);
+                }, de, ate);
+        return porDia;
     }
 
     /** Um item por dia com amostras, do mais recente para o mais antigo. */
     public List<ServidorResumoDiaResponse> porDia(LocalDate de, LocalDate ate) {
+        LocalDateTime inicio = de.atStartOfDay();
+        LocalDateTime fim = ate.plusDays(1).atStartOfDay();
+        Map<LocalDate, Double> discos = temperaturaMaxDiscosPorDia(inicio, fim);
         return jdbc.query("SELECT DATE(coletado_em) AS dia, " + AGREGADOS
                         + " FROM amostra_servidor WHERE coletado_em >= ? AND coletado_em < ?"
                         + " GROUP BY DATE(coletado_em) ORDER BY dia DESC",
-                (rs, i) -> new ServidorResumoDiaResponse(rs.getObject("dia", LocalDate.class), estatisticas(rs)),
-                de.atStartOfDay(), ate.plusDays(1).atStartOfDay());
+                (rs, i) -> {
+                    LocalDate dia = rs.getObject("dia", LocalDate.class);
+                    return new ServidorResumoDiaResponse(dia, estatisticas(rs).comDiscoTemperaturaMax(discos.get(dia)));
+                }, inicio, fim);
     }
 
     /** Apaga amostras antigas; devolve quantas linhas saíram. */
@@ -270,7 +331,8 @@ public class MonitorRepository {
                 new Faixa(numero(rs, "temp_min"), numero(rs, "temp_med"), numero(rs, "temp_maxima")),
                 new Faixa(numero(rs, "load_min"), numero(rs, "load_med"), numero(rs, "load_max")),
                 numero(rs, "swap_max"), numero(rs, "iowait_med"),
-                inteiro(rs, "rede_rx"), inteiro(rs, "rede_tx"), inteiro(rs, "disco_lido"), inteiro(rs, "disco_escrito"));
+                inteiro(rs, "rede_rx"), inteiro(rs, "rede_tx"), inteiro(rs, "disco_lido"), inteiro(rs, "disco_escrito"),
+                null);
     }
 
     private static Double numero(ResultSet rs, String coluna) throws SQLException {

@@ -72,6 +72,7 @@ Todas as opções vêm de variáveis de ambiente (ou do `config/dev-secrets.yaml
 | `MONITOR_HOSTNAME_ARQUIVO` | não | `/etc/hostname` | Arquivo com o nome do host (no container, `/host/hostname`) |
 | `MONITOR_DOCKER_URL` | não | vazio | API do Docker para os containers (no servidor, `http://casa-docker-proxy:2375`); vazio desliga essa parte |
 | `MONITOR_RETENCAO_CONTAINERS_DIAS` | não | `90` | Dias de histórico dos containers (uma linha por container por minuto) |
+| `MONITOR_SMART_ARQUIVO` | não | vazio | JSON com a temperatura dos discos, gravado pelo timer `casa-monitor-smart` (no container, `/host/smart/smart.json`); vazio desliga |
 | `MONITOR_DISCOS` | não | `Sistema=/` | Discos a medir, `Nome=caminho` separados por vírgula; o caminho é qualquer arquivo ou pasta dentro do disco |
 
 ## Banco de dados e migrations
@@ -112,15 +113,29 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
 | Leitura/escrita de disco | `/proc/diskstats`, só discos inteiros (sem partições, `zram` e `loop`) |
 | Espaço em disco | caminhos de `MONITOR_DISCOS`; um disco desmontado (cuja pasta cai no disco do sistema) é ignorado |
 | Containers Docker | `GET /containers/json` e `GET /containers/{id}/stats?one-shot=true`, pelo proxy só-leitura |
+| Temperatura dos discos | SMART, lido no host pelo timer `casa-monitor-smart` (veja abaixo) |
 
 - **Tabelas** (criadas pela própria API na subida, com `CREATE TABLE IF NOT EXISTS`):
-  `amostra_servidor` (uma linha por minuto, com as médias do minuto), `amostra_disco` (espaço de cada
-  disco, a cada 10 minutos) e `amostra_container` (uma linha por container por minuto, inclusive os
+  `amostra_servidor` (uma linha por minuto, com as médias do minuto), `amostra_disco` (espaço e
+  temperatura de cada disco, a cada 5 minutos) e `amostra_container` (uma linha por container por minuto, inclusive os
   parados, para contar o tempo fora do ar). A retenção padrão é de 365 dias para o servidor e 90 para os
   containers (~20 mil linhas por dia com 14 containers).
 - **Containers:** CPU em % do servidor inteiro (100% = todos os núcleos ocupados), memória sem o cache
   inativo (o mesmo cálculo do `docker stats`), rede (nula para quem usa a rede do host), leitura/escrita
   de disco, processos, estado e healthcheck. Contadores que zeram (container reiniciado) não geram taxa.
+- **Temperatura dos discos:** ler SMART exige root e acesso direto aos discos, que a API não tem. Quem lê é
+  o host: o script `config/smart/casa-monitor-smart.sh`, rodado a cada minuto (segundo 40) pelo timer
+  `casa-monitor-smart.timer`, grava `/var/lib/casa-monitor/smart.json` com modelo, tipo, temperatura e os
+  `major:minor` de cada disco e partição. A API lê esse arquivo (montado só-leitura) e liga cada caminho de
+  `MONITOR_DISCOS` ao disco pelo `st_dev` do caminho, então não depende de `sda`/`sdb`, que mudam entre
+  reinícios. Discos em repouso não são acordados (`smartctl -n standby`); leituras com mais de 5 minutos
+  são ignoradas. O espaço e a temperatura vão para `amostra_disco` a cada 5 minutos.
+  Para instalar ou atualizar no host:
+  ```bash
+  sudo install -m 755 config/smart/casa-monitor-smart.sh /usr/local/sbin/casa-monitor-smart
+  sudo install -m 644 config/smart/casa-monitor-smart.{service,timer} /etc/systemd/system/
+  sudo systemctl daemon-reload && sudo systemctl enable --now casa-monitor-smart.timer
+  ```
 - **Acesso ao Docker:** a API **não** monta o `docker.sock`, que daria controle total do servidor. Ela fala
   com o `casa-docker-proxy` ([`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy)),
   numa rede interna sem saída para a internet e sem porta publicada, com as regras de
@@ -194,7 +209,7 @@ Resumo; detalhes, parâmetros e exemplos no Swagger. Mês/competência é sempre
 | | `POST /v1/geracao-solar` | Grava leitura (integração, `X-API-KEY`) |
 | Carros | `GET /v1/carros/{codigoFipe}` | Histórico FIPE |
 | Servidor (só `ADMIN`) | `GET /v1/servidor/agora` | Leitura ao vivo: CPU por núcleo, carga, memória, temperaturas, discos, rede e containers |
-| | `GET /v1/servidor/dia?data` | Mín/média/máx do dia, série a cada 5 min, espaço dos discos e resumo/série de cada container (padrão: hoje) |
+| | `GET /v1/servidor/dia?data` | Mín/média/máx do dia, série a cada 5 min, espaço e temperatura dos discos e resumo/série de cada container (padrão: hoje) |
 | | `GET /v1/servidor/dias?de&ate` | Estatísticas por dia (padrão: últimos 30 dias; até 366 por consulta) |
 
 ## Erros

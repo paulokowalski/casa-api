@@ -3,6 +3,7 @@ package com.kowalski.casaapi.business.monitor;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import com.kowalski.casaapi.config.monitor.MonitorProperties.DiscoMonitorado;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -45,12 +48,14 @@ public class LeitorSistema {
     private final Path sys;
     private final Path arquivoHostname;
     private final List<DiscoMonitorado> discos;
+    private final Path arquivoSmart;
 
     public LeitorSistema(MonitorProperties props) {
         this.proc = Path.of(props.procPath());
         this.sys = Path.of(props.sysPath());
         this.arquivoHostname = Path.of(props.hostnameArquivo());
         this.discos = props.discosMonitorados();
+        this.arquivoSmart = props.smartArquivo() == null ? null : Path.of(props.smartArquivo());
     }
 
     /** Tempos de CPU em jiffies desde o boot. */
@@ -83,8 +88,28 @@ public class LeitorSistema {
     public record Temperatura(String sensor, double celsius) {
     }
 
-    public record EspacoDisco(String nome, String caminho, long total, long usado, double pct) {
+    /**
+     * Espaço de um disco e, quando o arquivo do SMART tem o disco, a temperatura.
+     *
+     * @param dispositivo       major:minor do sistema de arquivos do caminho (ex.: "8:49")
+     * @param tipo              nvme, ssd ou hdd (do SMART); nulo sem SMART
+     * @param estadoTemperatura ativo, repouso (disco parado, não foi acordado para ler) ou sem_dados
+     */
+    public record EspacoDisco(String nome, String caminho, long total, long usado, double pct, String dispositivo,
+                              String modelo, String tipo, Double temperatura, String estadoTemperatura) {
+
+        public EspacoDisco(String nome, String caminho, long total, long usado, double pct) {
+            this(nome, caminho, total, usado, pct, null, null, null, null, null);
+        }
     }
+
+    /** Um disco no arquivo do SMART. */
+    public record DiscoSmart(String dispositivo, String modelo, String tipo, Double temperatura, String estado,
+                             List<String> dispositivos) {
+    }
+
+    /** Leituras do SMART mais velhas que isso são ignoradas (o timer do host parou). */
+    static final Duration SMART_VALIDADE = Duration.ofMinutes(5);
 
     /** Valores que já são instantâneos (não precisam de duas leituras). */
     public record Instantaneo(long memTotal, long memDisponivel, long swapTotal, long swapLivre,
@@ -252,6 +277,7 @@ public class LeitorSistema {
      * disco externo desmontado (cuja pasta passa a ficar no disco do sistema) não aparece com os números do sistema.
      */
     private List<EspacoDisco> lerDiscos() {
+        List<DiscoSmart> smart = lerSmart(arquivoSmart, OffsetDateTime.now());
         List<EspacoDisco> lista = new ArrayList<>();
         Set<String> medidos = new HashSet<>();
         for (DiscoMonitorado d : discos) {
@@ -264,9 +290,60 @@ public class LeitorSistema {
             long usado = total - livre;
             // mesmo cálculo do df: o espaço reservado ao root não conta como disponível
             double pct = usado + disponivel > 0 ? limitar(100.0 * usado / (usado + disponivel)) : 0;
-            lista.add(new EspacoDisco(d.nome(), d.caminho(), total, usado, pct));
+            String dispositivo = dispositivo(f.toPath());
+            DiscoSmart s = dispositivo == null ? null : smart.stream()
+                    .filter(x -> x.dispositivos().contains(dispositivo)).findFirst().orElse(null);
+            lista.add(s == null
+                    ? new EspacoDisco(d.nome(), d.caminho(), total, usado, pct, dispositivo, null, null, null, null)
+                    : new EspacoDisco(d.nome(), d.caminho(), total, usado, pct, dispositivo, s.modelo(), s.tipo(),
+                            s.temperatura(), s.estado()));
         }
         return lista;
+    }
+
+    /** major:minor do sistema de arquivos onde o caminho está (o st_dev do stat), ou nulo se não der para saber. */
+    static String dispositivo(Path caminho) {
+        try {
+            Object dev = Files.getAttribute(caminho, "unix:dev");
+            return dev instanceof Number n ? majorMinor(n.longValue()) : null;
+        } catch (IOException | UnsupportedOperationException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** Decodifica um dev_t do Linux (mesma regra das macros major()/minor() da glibc). */
+    static String majorMinor(long dev) {
+        long major = ((dev >>> 8) & 0xfffL) | ((dev >>> 32) & 0xfffff000L);
+        long minor = (dev & 0xffL) | ((dev >>> 12) & 0xffffff00L);
+        return major + ":" + minor;
+    }
+
+    /** Discos do arquivo do SMART; lista vazia se o arquivo não existe, está inválido ou velho demais. */
+    static List<DiscoSmart> lerSmart(Path arquivo, OffsetDateTime agora) {
+        if (arquivo == null || !Files.isReadable(arquivo)) return List.of();
+        try {
+            Map<?, ?> json = JsonMapper.shared().readValue(arquivo, Map.class);
+            OffsetDateTime lidoEm = OffsetDateTime.parse(String.valueOf(json.get("lidoEm")));
+            if (lidoEm.isBefore(agora.minus(SMART_VALIDADE))) return List.of();
+            List<DiscoSmart> lista = new ArrayList<>();
+            if (json.get("discos") instanceof List<?> discos) {
+                for (Object o : discos) {
+                    if (!(o instanceof Map<?, ?> d)) continue;
+                    List<String> devs = d.get("dispositivos") instanceof List<?> l
+                            ? l.stream().map(String::valueOf).toList() : List.of();
+                    Double temp = d.get("temperatura") instanceof Number n ? n.doubleValue() : null;
+                    lista.add(new DiscoSmart(textoDe(d.get("dispositivo")), textoDe(d.get("modelo")),
+                            textoDe(d.get("tipo")), temp, textoDe(d.get("estado")), devs));
+                }
+            }
+            return lista;
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    private static String textoDe(Object o) {
+        return o == null ? null : o.toString();
     }
 
     private List<Long> lerFrequencias() {

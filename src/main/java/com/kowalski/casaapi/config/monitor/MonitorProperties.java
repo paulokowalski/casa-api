@@ -14,6 +14,8 @@ import java.util.List;
  *                        dentro do sistema de arquivos que se quer medir
  * @param dockerUrl       API do Docker (de preferência um proxy só-leitura); vazio desliga o monitoramento de containers
  * @param retencaoContainersDias por quantos dias guardar as amostras dos containers (uma por container por minuto)
+ * @param smartArquivo    JSON com a temperatura dos discos, gravado no host pelo casa-monitor-smart (config/smart);
+ *                        vazio desliga as temperaturas dos discos
  */
 @ConfigurationProperties(prefix = "monitor")
 public record MonitorProperties(Boolean habilitado,
@@ -24,6 +26,7 @@ public record MonitorProperties(Boolean habilitado,
                                 List<String> discos,
                                 String dockerUrl,
                                 Integer retencaoContainersDias,
+                                String smartArquivo,
                                 Datasource datasource) {
 
     public MonitorProperties {
@@ -35,6 +38,7 @@ public record MonitorProperties(Boolean habilitado,
         discos = discos == null || discos.isEmpty() ? List.of("Sistema=/") : List.copyOf(discos);
         dockerUrl = vazio(dockerUrl) ? null : dockerUrl.trim().replaceAll("/+$", "");
         retencaoContainersDias = retencaoContainersDias == null || retencaoContainersDias < 1 ? 90 : retencaoContainersDias;
+        smartArquivo = vazio(smartArquivo) ? null : smartArquivo.trim();
         datasource = datasource == null ? new Datasource(null, null, null) : datasource;
     }
 

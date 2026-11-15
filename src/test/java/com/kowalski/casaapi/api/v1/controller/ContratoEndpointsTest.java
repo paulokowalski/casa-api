@@ -388,7 +388,7 @@ class ContratoEndpointsTest {
 
         private final ServidorEstatisticasResponse.Faixa faixa = new ServidorEstatisticasResponse.Faixa(1.0, 2.0, 3.0);
         private final ServidorEstatisticasResponse resumo =
-                new ServidorEstatisticasResponse(1440, faixa, faixa, faixa, faixa, 5.0, 0.2, 10L, 20L, 30L, 40L);
+                new ServidorEstatisticasResponse(1440, faixa, faixa, faixa, faixa, 5.0, 0.2, 10L, 20L, 30L, 40L, 58.0);
 
         @Test
         void agora() throws Exception {
@@ -410,11 +410,12 @@ class ContratoEndpointsTest {
 
         @Test
         void diaUsaHojeComoPadrao() throws Exception {
-            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of()));
+            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of(), List.of()));
 
             mvc.perform(get("/v1/servidor/dia")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value(LocalDate.now().toString()))
-                    .andExpect(jsonPath("$.resumo.cpu.max").value(3.0));
+                    .andExpect(jsonPath("$.resumo.cpu.max").value(3.0))
+                    .andExpect(jsonPath("$.resumo.discoTemperaturaMax").value(58.0));
             mvc.perform(get("/v1/servidor/dia").param("data", "2026-11-01")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value("2026-11-01"));
             mvc.perform(get("/v1/servidor/dia").param("data", "01/11/2026")).andExpect(status().isBadRequest());

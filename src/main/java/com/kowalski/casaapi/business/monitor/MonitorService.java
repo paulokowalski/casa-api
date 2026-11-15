@@ -27,8 +27,8 @@ import java.util.function.Supplier;
  * Monitoramento de saúde do servidor.
  * <p>
  * A cada minuto lê os contadores do kernel e grava em {@code amostra_servidor} as médias do minuto que passou
- * (CPU, rede e disco são a diferença entre a leitura atual e a anterior). O espaço dos discos muda devagar e é
- * gravado a cada 10 minutos. Com {@code monitor.docker-url} configurado, grava também uma amostra por container
+ * (CPU, rede e disco são a diferença entre a leitura atual e a anterior). O espaço e a temperatura dos discos
+ * mudam devagar e são gravados a cada 5 minutos. Com {@code monitor.docker-url} configurado, grava também uma amostra por container
  * em {@code amostra_container}. Falhas na coleta só geram um aviso no log: a API continua no ar.
  */
 @Slf4j
@@ -37,7 +37,8 @@ public class MonitorService {
 
     static final int MAX_DIAS_CONSULTA = 366;
     private static final long MEIO_SEGUNDO = 500;
-    private static final int MINUTOS_ENTRE_DISCOS = 10;
+    /** Espaço e temperatura dos discos mudam devagar: uma linha por disco a cada 5 minutos basta. */
+    private static final int MINUTOS_ENTRE_DISCOS = 5;
 
     private final LeitorSistema leitor;
     private final LeitorContainers leitorContainers;
@@ -164,7 +165,8 @@ public class MonitorService {
         LocalDateTime de = data.atStartOfDay();
         LocalDateTime ate = data.plusDays(1).atStartOfDay();
         return historico(() -> new ServidorDiaResponse(data, repository.resumo(de, ate), repository.serie(de, ate),
-                repository.discos(de, ate), repository.containers(de, ate), repository.serieContainers(de, ate)));
+                repository.discos(de, ate), repository.containers(de, ate), repository.serieContainers(de, ate),
+                repository.serieDiscos(de, ate)));
     }
 
     public List<ServidorResumoDiaResponse> dias(LocalDate de, LocalDate ate) {
@@ -251,7 +253,7 @@ public class MonitorService {
                 inst.temperaturas().stream().map(t -> new ServidorAgoraResponse.Temperatura(t.sensor(), t.celsius())).toList(),
                 inst.temperaturaMax(),
                 inst.discos().stream().map(d -> new ServidorDiscoResponse(d.nome(), d.caminho(), d.total(), d.usado(),
-                        arredondar(d.pct()))).toList(),
+                        arredondar(d.pct()), d.modelo(), d.tipo(), d.temperatura(), d.estadoTemperatura(), null, null)).toList(),
                 rede,
                 new ServidorAgoraResponse.DiscoIo(
                         Math.round(Math.max(atual.discoLidos() - antes.discoLidos(), 0) / seg),

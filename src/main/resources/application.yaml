@@ -82,6 +82,8 @@ monitor:
     # API do Docker para os containers (proxy só-leitura); vazio desliga essa parte
     docker-url: ${MONITOR_DOCKER_URL:}
     retencao-containers-dias: ${MONITOR_RETENCAO_CONTAINERS_DIAS:90}
+    # JSON com a temperatura dos discos (SMART), gravado no host pelo timer casa-monitor-smart; vazio desliga
+    smart-arquivo: ${MONITOR_SMART_ARQUIVO:}
     datasource:
         url: ${MONITOR_DATASOURCE_URL:jdbc:mariadb://mariadb:3306/casa_monitor}
         username: ${MONITOR_DATASOURCE_USERNAME:casa_monitor}

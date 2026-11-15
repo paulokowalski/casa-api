@@ -12,7 +12,17 @@ public record ServidorDiaResponse(
         @Schema(description = "Médias a cada 5 minutos (só os blocos com amostras)") List<Ponto> serie,
         @Schema(description = "Última medição do dia de cada disco") List<ServidorDiscoResponse> discos,
         @Schema(description = "Resumo do dia de cada container, os que mais usaram CPU primeiro") List<ContainerDia> containers,
-        @Schema(description = "CPU e memória de cada container a cada 5 minutos (só enquanto rodando)") List<SerieContainer> serieContainers) {
+        @Schema(description = "CPU e memória de cada container a cada 5 minutos (só enquanto rodando)") List<SerieContainer> serieContainers,
+        @Schema(description = "Temperatura de cada disco a cada 5 minutos (só discos com SMART, fora do repouso)") List<SerieDisco> serieDiscos) {
+
+    @Schema(description = "Temperatura de um disco ao longo do dia")
+    public record SerieDisco(
+            @Schema(example = "Mídia") String nome,
+            List<PontoDisco> pontos) { }
+
+    public record PontoDisco(
+            @Schema(description = "Início do bloco (HH:mm)", example = "14:35") String horario,
+            @Schema(description = "Temperatura (°C)", example = "56.0") Double temperatura) { }
 
     @Schema(description = "Um container ao longo do dia")
     public record ContainerDia(

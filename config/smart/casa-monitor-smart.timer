@@ -1,0 +1,10 @@
+[Unit]
+Description=Lê a temperatura dos discos a cada minuto (casa-api)
+
+[Timer]
+# segundo 40: o arquivo fica pronto antes da coleta da API, que roda no segundo 0
+OnCalendar=*-*-* *:*:40
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
