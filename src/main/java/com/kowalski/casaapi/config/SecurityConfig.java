@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/auth/login").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/geracao-solar").hasAnyRole("INTEGRACAO", ADMIN)
                 .requestMatchers(HttpMethod.POST, "/v1/pessoas").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/v1/pessoas/**").hasRole(ADMIN)

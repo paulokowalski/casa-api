@@ -5,38 +5,35 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UUID> {
 
-    @Query( " SELECT sum(cp.valorParcela) FROM CompraParcela cp " +
-            " WHERE cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
-            " AND   cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) " +
-            " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) "
+    // Período fechado no início e aberto no fim: [inicio, fim). Comparar a data direto
+    // permite usar o índice de dt_parcela.
+    // A compra e a categoria vêm no mesmo SELECT (JOIN FETCH) para não disparar
+    // uma consulta extra por compra ao montar a resposta.
+    @Query( " SELECT cp FROM CompraParcela cp " +
+            " JOIN FETCH cp.compra c " +
+            " LEFT JOIN FETCH c.categoria " +
+            " WHERE cp.dataParcela >= :inicio AND cp.dataParcela < :fim " +
+            " AND upper(c.nomePessoaCompra) = upper(:pessoa) " +
+            " ORDER BY c.dataCadastro DESC "
     )
-    BigDecimal somatorioPorMesENomeEPessoa(String ano, String mes, String pessoa);
+    List<CompraParcela> buscarPorPeriodo(LocalDate inicio, LocalDate fim, String pessoa);
 
     @Query( " SELECT cp FROM CompraParcela cp " +
-            " WHERE cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
-            " AND   cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) " +
-            " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) " +
-            " ORDER BY cp.compra.dataCadastro DESC "
+            " JOIN FETCH cp.compra c " +
+            " LEFT JOIN FETCH c.categoria " +
+            " WHERE cp.dataParcela >= :inicio AND cp.dataParcela < :fim " +
+            " AND upper(c.nomePessoaCompra) = upper(:pessoa) " +
+            " AND upper(c.nomeCartao) like upper(:cartao) " +
+            " ORDER BY c.dataCadastro DESC "
     )
-    List<CompraParcela> buscarPorMesENomeEPessoa(String ano, String mes, String pessoa);
-
-    @Query( " SELECT cp FROM CompraParcela cp " +
-            " WHERE cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
-            " AND   cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) " +
-            " AND upper(cp.compra.nomePessoaCompra) = upper(:pessoa) " +
-            " AND upper(cp.compra.nomeCartao) like upper(:cartao) " +
-            " ORDER BY cp.compra.dataCadastro DESC "
-    )
-    List<CompraParcela> buscarPorMesENomeEPessoaCartao(String ano, String mes, String pessoa, String cartao);
+    List<CompraParcela> buscarPorPeriodoECartao(LocalDate inicio, LocalDate fim, String pessoa, String cartao);
 
     void deleteByCompraId(UUID compraId);
-
-
 }

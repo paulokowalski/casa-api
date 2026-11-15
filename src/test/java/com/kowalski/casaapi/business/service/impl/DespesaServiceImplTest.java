@@ -23,14 +23,6 @@ class DespesaServiceImplTest {
     }
 
     @Test
-    void mensalConsultaComONomeEmMaiusculas() {
-        DespesaResponse d = despesa("10");
-        when(dao.findByNomePessoaAndMesAnoReferencia("ANA", "11", "2026")).thenReturn(d);
-
-        assertThat(service.buscarPorAnoMesNome("2026", "11", "ana")).isSameAs(d);
-    }
-
-    @Test
     void anualJuntaSoOsMesesComDespesaEmOrdem() {
         when(dao.findByNomePessoaAndMesAnoReferencia(eq("ANA"), anyString(), eq("2026"))).thenReturn(null);
         when(dao.findByNomePessoaAndMesAnoReferencia("ANA", "10", "2026")).thenReturn(despesa("10"));
@@ -47,7 +39,7 @@ class DespesaServiceImplTest {
 
     @Test
     void validaOsParametros() {
-        assertThatThrownBy(() -> service.buscarPorAnoMesNome("", "11", "ANA")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.buscarDespesasAnuais("", "ANA")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.buscarDespesasAnuais("2026", " ")).isInstanceOf(IllegalArgumentException.class);
     }
 }

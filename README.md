@@ -1,104 +1,198 @@
 # Casa API
 
-API para gerenciamento de despesas domésticas desenvolvida com Spring Boot.
+Backend da casa: compras no cartão e parcelas, contas fixas e lançamentos mensais, renda, faturas,
+pessoas/acessos e monitoramento (geração solar e histórico FIPE). Consumido pelo front
+[`casa`](../casa) e por integrações (Node-RED).
 
-## 🚀 Tecnologias
+- **Stack:** Java 17 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · springdoc-openapi (Swagger) · Lombok · Maven
+- **Base da API:** `http://<host>:8080/casa-api` (o nginx do front também repassa `/casa-api/` para cá)
+- **Documentação interativa:** [`/casa-api/swagger-ui.html`](http://localhost:8080/casa-api/swagger-ui.html) · OpenAPI JSON em `/casa-api/v3/api-docs`
 
-- Java 17
-- Spring Boot
-- PostgreSQL
-- Docker
-- Maven
+## Sumário
 
-## 📋 Pré-requisitos
+- [Rodando](#rodando)
+- [Configuração](#configuração)
+- [Banco de dados e migrations](#banco-de-dados-e-migrations)
+- [Autenticação e permissões](#autenticação-e-permissões)
+- [Swagger / OpenAPI](#swagger--openapi)
+- [Endpoints](#endpoints)
+- [Erros](#erros)
+- [Estrutura do código](#estrutura-do-código)
+- [Testes](#testes)
+- [Notas de desempenho](#notas-de-desempenho)
 
-- Java 17+
-- Docker e Docker Compose
-- Maven
-- PostgreSQL
+## Rodando
 
-## 🔧 Configuração do Ambiente
+### Docker (servidor)
 
-### Variáveis de Ambiente
-
-```properties
-# Database
-SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=postgres
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/casa
-```
-
-### Configurações do Banco de Dados
-
-O projeto utiliza PostgreSQL com as seguintes configurações otimizadas:
-- HikariCP como pool de conexões
-- Configurações de batch para melhor performance
-- Timezone configurado para America/Sao_Paulo
-
-## 💻 Ambiente de desenvolvimento
-
-1. Copie `config/dev-secrets.example.yaml` para `config/dev-secrets.yaml` (fora do git) e preencha o segredo JWT e o e-mail/senha inicial do admin.
-2. Suba a API normalmente (pelo IntelliJ ou `mvn spring-boot:run`), com o diretório de trabalho na raiz do `casa-api`. O arquivo `config/dev-secrets.yaml` é lido automaticamente quando existe; em servidor/Docker ele não existe e valem as variáveis de ambiente.
-3. No frontend (`casa`), com Node 26 (`nvm use 26`): `npm run dev` (porta 3000, `VITE_API_BASE_URL=http://localhost:8080/casa-api/` no `.env.local`).
-
-## 🏃‍♂️ Executando o Projeto
-
-1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/casa-api.git
-cd casa-api
+docker compose up -d --build casa-api
 ```
 
-2. Compile o projeto:
+O `docker-compose.yml` (fora do git) lê as variáveis do `.env` e conecta na rede externa `casa-network`,
+a mesma do container do front. A aplicação leva cerca de 25 s para subir; requisições nesse intervalo
+recebem 502 do nginx.
+
+### Desenvolvimento local
+
+1. Copie `config/dev-secrets.example.yaml` para `config/dev-secrets.yaml` (fora do git) e preencha
+   banco, segredo JWT e e-mail/senha do admin inicial. O arquivo é lido automaticamente quando existe.
+2. Com o diretório de trabalho na raiz do projeto:
+   ```bash
+   mvn spring-boot:run
+   ```
+3. No front (`casa`), aponte `VITE_API_BASE_URL=http://localhost:8080/casa-api/` no `.env.local`.
+
+## Configuração
+
+Todas as opções vêm de variáveis de ambiente (ou do `config/dev-secrets.yaml` em desenvolvimento).
+
+| Variável | Obrigatória | Padrão | Uso |
+|---|---|---|---|
+| `SPRING_DATASOURCE_URL` | sim | — | JDBC do PostgreSQL, ex.: `jdbc:postgresql://host:5432/casa` |
+| `SPRING_DATASOURCE_USERNAME` | sim | — | Usuário do banco |
+| `SPRING_DATASOURCE_PASSWORD` | sim | — | Senha do banco |
+| `JWT_SECRET` | sim | — | Segredo HS256 dos tokens; **mínimo 32 caracteres** (a API não sobe sem) |
+| `JWT_EXPIRACAO_HORAS` | não | `8` | Validade do token |
+| `AUTH_ADMIN_EMAIL` / `AUTH_ADMIN_SENHA` | não | — | Na subida, se a pessoa com esse e-mail ainda não tem senha, recebe essa senha e o papel `ADMIN` |
+| `API_KEY` | não | vazio | Chave do cabeçalho `X-API-KEY` para integrações; vazio desliga |
+| `CORS_URL` | não | `http://localhost:3000` | Origens permitidas, separadas por vírgula |
+| `SWAGGER_ENABLED` | não | `true` | `false` desliga o Swagger UI e o `/v3/api-docs` |
+
+## Banco de dados e migrations
+
+PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. Os scripts ficam em
+`src/main/resources/db/migration` e **são aplicados à mão** (não há Flyway/Liquibase), em ordem:
+
+| Script | O que faz |
+|---|---|
+| `V1__contas_e_renda.sql` | Tabelas de contas, lançamentos e renda mensal |
+| `V2__pagamentos.sql` | Baixa manual de lançamentos e faturas pagas |
+| `V3__login.sql` | Senha, papel e ativo em `pessoa` (login por pessoa) |
+| `V4__indices_compras.sql` | Índices de `compra_parcela` (compra e data) e de `compra` (pessoa) |
+| `V5__remove_funcao_remove_zeros_esquerda.sql` | Remove a função SQL que os filtros antigos usavam |
+
+Para aplicar um script no servidor:
+
 ```bash
-mvn clean package
+docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa -v ON_ERROR_STOP=1 \
+  < src/main/resources/db/migration/V5__remove_funcao_remove_zeros_esquerda.sql
 ```
 
-3. Execute com Docker:
+Os scripts usam `IF EXISTS` / `IF NOT EXISTS` e podem ser reaplicados. Aplique cada um **depois** do
+deploy da versão que deixou de depender do que ele remove.
+
+## Autenticação e permissões
+
+- **Login:** `POST /v1/auth/login` com `{ "email", "senha" }` devolve um JWT. Envie em todas as outras
+  chamadas como `Authorization: Bearer <token>`. Cinco senhas erradas seguidas bloqueiam o e-mail por
+  15 minutos (resposta 429).
+- **Papéis:**
+  - `ADMIN` vê e altera dados de qualquer pessoa e é o único que cria, altera e exclui pessoas.
+  - `USUARIO` só acessa os próprios dados; pedir os de outra pessoa (por `pessoa` ou `pessoaId`) responde 403.
+- **Integrações:** o cabeçalho `X-API-KEY` (variável `API_KEY`) dá o papel `INTEGRACAO`, aceito apenas
+  em `POST /v1/geracao-solar` (usado pelo Node-RED para gravar as leituras do inversor).
+- **Rotas públicas:** login, `/actuator/health` e a documentação Swagger.
+
+## Swagger / OpenAPI
+
+- UI: `http://<host>:8080/casa-api/swagger-ui.html` (ou `http://<host>:3000/casa-api/swagger-ui.html` pelo front)
+- JSON: `/casa-api/v3/api-docs`
+
+Para testar endpoints protegidos: execute `POST /v1/auth/login`, copie o `token`, clique em
+**Authorize** e cole no esquema `jwt`. A autorização fica salva no navegador entre recarregamentos.
+
+Toda operação, parâmetro e campo de request/response tem descrição e exemplo, escritos com as
+anotações `@Tag`, `@Operation`, `@Parameter`, `@ApiResponse` e `@Schema` nos controllers e records
+(`api/v1`). As respostas de erro padrão (400, 401, 403, 500) são acrescentadas a todas as operações por
+`config/OpenApiConfig`, sempre com o corpo `ErroResponse`. **Ao criar um endpoint, documente-o do
+mesmo jeito.**
+
+## Endpoints
+
+Resumo; detalhes, parâmetros e exemplos no Swagger. Mês/competência é sempre `aaaa-mm`.
+
+| Grupo | Método e caminho | Descrição |
+|---|---|---|
+| Autenticação | `POST /v1/auth/login` | Login (público); devolve token e usuário |
+| | `GET /v1/auth/me` | Usuário logado |
+| Compras | `GET /v1/compras?pessoa&cartao` | Compras sem parcelas, filtradas no banco |
+| | `GET /v1/compras/parcelas?de&ate&pessoa&cartao` | Parcelas de um período (até 36 meses) numa chamada |
+| | `GET /v1/compras/parcelas/{ano}/{mes}?pessoa&cartao&ultimaParcela` | Parcelas de um mês |
+| | `POST /v1/compras` | Cadastra compra e gera as parcelas (divide entre pessoas separadas por vírgula) |
+| | `PUT /v1/compras/{id}` · `DELETE /v1/compras/{id}` | Edita (recria parcelas) · exclui |
+| Contas | `GET /v1/contas?pessoaId` | Contas da pessoa, com parcela atual e saldo |
+| | `POST /v1/contas` · `PUT /v1/contas/{id}?aPartirDe` | Cadastra · edita a partir de um mês |
+| | `DELETE /v1/contas/{id}?aPartirDe` | Exclui ou encerra a partir de um mês |
+| | `GET /v1/contas/lancamentos?pessoaId&de&ate` | Lançamentos mês a mês (gerados sob demanda) |
+| | `PATCH /v1/contas/lancamentos/{id}` | Marca pago e/ou informa valor real |
+| Despesas | `GET /v1/despesas/{ano}?pessoa` | Totais do cartão por mês |
+| Faturas | `GET` · `PUT /v1/faturas/{ano}/{mes}?pessoaId` | Situação de pagamento da fatura |
+| Renda | `GET` · `PUT /v1/rendas/{ano}/{mes}?pessoaId` | Renda do mês (herda do último mês informado) |
+| Filtros | `GET /v1/filtros/{anos,meses,pessoas,cartoes,categorias,tipos-lancamento}` | Opções das telas |
+| Pessoas | `GET /v1/pessoas` | Lista (sem senha) |
+| | `POST /v1/pessoas` · `PUT` · `DELETE /v1/pessoas/{id}` | Só `ADMIN` |
+| Geração solar | `GET /v1/geracao-solar?data` | Leituras de um dia |
+| | `GET /v1/geracao-solar/{ano}/{mes}` · `GET /v1/geracao-solar/{ano}` | Geração por dia · por mês |
+| | `POST /v1/geracao-solar` | Grava leitura (integração, `X-API-KEY`) |
+| Carros | `GET /v1/carros/{codigoFipe}` | Histórico FIPE |
+
+## Erros
+
+Todo erro responde JSON no formato `{ "mensagem": "texto para o usuário" }`
+(`api/v1/handler/ApiExceptionHandler` e `config/security/ErroSegurancaJson`):
+
+| Status | Quando |
+|---|---|
+| 400 | Validação (`IllegalArgumentException`/`Assert`), JSON inválido, parâmetro faltando ou de tipo errado |
+| 401 | Sem token, token inválido/expirado, credenciais erradas |
+| 403 | Sem permissão (dados de outra pessoa, ação só de admin) |
+| 404 | Recurso não encontrado (`RecursoNaoEncontradoException`) ou rota inexistente |
+| 405 / 415 | Método não suportado / corpo que não é JSON |
+| 429 | Login bloqueado por excesso de tentativas |
+| 500 | Erro inesperado (detalhe só no log, nunca na resposta) |
+
+## Estrutura do código
+
+```
+src/main/java/com/kowalski/casaapi/
+├── api/v1/
+│   ├── controller/   # Endpoints REST (documentados com OpenAPI)
+│   ├── input/        # Corpos de requisição (records)
+│   ├── response/     # Corpos de resposta (records)
+│   ├── dto/          # DTOs de integração (leitura do inversor)
+│   └── handler/      # ApiExceptionHandler: exceção → status + {"mensagem"}
+├── business/
+│   ├── auth/         # Login, JWT, usuário logado e admin inicial
+│   ├── service/      # Regras de negócio (interfaces + impl/)
+│   ├── repository/   # Spring Data JPA
+│   ├── dao/          # Consultas nativas (filtros e totais de despesas)
+│   ├── model/        # Entidades JPA
+│   ├── enumerator/   # Papel, TipoConta, Meses
+│   └── exception/    # RecursoNaoEncontradoException
+├── config/           # Segurança, CORS, OpenAPI, filtro da API key
+└── util/             # Competencias (datas aaaa-mm), Util
+src/main/resources/
+├── application.yaml
+└── db/migration/     # Scripts SQL (aplicados à mão)
+```
+
+## Testes
+
 ```bash
-docker-compose up -d
+mvn test
 ```
 
-Ou execute localmente:
-```bash
-java -jar target/casa-api.jar
-```
+São testes unitários (services com mocks) e de fatia web (`@WebMvcTest`): contrato dos endpoints,
+regras de segurança e formato dos erros. **Nenhum teste acessa o banco**, então as consultas JPQL e
+nativas só são exercitadas com a aplicação rodando.
 
-## 📦 Estrutura do Projeto
+## Notas de desempenho
 
-```
-src/
-├── main/
-│   ├── java/
-│   │   └── com/kowalski/casaapi/
-│   │       ├── config/         # Configurações (segurança, CORS)
-│   │       ├── domain/         # Entidades e regras de negócio
-│   │       └── repository/     # Repositórios JPA
-│   └── resources/
-│       └── application.yaml    # Configurações da aplicação
-└── test/
-    └── java/                   # Testes unitários e de integração
-```
-
-## 🔍 Monitoramento
-
-### Logs
-- Configuração otimizada do Logback
-- Níveis de log configurados para melhor performance
-- Monitoramento de queries lentas (>1000ms)
-
-### Métricas
-- Hibernate statistics desabilitadas em produção
-- Monitoramento do pool de conexões via HikariCP
-
-## 📄 API Endpoints
-
-A API está disponível em `http://localhost:8080/casa-api`
-
-## 🛠️ Construído Com
-
-* [Spring Boot](https://spring.io/projects/spring-boot)
-* [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
-* [PostgreSQL](https://www.postgresql.org/)
-* [HikariCP](https://github.com/brettwooldridge/HikariCP)
-* [Maven](https://maven.apache.org/)
+- As associações `Compra ↔ CompraParcela` são `LAZY`. As consultas de parcelas trazem compra e
+  categoria com `JOIN FETCH`, e `default_batch_fetch_size: 100` cobre os demais casos — evite voltar
+  para `EAGER`, que gerava uma consulta por compra.
+- Filtros por mês usam intervalo de datas (`dataParcela >= início AND < fim`), que aproveita o índice
+  de `dt_parcela`; não use `date_part`/conversão para texto no `WHERE`.
+- Para várias competências, prefira `GET /v1/compras/parcelas?de&ate` a uma chamada por mês.
+- Consultas acima de 1 s são registradas no log (`LOG_QUERIES_SLOWER_THAN_MS`).

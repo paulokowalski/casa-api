@@ -1,45 +1,26 @@
 package com.kowalski.casaapi.api.v1.response;
 
-import com.kowalski.casaapi.api.v1.dto.DatasetDto;
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.kowalski.casaapi.business.model.CompraParcela;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Objects;
 
 import static com.kowalski.casaapi.util.Util.removerAcentos;
 
-public record CompraResponse (
-        List<CompraParcelaResponse> compras,
-        Map<String, Object> data
-)
-{
-    public CompraResponse to(List<CompraParcela> compras, String ultimaParcelaSelecionado){
-        var compraParcelaResponse = compras.stream().map(this::newCompraParcelaResponse).toList();
+@Schema(description = "Lista de parcelas")
+public record CompraResponse(
+        @Schema(description = "Parcelas encontradas") List<CompraParcelaResponse> compras) {
+    public static CompraResponse de(List<CompraParcela> compras, String ultimaParcelaSelecionado){
+        var compraParcelaResponse = compras.stream().map(CompraResponse::newCompraParcelaResponse).toList();
         if(StringUtils.hasText(ultimaParcelaSelecionado) && !ultimaParcelaSelecionado.equalsIgnoreCase("TODOS")){
             compraParcelaResponse = compraParcelaResponse.stream().filter(compra -> removerAcentos(compra.ultimaParcela()).equalsIgnoreCase(removerAcentos(ultimaParcelaSelecionado))).toList();
         }
-        return new CompraResponse(compraParcelaResponse, montarResponseGrafico(compraParcelaResponse));
+        return new CompraResponse(compraParcelaResponse);
     }
 
-    private Map<String, Object> montarResponseGrafico(List<CompraParcelaResponse> compras) {
-        Map<String, Object> data = new HashMap<>();
-
-        Map<String, Double> agrupamento = compras.stream().collect(Collectors.groupingBy(CompraParcelaResponse::nomeCartao, Collectors.summingDouble(CompraParcelaResponse::valorParcela)));
-
-        List<String> cartao = new ArrayList<>();
-        List<Double> valor = new ArrayList<>();
-        agrupamento.forEach((k, v) -> {
-            cartao.add(k);
-            valor.add(v);
-        });
-
-        data.put("labels", cartao);
-        data.put("datasets", new Object[]{ new DatasetDto(valor) });
-        return data;
-    }
-
-    private CompraParcelaResponse newCompraParcelaResponse(CompraParcela cp) {
+    private static CompraParcelaResponse newCompraParcelaResponse(CompraParcela cp) {
         return new CompraParcelaResponse(
                 cp.getCompra().getId().toString(),
                 cp.getCompra().getNomeProduto().toUpperCase(),
@@ -56,7 +37,7 @@ public record CompraResponse (
                 Objects.nonNull(cp.getCompra().getCategoria()) ? cp.getCompra().getCategoria().getNome().toUpperCase() : "");
     }
 
-    private Double calculaValorFalta(CompraParcela cp) {
+    private static Double calculaValorFalta(CompraParcela cp) {
         if(cp.getCompra().getNumeroParcelas().equals(cp.getNumeroParcela())) return Double.valueOf("0");
         var numeroParcelas = cp.getCompra().getNumeroParcelas() - cp.getNumeroParcela();
         return cp.getValorParcela().doubleValue() * numeroParcelas;

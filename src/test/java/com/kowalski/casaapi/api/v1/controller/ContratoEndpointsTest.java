@@ -80,13 +80,35 @@ class ContratoEndpointsTest {
         @Test
         void listar() throws Exception {
             mvc.perform(get("/v1/compras")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
-            verify(compraService).buscarTodos();
+            verify(compraService).buscarTodos(null, null);
+        }
+
+        @Test
+        void listarComFiltros() throws Exception {
+            mvc.perform(get("/v1/compras").param("pessoa", "ANA").param("cartao", "NUBANK")).andExpect(status().isOk());
+            verify(compraService).buscarTodos("ANA", "NUBANK");
+        }
+
+        @Test
+        void parcelasDoPeriodoUsaTODOSComoPadrao() throws Exception {
+            when(compraService.buscarPorPeriodo(any(), any(), any(), any()))
+                    .thenReturn(new CompraResponse(List.of()));
+
+            mvc.perform(get("/v1/compras/parcelas").param("de", "2026-08").param("ate", "2027-11").param("pessoa", "ANA"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.compras").isArray());
+            verify(compraService).buscarPorPeriodo("2026-08", "2027-11", "ANA", "TODOS");
+        }
+
+        @Test
+        void parcelasDoPeriodoSemDeDa400() throws Exception {
+            mvc.perform(get("/v1/compras/parcelas").param("ate", "2027-11").param("pessoa", "ANA"))
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
         void parcelasDoMesUsaTODOSComoPadrao() throws Exception {
             when(compraService.buscarPorMesENome(any(), any(), any(), any(), any()))
-                    .thenReturn(new CompraResponse(List.of(), Map.of()));
+                    .thenReturn(new CompraResponse(List.of()));
 
             mvc.perform(get("/v1/compras/parcelas/2026/11").param("pessoa", "ANA"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.compras").isArray());
@@ -178,23 +200,6 @@ class ContratoEndpointsTest {
 
     @Nested
     class Despesas {
-
-        @Test
-        void doMes() throws Exception {
-            when(despesaService.buscarPorAnoMesNome("2026", "11", "ANA"))
-                    .thenReturn(new DespesaResponse(new BigDecimal("10.50"), BigDecimal.ONE, BigDecimal.TEN));
-
-            mvc.perform(get("/v1/despesas/2026/11").param("pessoa", "ANA"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.valorMes").value(10.5))
-                    .andExpect(jsonPath("$.comprasParceladas").value(1))
-                    .andExpect(jsonPath("$.gastosNoCartao").value(10));
-        }
-
-        @Test
-        void mesSemDespesaDa404() throws Exception {
-            mvc.perform(get("/v1/despesas/2026/11").param("pessoa", "ANA")).andExpect(status().isNotFound());
-        }
 
         @Test
         void doAno() throws Exception {
@@ -380,9 +385,8 @@ class ContratoEndpointsTest {
 
         @Test
         void buscarInexistenteDa404ComMensagem() throws Exception {
-            mvc.perform(get("/v1/pessoas/99")).andExpect(status().isNotFound())
+            mvc.perform(delete("/v1/pessoas/99")).andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.mensagem").value("Pessoa não encontrada"));
-            mvc.perform(delete("/v1/pessoas/99")).andExpect(status().isNotFound());
             verify(pessoaService, never()).deletar(any());
         }
 

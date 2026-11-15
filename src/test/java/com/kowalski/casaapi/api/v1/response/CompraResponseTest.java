@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.api.v1.response;
 
-import com.kowalski.casaapi.api.v1.dto.DatasetDto;
 import com.kowalski.casaapi.business.model.Categorias;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
@@ -29,7 +28,7 @@ class CompraResponseTest {
     void montaCadaParcelaComOsCamposDaTela() {
         CompraParcela p = parcela("tv", "nubank", 2, 5, "100.00", mercado);
 
-        CompraParcelaResponse r = new CompraResponse(null, null).to(List.of(p), "TODOS").compras().get(0);
+        CompraParcelaResponse r = CompraResponse.de(List.of(p), "TODOS").compras().get(0);
 
         assertThat(r.id()).isEqualTo(p.getCompra().getId().toString());
         assertThat(r.nomeCompra()).isEqualTo("TV");
@@ -46,8 +45,8 @@ class CompraResponseTest {
 
     @Test
     void ultimaParcelaNaoTemValorFaltanteECategoriaVaziaViraTextoVazio() {
-        CompraParcelaResponse r = new CompraResponse(null, null)
-                .to(List.of(parcela("tv", "nubank", 3, 3, "10.00", null)), "TODOS").compras().get(0);
+        CompraParcelaResponse r = CompraResponse.de(
+                List.of(parcela("tv", "nubank", 3, 3, "10.00", null)), "TODOS").compras().get(0);
 
         assertThat(r.ultimaParcela()).isEqualTo("SIM");
         assertThat(r.valorFaltante()).isZero();
@@ -60,28 +59,12 @@ class CompraResponseTest {
                 parcela("a", "nubank", 1, 1, "10.00", null),
                 parcela("b", "nubank", 1, 2, "20.00", null));
 
-        assertThat(new CompraResponse(null, null).to(parcelas, "SIM").compras())
+        assertThat(CompraResponse.de(parcelas, "SIM").compras())
                 .extracting(CompraParcelaResponse::nomeCompra).containsExactly("A");
-        assertThat(new CompraResponse(null, null).to(parcelas, "NAO").compras())
+        assertThat(CompraResponse.de(parcelas, "NAO").compras())
                 .extracting(CompraParcelaResponse::nomeCompra).containsExactly("B");
-        assertThat(new CompraResponse(null, null).to(parcelas, "TODOS").compras()).hasSize(2);
-        assertThat(new CompraResponse(null, null).to(parcelas, null).compras()).hasSize(2);
+        assertThat(CompraResponse.de(parcelas, "TODOS").compras()).hasSize(2);
+        assertThat(CompraResponse.de(parcelas, null).compras()).hasSize(2);
     }
 
-    @Test
-    @SuppressWarnings("unchecked")
-    void graficoSomaAsParcelasPorCartao() {
-        List<CompraParcela> parcelas = List.of(
-                parcela("a", "nubank", 1, 1, "10.00", null),
-                parcela("b", "nubank", 1, 1, "5.50", null),
-                parcela("c", "itau", 1, 1, "7.00", null));
-
-        var data = new CompraResponse(null, null).to(parcelas, "TODOS").data();
-
-        List<String> labels = (List<String>) data.get("labels");
-        List<Double> valores = ((DatasetDto) ((Object[]) data.get("datasets"))[0]).getData();
-        assertThat(labels).containsExactlyInAnyOrder("NUBANK", "ITAU");
-        assertThat(valores.get(labels.indexOf("NUBANK"))).isEqualTo(15.5);
-        assertThat(valores.get(labels.indexOf("ITAU"))).isEqualTo(7.0);
-    }
 }

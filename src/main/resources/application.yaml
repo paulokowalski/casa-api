@@ -21,6 +21,7 @@ spring:
         show-sql: false
         properties:
             hibernate:
+                default_batch_fetch_size: 100
                 jdbc:
                     batch_size: 50
                     batch_versioned_data: true
@@ -42,6 +43,17 @@ spring:
     jackson:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
+
+springdoc:
+    api-docs:
+        enabled: ${SWAGGER_ENABLED:true}
+    swagger-ui:
+        enabled: ${SWAGGER_ENABLED:true}
+        operations-sorter: alpha
+        tags-sorter: alpha
+        persist-authorization: true
+        display-request-duration: true
+    default-produces-media-type: application/json
 
 api:
     key: ${API_KEY:}

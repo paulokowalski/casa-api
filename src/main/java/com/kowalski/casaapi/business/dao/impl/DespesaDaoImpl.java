@@ -5,9 +5,11 @@ import com.kowalski.casaapi.business.dao.DespesaDao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
+import com.kowalski.casaapi.util.Competencias;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,13 +27,13 @@ public class DespesaDaoImpl implements DespesaDao {
                     " From CompraParcela cp" +
                     " JOIN cp.compra c " +
                     " WHERE UPPER(c.nomePessoaCompra) = UPPER(:nomePessoa) " +
-                    "   AND cast(date_part('month', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:mes) as text) " +
-                    "   AND cast(date_part('year', cp.dataParcela) as text) = cast(remove_zeros_esquerda(:ano) as text) ";
+                    "   AND cp.dataParcela >= :inicio AND cp.dataParcela < :fim ";
 
+        LocalDate inicio = Competencias.de(ano, mes);
         Query query = entityManager.createQuery(sql);
         query.setParameter("nomePessoa", nomePessoa);
-        query.setParameter("mes", mes);
-        query.setParameter("ano", ano);
+        query.setParameter("inicio", inicio);
+        query.setParameter("fim", inicio.plusMonths(1));
         List<Object[]> rows = query.getResultList();
         List<DespesaResponse> responses = new ArrayList<>();
         for (Object[] row : rows) {

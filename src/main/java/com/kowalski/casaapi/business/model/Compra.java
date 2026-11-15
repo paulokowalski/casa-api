@@ -43,7 +43,7 @@ public class Compra {
     private LocalDateTime dataCadastro;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "compra", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "compra", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<CompraParcela> parcelas;
 
     @JsonIgnore
