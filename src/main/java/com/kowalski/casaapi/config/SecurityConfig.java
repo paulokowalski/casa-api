@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/pessoas").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/v1/pessoas/**").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/v1/pessoas/**").hasRole(ADMIN)
+                .requestMatchers("/v1/servidor/**").hasRole(ADMIN)
                 .anyRequest().hasAnyRole(ADMIN, USUARIO)
             )
             .exceptionHandling(e -> e.authenticationEntryPoint(erroSegurancaJson).accessDeniedHandler(erroSegurancaJson))

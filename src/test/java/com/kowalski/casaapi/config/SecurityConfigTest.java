@@ -7,6 +7,8 @@ import com.kowalski.casaapi.business.auth.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.kowalski.casaapi.api.v1.controller.GeracaoController;
 import com.kowalski.casaapi.api.v1.controller.PessoaController;
+import com.kowalski.casaapi.api.v1.controller.ServidorController;
+import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.api.v1.handler.ApiExceptionHandler;
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
@@ -46,7 +48,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {CompraController.class, PessoaController.class, GeracaoController.class, AuthController.class})
+@WebMvcTest(controllers = {CompraController.class, PessoaController.class, GeracaoController.class, AuthController.class,
+        ServidorController.class})
 @Import({SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class,
         UsuarioLogado.class, ApiExceptionHandler.class, ErroSegurancaJson.class, AuthService.class, AdminInicial.class})
 @TestPropertySource(properties = {
@@ -65,6 +68,7 @@ class SecurityConfigTest {
     @MockitoBean CompraService compraService;
     @MockitoBean PessoaService pessoaService;
     @MockitoBean GeracaoService geracaoService;
+    @MockitoBean MonitorService monitorService;
 
     @BeforeEach
     void pessoas() {
@@ -153,6 +157,17 @@ class SecurityConfigTest {
         mvc.perform(delete("/v1/pessoas/2").header("Authorization", bearer(1L))).andExpect(status().isForbidden());
         mvc.perform(post("/v1/pessoas").header("Authorization", bearer(3L))
                 .contentType(MediaType.APPLICATION_JSON).content(corpo)).andExpect(status().isCreated());
+    }
+
+    @Test
+    void soAdminVeOMonitoramentoDoServidor() throws Exception {
+        for (String rota : new String[]{"/v1/servidor/agora", "/v1/servidor/dia", "/v1/servidor/dias"}) {
+            mvc.perform(get(rota)).andExpect(status().isUnauthorized());
+            mvc.perform(get(rota).header("Authorization", bearer(1L))).andExpect(status().isForbidden());
+            mvc.perform(get(rota).header("X-API-KEY", "chave-integracao")).andExpect(status().isForbidden());
+            mvc.perform(get(rota).header("Authorization", bearer(3L))).andExpect(status().isOk());
+        }
+        verify(monitorService).agora();
     }
 
     @Test

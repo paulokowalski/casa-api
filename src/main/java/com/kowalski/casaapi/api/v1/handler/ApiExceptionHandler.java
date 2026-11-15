@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.api.v1.handler;
 
 import com.kowalski.casaapi.api.v1.response.ErroResponse;
+import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
 import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -67,6 +68,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     public ResponseEntity<ErroResponse> naoEncontrado(RecursoNaoEncontradoException e) {
         return erro(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(MonitorIndisponivelException.class)
+    public ResponseEntity<ErroResponse> monitorIndisponivel(MonitorIndisponivelException e) {
+        log.warn("{}: {}", e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "-");
+        return erro(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

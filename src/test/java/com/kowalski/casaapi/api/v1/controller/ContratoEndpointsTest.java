@@ -4,7 +4,9 @@ import com.kowalski.casaapi.api.v1.response.*;
 import com.kowalski.casaapi.business.auth.AuthService;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
 import com.kowalski.casaapi.business.model.Pessoa;
+import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.business.service.*;
 import com.kowalski.casaapi.support.Login;
@@ -58,6 +60,7 @@ class ContratoEndpointsTest {
     @MockitoBean CarroService carroService;
     @MockitoBean AuthService authService;
     @MockitoBean PessoaRepository pessoaRepository;
+    @MockitoBean MonitorService monitorService;
 
     @BeforeEach
     void ana() {
@@ -377,6 +380,62 @@ class ContratoEndpointsTest {
             mvc.perform(post("/v1/geracao-solar").contentType(JSON).content("{\"gerado\":1.5,\"potencia\":300}"))
                     .andExpect(status().isOk());
             verify(geracaoService).salvar(argThat(d -> d.getGerado() == 1.5 && d.getPotencia() == 300.0));
+        }
+    }
+
+    @Nested
+    class Servidor {
+
+        private final ServidorEstatisticasResponse.Faixa faixa = new ServidorEstatisticasResponse.Faixa(1.0, 2.0, 3.0);
+        private final ServidorEstatisticasResponse resumo =
+                new ServidorEstatisticasResponse(1440, faixa, faixa, faixa, faixa, 5.0, 0.2, 10L, 20L, 30L, 40L);
+
+        @Test
+        void agora() throws Exception {
+            when(monitorService.agora()).thenReturn(new ServidorAgoraResponse(null, "casa", null, null, 60,
+                    new ServidorAgoraResponse.Cpu(12.5, 0.1, List.of()), new ServidorAgoraResponse.Carga(1, 1, 1, 100),
+                    new ServidorAgoraResponse.Memoria(100, 50, 50, 0, 0, 0), List.of(), null, List.of(), List.of(),
+                    new ServidorAgoraResponse.DiscoIo(0, 0)));
+
+            mvc.perform(get("/v1/servidor/agora"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.host").value("casa"))
+                    .andExpect(jsonPath("$.cpu.usoPct").value(12.5))
+                    .andExpect(jsonPath("$.memoria.pct").value(50.0));
+        }
+
+        @Test
+        void diaUsaHojeComoPadrao() throws Exception {
+            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of()));
+
+            mvc.perform(get("/v1/servidor/dia")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").value(LocalDate.now().toString()))
+                    .andExpect(jsonPath("$.resumo.cpu.max").value(3.0));
+            mvc.perform(get("/v1/servidor/dia").param("data", "2026-11-01")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").value("2026-11-01"));
+            mvc.perform(get("/v1/servidor/dia").param("data", "01/11/2026")).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void diasUsaOsUltimos30DiasComoPadrao() throws Exception {
+            when(monitorService.dias(any(), any())).thenReturn(List.of(new ServidorResumoDiaResponse(LocalDate.of(2026, 11, 15), resumo)));
+
+            mvc.perform(get("/v1/servidor/dias")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].data").value("2026-11-15"))
+                    .andExpect(jsonPath("$[0].resumo.amostras").value(1440));
+            verify(monitorService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+
+            mvc.perform(get("/v1/servidor/dias").param("de", "2026-11-01").param("ate", "2026-11-10"));
+            verify(monitorService).dias(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+        }
+
+        @Test
+        void bancoForaDoArDa503ComMensagem() throws Exception {
+            when(monitorService.dia(any())).thenThrow(new MonitorIndisponivelException("O banco do monitoramento (MariaDB) está indisponível", null));
+
+            mvc.perform(get("/v1/servidor/dia"))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.mensagem").value("O banco do monitoramento (MariaDB) está indisponível"));
         }
     }
 

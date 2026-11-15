@@ -69,3 +69,17 @@ auth:
 app:
     cors:
         allowed-origins: ${CORS_URL:http://localhost:3000}
+
+# Monitoramento do servidor: lê /proc e /sys a cada minuto e grava o histórico no MariaDB.
+monitor:
+    habilitado: ${MONITOR_HABILITADO:true}
+    coleta-cron: ${MONITOR_COLETA_CRON:0 * * * * *}
+    retencao-dias: ${MONITOR_RETENCAO_DIAS:365}
+    proc-path: ${MONITOR_PROC_PATH:/proc}
+    sys-path: ${MONITOR_SYS_PATH:/sys}
+    hostname-arquivo: ${MONITOR_HOSTNAME_ARQUIVO:/etc/hostname}
+    discos: ${MONITOR_DISCOS:Sistema=/}
+    datasource:
+        url: ${MONITOR_DATASOURCE_URL:jdbc:mariadb://mariadb:3306/casa_monitor}
+        username: ${MONITOR_DATASOURCE_USERNAME:casa_monitor}
+        password: ${MONITOR_DATASOURCE_PASSWORD:}

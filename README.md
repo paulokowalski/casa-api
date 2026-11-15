@@ -1,10 +1,10 @@
 # Casa API
 
 Backend da casa: compras no cartão e parcelas, contas fixas e lançamentos mensais, renda, faturas,
-pessoas/acessos e monitoramento (geração solar e histórico FIPE). Consumido pelo front
+pessoas/acessos e monitoramento (geração solar, histórico FIPE e saúde do servidor). Consumido pelo front
 [`casa`](../casa) e por integrações (Node-RED).
 
-- **Stack:** Java 17 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · springdoc-openapi (Swagger) · Lombok · Maven
+- **Stack:** Java 17 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · MariaDB (só o histórico do monitoramento) · springdoc-openapi (Swagger) · Lombok · Maven
 - **Base da API:** `http://<host>:8080/casa-api` (o nginx do front também repassa `/casa-api/` para cá)
 - **Documentação interativa:** [`/casa-api/swagger-ui.html`](http://localhost:8080/casa-api/swagger-ui.html) · OpenAPI JSON em `/casa-api/v3/api-docs`
 
@@ -13,6 +13,7 @@ pessoas/acessos e monitoramento (geração solar e histórico FIPE). Consumido p
 - [Rodando](#rodando)
 - [Configuração](#configuração)
 - [Banco de dados e migrations](#banco-de-dados-e-migrations)
+- [Monitoramento do servidor](#monitoramento-do-servidor)
 - [Autenticação e permissões](#autenticação-e-permissões)
 - [Swagger / OpenAPI](#swagger--openapi)
 - [Endpoints](#endpoints)
@@ -29,8 +30,10 @@ pessoas/acessos e monitoramento (geração solar e histórico FIPE). Consumido p
 docker compose up -d --build casa-api
 ```
 
-O `docker-compose.yml` (fora do git) lê as variáveis do `.env` e conecta na rede externa `casa-network`,
-a mesma do container do front. A aplicação leva cerca de 25 s para subir; requisições nesse intervalo
+O `docker-compose.yml` (fora do git) lê as variáveis do `.env` e conecta nas redes `casa-network` (a mesma
+do container do front) e `mariadb_default` (do container `mariadb`). Também monta, só leitura, o `/sys` e o
+`/etc/hostname` do host e o `lost+found` de cada disco externo, usados pelo
+[monitoramento do servidor](#monitoramento-do-servidor). A aplicação leva cerca de 25 s para subir; requisições nesse intervalo
 recebem 502 do nginx.
 
 ### Desenvolvimento local
@@ -58,6 +61,15 @@ Todas as opções vêm de variáveis de ambiente (ou do `config/dev-secrets.yaml
 | `API_KEY` | não | vazio | Chave do cabeçalho `X-API-KEY` para integrações; vazio desliga |
 | `CORS_URL` | não | `http://localhost:3000` | Origens permitidas, separadas por vírgula |
 | `SWAGGER_ENABLED` | não | `true` | `false` desliga o Swagger UI e o `/v3/api-docs` |
+| `MONITOR_DATASOURCE_URL` | não | `jdbc:mariadb://mariadb:3306/casa_monitor` | JDBC do MariaDB com o histórico do monitoramento |
+| `MONITOR_DATASOURCE_USERNAME` / `MONITOR_DATASOURCE_PASSWORD` | sim, para o histórico | `casa_monitor` / — | Usuário e senha desse banco |
+| `MONITOR_HABILITADO` | não | `true` | `false` desliga a coleta (os endpoints ao vivo continuam funcionando) |
+| `MONITOR_COLETA_CRON` | não | `0 * * * * *` | Quando coletar (cron do Spring, com segundos): a cada minuto |
+| `MONITOR_RETENCAO_DIAS` | não | `365` | Amostras mais antigas são apagadas todo dia às 03:15 |
+| `MONITOR_SYS_PATH` | não | `/sys` | `/sys` do host (no container, `/host/sys`; sem ele a rede mostra só a do container) |
+| `MONITOR_PROC_PATH` | não | `/proc` | `/proc` a ler (o do container já mostra CPU, memória e discos do host) |
+| `MONITOR_HOSTNAME_ARQUIVO` | não | `/etc/hostname` | Arquivo com o nome do host (no container, `/host/hostname`) |
+| `MONITOR_DISCOS` | não | `Sistema=/` | Discos a medir, `Nome=caminho` separados por vírgula; o caminho é qualquer arquivo ou pasta dentro do disco |
 
 ## Banco de dados e migrations
 
@@ -82,13 +94,44 @@ docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa -v ON_ERROR_
 Os scripts usam `IF EXISTS` / `IF NOT EXISTS` e podem ser reaplicados. Aplique cada um **depois** do
 deploy da versão que deixou de depender do que ele remove.
 
+## Monitoramento do servidor
+
+A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **MariaDB** (banco
+`casa_monitor`), sem depender de outro serviço:
+
+| Métrica | Fonte |
+|---|---|
+| CPU total, por núcleo e iowait | `/proc/stat` (diferença entre duas leituras) e `/sys/devices/system/cpu/*/cpufreq` |
+| Memória e swap | `/proc/meminfo` (usada = total − disponível, sem cache) |
+| Carga e processos | `/proc/loadavg` · tempo ligado em `/proc/uptime` |
+| Temperaturas | `/sys/class/thermal/thermal_zone*` |
+| Rede | `/sys/class/net/*/statistics`, só interfaces físicas (sem `lo`, bridges, `veth` e VPN) |
+| Leitura/escrita de disco | `/proc/diskstats`, só discos inteiros (sem partições, `zram` e `loop`) |
+| Espaço em disco | caminhos de `MONITOR_DISCOS`; um disco desmontado (cuja pasta cai no disco do sistema) é ignorado |
+
+- **Tabelas** (criadas pela própria API na subida, com `CREATE TABLE IF NOT EXISTS`):
+  `amostra_servidor` (uma linha por minuto, com as médias do minuto) e `amostra_disco` (espaço de cada
+  disco, a cada 10 minutos). São ~1.440 linhas por dia; a retenção padrão é de 365 dias.
+- **Falhas:** se o MariaDB ou a leitura do sistema falhar, a coleta só registra um aviso no log e tenta
+  de novo no minuto seguinte. A API sobe mesmo com o MariaDB fora do ar; o histórico responde 503.
+- **Banco e usuário** (já criados no servidor; para recriar, pelo socket do container `mariadb`):
+  ```bash
+  docker exec -i mariadb mariadb -uroot <<'SQL'
+  CREATE DATABASE IF NOT EXISTS casa_monitor CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  CREATE USER IF NOT EXISTS 'casa_monitor'@'%' IDENTIFIED BY '<senha>';
+  GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP ON casa_monitor.* TO 'casa_monitor'@'%';
+  SQL
+  ```
+  A senha vai em `MONITOR_DATASOURCE_PASSWORD` no `.env`.
+
 ## Autenticação e permissões
 
 - **Login:** `POST /v1/auth/login` com `{ "email", "senha" }` devolve um JWT. Envie em todas as outras
   chamadas como `Authorization: Bearer <token>`. Cinco senhas erradas seguidas bloqueiam o e-mail por
   15 minutos (resposta 429).
 - **Papéis:**
-  - `ADMIN` vê e altera dados de qualquer pessoa e é o único que cria, altera e exclui pessoas.
+  - `ADMIN` vê e altera dados de qualquer pessoa, é o único que cria, altera e exclui pessoas e o único
+    que acessa o monitoramento do servidor (`/v1/servidor/**`).
   - `USUARIO` só acessa os próprios dados; pedir os de outra pessoa (por `pessoa` ou `pessoaId`) responde 403.
 - **Integrações:** o cabeçalho `X-API-KEY` (variável `API_KEY`) dá o papel `INTEGRACAO`, aceito apenas
   em `POST /v1/geracao-solar` (usado pelo Node-RED para gravar as leituras do inversor).
@@ -136,6 +179,9 @@ Resumo; detalhes, parâmetros e exemplos no Swagger. Mês/competência é sempre
 | | `GET /v1/geracao-solar/{ano}/{mes}` · `GET /v1/geracao-solar/{ano}` | Geração por dia · por mês |
 | | `POST /v1/geracao-solar` | Grava leitura (integração, `X-API-KEY`) |
 | Carros | `GET /v1/carros/{codigoFipe}` | Histórico FIPE |
+| Servidor (só `ADMIN`) | `GET /v1/servidor/agora` | Leitura ao vivo: CPU por núcleo, carga, memória, temperaturas, discos, rede |
+| | `GET /v1/servidor/dia?data` | Mín/média/máx do dia, série a cada 5 min e espaço dos discos (padrão: hoje) |
+| | `GET /v1/servidor/dias?de&ate` | Estatísticas por dia (padrão: últimos 30 dias; até 366 por consulta) |
 
 ## Erros
 
@@ -150,6 +196,7 @@ Todo erro responde JSON no formato `{ "mensagem": "texto para o usuário" }`
 | 404 | Recurso não encontrado (`RecursoNaoEncontradoException`) ou rota inexistente |
 | 405 / 415 | Método não suportado / corpo que não é JSON |
 | 429 | Login bloqueado por excesso de tentativas |
+| 503 | Monitoramento sem acesso ao MariaDB ou ao sistema (`MonitorIndisponivelException`) |
 | 500 | Erro inesperado (detalhe só no log, nunca na resposta) |
 
 ## Estrutura do código
@@ -169,8 +216,9 @@ src/main/java/com/kowalski/casaapi/
 │   ├── dao/          # Consultas nativas (filtros e totais de despesas)
 │   ├── model/        # Entidades JPA
 │   ├── enumerator/   # Papel, TipoConta, Meses
-│   └── exception/    # RecursoNaoEncontradoException
-├── config/           # Segurança, CORS, OpenAPI, filtro da API key
+│   ├── monitor/      # Saúde do servidor: leitura de /proc e /sys, coleta agendada e histórico no MariaDB
+│   └── exception/    # RecursoNaoEncontradoException, MonitorIndisponivelException
+├── config/           # Segurança, CORS, OpenAPI, filtro da API key, DataSource do monitoramento
 └── util/             # Competencias (datas aaaa-mm), Util
 src/main/resources/
 ├── application.yaml
@@ -184,7 +232,8 @@ mvn test
 ```
 
 São testes unitários (services com mocks) e de fatia web (`@WebMvcTest`): contrato dos endpoints,
-regras de segurança e formato dos erros. **Nenhum teste acessa o banco**, então as consultas JPQL e
+regras de segurança e formato dos erros. O leitor do monitoramento é testado com um `/proc` e um `/sys`
+falsos em pasta temporária. **Nenhum teste acessa o banco**, então as consultas JPQL e
 nativas só são exercitadas com a aplicação rodando.
 
 ## Notas de desempenho
