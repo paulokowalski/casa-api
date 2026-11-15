@@ -262,6 +262,38 @@ class LeitorSistemaTest {
     }
 
     @Test
+    void leASaudeDoSmart() throws IOException {
+        Path arquivo = raiz.resolve("smart.json");
+        var agora = java.time.OffsetDateTime.parse("2026-11-15T12:00:00-03:00");
+        smart("2026-11-15T11:59:40-03:00", """
+                {"dispositivo":"sdc","temperatura":54,"dispositivos":["8:32"],"saude":{
+                  "lidoEm":"2026-11-15T11:59:40-03:00","aprovado":true,"horasLigado":7881,"vezesLigado":2395,
+                  "temperaturaMinVida":0,"temperaturaMaxVida":61,"temperaturaLimite":55,"temperaturaLimiteAbsoluto":60,
+                  "vezesAcimaLimite":106,"atributos":{"5":0,"187":56928,"199":18,"x":1},
+                  "falhas":[{"atributo":"Airflow_Temperature_Cel","quando":"past"}],"nvme":null}}
+                """);
+
+        SaudeSmart s = LeitorSistema.lerSmart(arquivo, agora).get(0).saude();
+
+        assertThat(s.aprovado()).isTrue();
+        assertThat(s.horasLigado()).isEqualTo(7881L);
+        assertThat(s.temperaturaMinVidaValida()).isNull(); // 0 = o disco não sabe
+        assertThat(s.temperaturaLimite()).isEqualTo(55.0);
+        assertThat(s.atributo(SaudeSmart.ERROS_NAO_CORRIGIDOS)).isEqualTo(56_928L);
+        assertThat(s.atributos()).hasSize(3);             // "x" não é número de atributo
+        assertThat(s.falhas()).singleElement().satisfies(f -> assertThat(f.agora()).isFalse());
+        assertThat(s.nvme()).isNull();
+    }
+
+    @Test
+    void smartSemSaudeContinuaFuncionando() throws IOException {
+        Path arquivo = raiz.resolve("smart.json");
+        var agora = java.time.OffsetDateTime.parse("2026-11-15T12:00:00-03:00");
+        smart("2026-11-15T11:59:40-03:00", "{\"dispositivo\":\"sda\",\"temperatura\":40,\"dispositivos\":[\"8:1\"]}");
+        assertThat(LeitorSistema.lerSmart(arquivo, agora).get(0).saude()).isNull();
+    }
+
+    @Test
     void nomeDoSensorSemSufixoThermal() {
         assertThat(LeitorSistema.nomeSensor("soc-thermal")).isEqualTo("soc");
         assertThat(LeitorSistema.nomeSensor("bigcore0_thermal")).isEqualTo("bigcore0");

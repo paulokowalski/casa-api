@@ -277,7 +277,7 @@ public class MonitorRepository {
     public List<ServidorDiscoResponse> discos(LocalDateTime de, LocalDateTime ate) {
         return jdbc.query(DISCOS_DO_DIA, (rs, i) -> new ServidorDiscoResponse(rs.getString("nome"), rs.getString("caminho"),
                 rs.getLong("total"), rs.getLong("usado"), rs.getDouble("pct"), rs.getString("modelo"), rs.getString("tipo"),
-                numero(rs, "temperatura"), rs.getString("estado"), numero(rs, "temp_med"), numero(rs, "temp_max")), de, ate);
+                numero(rs, "temperatura"), rs.getString("estado"), numero(rs, "temp_med"), numero(rs, "temp_max"), null), de, ate);
     }
 
     public List<ServidorDiaResponse.SerieDisco> serieDiscos(LocalDateTime de, LocalDateTime ate) {

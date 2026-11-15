@@ -96,16 +96,17 @@ public class LeitorSistema {
      * @param estadoTemperatura ativo, repouso (disco parado, não foi acordado para ler) ou sem_dados
      */
     public record EspacoDisco(String nome, String caminho, long total, long usado, double pct, String dispositivo,
-                              String modelo, String tipo, Double temperatura, String estadoTemperatura) {
+                              String modelo, String tipo, Double temperatura, String estadoTemperatura,
+                              SaudeSmart saude) {
 
         public EspacoDisco(String nome, String caminho, long total, long usado, double pct) {
-            this(nome, caminho, total, usado, pct, null, null, null, null, null);
+            this(nome, caminho, total, usado, pct, null, null, null, null, null, null);
         }
     }
 
     /** Um disco no arquivo do SMART. */
     public record DiscoSmart(String dispositivo, String modelo, String tipo, Double temperatura, String estado,
-                             List<String> dispositivos) {
+                             List<String> dispositivos, SaudeSmart saude) {
     }
 
     /** Leituras do SMART mais velhas que isso são ignoradas (o timer do host parou). */
@@ -294,9 +295,9 @@ public class LeitorSistema {
             DiscoSmart s = dispositivo == null ? null : smart.stream()
                     .filter(x -> x.dispositivos().contains(dispositivo)).findFirst().orElse(null);
             lista.add(s == null
-                    ? new EspacoDisco(d.nome(), d.caminho(), total, usado, pct, dispositivo, null, null, null, null)
+                    ? new EspacoDisco(d.nome(), d.caminho(), total, usado, pct, dispositivo, null, null, null, null, null)
                     : new EspacoDisco(d.nome(), d.caminho(), total, usado, pct, dispositivo, s.modelo(), s.tipo(),
-                            s.temperatura(), s.estado()));
+                            s.temperatura(), s.estado(), s.saude()));
         }
         return lista;
     }
@@ -331,15 +332,59 @@ public class LeitorSistema {
                     if (!(o instanceof Map<?, ?> d)) continue;
                     List<String> devs = d.get("dispositivos") instanceof List<?> l
                             ? l.stream().map(String::valueOf).toList() : List.of();
-                    Double temp = d.get("temperatura") instanceof Number n ? n.doubleValue() : null;
                     lista.add(new DiscoSmart(textoDe(d.get("dispositivo")), textoDe(d.get("modelo")),
-                            textoDe(d.get("tipo")), temp, textoDe(d.get("estado")), devs));
+                            textoDe(d.get("tipo")), decimal(d.get("temperatura")), textoDe(d.get("estado")), devs,
+                            d.get("saude") instanceof Map<?, ?> saude ? lerSaude(saude) : null));
                 }
             }
             return lista;
         } catch (RuntimeException e) {
             return List.of();
         }
+    }
+
+    /** O bloco "saude" de um disco; campos ausentes ou inválidos ficam nulos. */
+    static SaudeSmart lerSaude(Map<?, ?> s) {
+        OffsetDateTime lidoEm;
+        try {
+            lidoEm = s.get("lidoEm") == null ? null : OffsetDateTime.parse(String.valueOf(s.get("lidoEm")));
+        } catch (RuntimeException e) {
+            lidoEm = null;
+        }
+        Map<Integer, Long> atributos = new LinkedHashMap<>();
+        if (s.get("atributos") instanceof Map<?, ?> m) {
+            m.forEach((id, valor) -> {
+                try {
+                    Long v = inteiro(valor);
+                    if (v != null) atributos.put(Integer.parseInt(String.valueOf(id)), v);
+                } catch (NumberFormatException e) {
+                    // id que não é número: ignora
+                }
+            });
+        }
+        List<SaudeSmart.Falha> falhas = new ArrayList<>();
+        if (s.get("falhas") instanceof List<?> l) {
+            for (Object o : l) {
+                if (o instanceof Map<?, ?> f) falhas.add(new SaudeSmart.Falha(textoDe(f.get("atributo")), textoDe(f.get("quando"))));
+            }
+        }
+        SaudeSmart.Nvme nvme = s.get("nvme") instanceof Map<?, ?> n ? new SaudeSmart.Nvme(inteiro(n.get("avisoCritico")),
+                inteiro(n.get("reservaDisponivel")), inteiro(n.get("reservaMinima")), inteiro(n.get("desgaste")),
+                inteiro(n.get("errosMidia")), inteiro(n.get("errosRegistrados")), inteiro(n.get("desligamentosInesperados")),
+                inteiro(n.get("minutosAcimaAviso")), inteiro(n.get("minutosAcimaCritico")), inteiro(n.get("bytesEscritos")),
+                inteiro(n.get("bytesLidos"))) : null;
+        return new SaudeSmart(lidoEm, s.get("aprovado") instanceof Boolean b ? b : null, inteiro(s.get("horasLigado")),
+                inteiro(s.get("vezesLigado")), decimal(s.get("temperaturaMinVida")), decimal(s.get("temperaturaMaxVida")),
+                decimal(s.get("temperaturaLimite")), decimal(s.get("temperaturaLimiteAbsoluto")),
+                inteiro(s.get("vezesAcimaLimite")), Map.copyOf(atributos), List.copyOf(falhas), nvme);
+    }
+
+    private static Double decimal(Object o) {
+        return o instanceof Number n ? n.doubleValue() : null;
+    }
+
+    private static Long inteiro(Object o) {
+        return o instanceof Number n ? n.longValue() : null;
     }
 
     private static String textoDe(Object o) {

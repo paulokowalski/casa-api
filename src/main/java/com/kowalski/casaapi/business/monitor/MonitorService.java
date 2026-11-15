@@ -4,6 +4,7 @@ import com.kowalski.casaapi.api.v1.response.ServidorAgoraResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorContainerResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorDiscoResponse;
+import com.kowalski.casaapi.api.v1.response.ServidorSaudeDiscoResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
 import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
@@ -253,7 +254,8 @@ public class MonitorService {
                 inst.temperaturas().stream().map(t -> new ServidorAgoraResponse.Temperatura(t.sensor(), t.celsius())).toList(),
                 inst.temperaturaMax(),
                 inst.discos().stream().map(d -> new ServidorDiscoResponse(d.nome(), d.caminho(), d.total(), d.usado(),
-                        arredondar(d.pct()), d.modelo(), d.tipo(), d.temperatura(), d.estadoTemperatura(), null, null)).toList(),
+                        arredondar(d.pct()), d.modelo(), d.tipo(), d.temperatura(), d.estadoTemperatura(), null, null,
+                        ServidorSaudeDiscoResponse.de(d.saude(), d.temperatura()))).toList(),
                 rede,
                 new ServidorAgoraResponse.DiscoIo(
                         Math.round(Math.max(atual.discoLidos() - antes.discoLidos(), 0) / seg),
