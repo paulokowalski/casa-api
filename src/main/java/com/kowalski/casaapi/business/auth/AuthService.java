@@ -98,18 +98,6 @@ public class AuthService {
         return new LoginResponse(token, expira, UsuarioResponse.de(pessoa));
     }
 
-    @Transactional
-    public void trocarSenha(Long pessoaId, String senhaAtual, String novaSenha) {
-        Pessoa pessoa = pessoaRepository.findById(pessoaId)
-                .orElseThrow(() -> new BadCredentialsException("Sessão inválida"));
-        if (senhaAtual == null || pessoa.getSenhaHash() == null
-                || !passwordEncoder.matches(senhaAtual, pessoa.getSenhaHash())) {
-            throw new IllegalArgumentException("A senha atual está incorreta.");
-        }
-        pessoa.setSenhaHash(hash(novaSenha));
-        pessoaRepository.save(pessoa);
-    }
-
     public String hash(String novaSenha) {
         Assert.isTrue(novaSenha != null && novaSenha.length() >= TAMANHO_MINIMO_SENHA,
                 "A senha precisa ter pelo menos " + TAMANHO_MINIMO_SENHA + " caracteres.");

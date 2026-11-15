@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +33,7 @@ class AuthServiceTest {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
     private final PessoaRepository repo = mock(PessoaRepository.class);
-    private final RelogioAjustavel relogio = new RelogioAjustavel(Instant.parse("2026-11-13T12:00:00Z"));
+    private final RelogioAjustavel relogio = new RelogioAjustavel(Instant.now().truncatedTo(ChronoUnit.SECONDS));
     private JwtConfig jwtConfig;
     private AuthService service;
     private Pessoa ana;

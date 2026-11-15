@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.service.impl;
 
+import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
@@ -20,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -188,31 +190,91 @@ class CompraServiceImplTest {
     @Test
     void adminListaTodasAsCompras() {
         Login.comoAdmin();
-        List<Compra> todas = List.of(Compra.builder().nomePessoaCompra("ANA").build());
-        when(compraRepository.findAll()).thenReturn(todas);
+        List<CompraRegistroResponse> todas = List.of(registro("ANA"));
+        when(compraRepository.listarRegistros()).thenReturn(todas);
 
-        assertThat(service.buscarTodos()).isSameAs(todas);
+        assertThat(service.buscarTodos(null, null)).isSameAs(todas);
+        assertThat(service.buscarTodos("", "TODOS")).isSameAs(todas);
+    }
+
+    @Test
+    void adminFiltraPorPessoaECartaoNoBanco() {
+        Login.comoAdmin();
+        service.buscarTodos("ANA", null);
+        verify(compraRepository).listarRegistrosDaPessoa("ANA");
+        service.buscarTodos(null, "NUBANK");
+        verify(compraRepository).listarRegistrosDoCartao("NUBANK");
+        service.buscarTodos("ANA", "NUBANK");
+        verify(compraRepository).listarRegistrosDaPessoaECartao("ANA", "NUBANK");
     }
 
     @Test
     void usuarioListaSoAsPropriasCompras() {
         Login.comoAna();
-        List<Compra> minhas = List.of(Compra.builder().nomePessoaCompra("ANA").build());
-        when(compraRepository.findByNomePessoaCompraIgnoreCase("ANA")).thenReturn(minhas);
+        List<CompraRegistroResponse> minhas = List.of(registro("ANA"));
+        when(compraRepository.listarRegistrosDaPessoa("ANA")).thenReturn(minhas);
 
-        assertThat(service.buscarTodos()).isSameAs(minhas);
-        verify(compraRepository, never()).findAll();
+        assertThat(service.buscarTodos(null, null)).isSameAs(minhas);
+        verify(compraRepository, never()).listarRegistros();
     }
 
     @Test
-    void parcelasDoMesFiltramPorCartaoSoQuandoInformado() {
-        when(parcelaRepository.buscarPorMesENomeEPessoa(any(), any(), any())).thenReturn(List.of());
-        when(parcelaRepository.buscarPorMesENomeEPessoaCartao(any(), any(), any(), any())).thenReturn(List.of());
+    void usuarioNaoListaComprasDeOutraPessoa() {
+        Login.comoAna();
+        assertThatThrownBy(() -> service.buscarTodos("BETO", null)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void parcelasDoMesFiltramPorPeriodoECartaoSoQuandoInformado() {
+        when(parcelaRepository.buscarPorPeriodo(any(), any(), any())).thenReturn(List.of());
+        when(parcelaRepository.buscarPorPeriodoECartao(any(), any(), any(), any())).thenReturn(List.of());
 
         service.buscarPorMesENome("2026", "11", "ANA", "TODOS", "TODOS");
-        verify(parcelaRepository).buscarPorMesENomeEPessoa("2026", "11", "ANA");
+        verify(parcelaRepository).buscarPorPeriodo(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 1), "ANA");
 
-        service.buscarPorMesENome("2026", "11", "ANA", "NUBANK", "TODOS");
-        verify(parcelaRepository).buscarPorMesENomeEPessoaCartao("2026", "11", "ANA", "NUBANK");
+        service.buscarPorMesENome("2026", "12", "ANA", "NUBANK", "TODOS");
+        verify(parcelaRepository).buscarPorPeriodoECartao(LocalDate.of(2026, 12, 1), LocalDate.of(2027, 1, 1), "ANA", "NUBANK");
+    }
+
+    @Test
+    void mesSemZeroAEsquerdaEquivaleAoComZero() {
+        when(parcelaRepository.buscarPorPeriodo(any(), any(), any())).thenReturn(List.of());
+        service.buscarPorMesENome("2026", "7", "ANA", "TODOS", "TODOS");
+        service.buscarPorMesENome("2026", "07", "ANA", "TODOS", "TODOS");
+        verify(parcelaRepository, times(2)).buscarPorPeriodo(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 8, 1), "ANA");
+    }
+
+    @Test
+    void mesInvalidoDaErroDeValidacao() {
+        assertThatThrownBy(() -> service.buscarPorMesENome("2026", "13", "ANA", "TODOS", "TODOS"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.buscarPorMesENome("2026", "xx", "ANA", "TODOS", "TODOS"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void periodoBuscaDoPrimeiroDiaDeDeAteOMesSeguinteDeAte() {
+        when(parcelaRepository.buscarPorPeriodo(any(), any(), any())).thenReturn(List.of());
+        when(parcelaRepository.buscarPorPeriodoECartao(any(), any(), any(), any())).thenReturn(List.of());
+
+        service.buscarPorPeriodo("2026-08", "2027-11", "ANA", "TODOS");
+        verify(parcelaRepository).buscarPorPeriodo(LocalDate.of(2026, 8, 1), LocalDate.of(2027, 12, 1), "ANA");
+
+        service.buscarPorPeriodo("2026-08", "2026-08", "ANA", "NUBANK");
+        verify(parcelaRepository).buscarPorPeriodoECartao(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 9, 1), "ANA", "NUBANK");
+    }
+
+    @Test
+    void periodoInvertidoOuLongoDemaisERecusado() {
+        assertThatThrownBy(() -> service.buscarPorPeriodo("2026-08", "2026-07", "ANA", "TODOS"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.buscarPorPeriodo("2026-01", "2029-01", "ANA", "TODOS"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.buscarPorPeriodo("2026/01", "2026-02", "ANA", "TODOS"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static CompraRegistroResponse registro(String pessoa) {
+        return new CompraRegistroResponse(UUID.randomUUID(), "TV", BigDecimal.TEN, LocalDate.now(), 1, pessoa, "NUBANK", LocalDateTime.now());
     }
 }

@@ -36,6 +36,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -118,7 +119,7 @@ class SecurityConfigTest {
     @Test
     void qualquerPessoaLogadaListaCompras() throws Exception {
         mvc.perform(get("/v1/compras").header("Authorization", bearer(1L))).andExpect(status().isOk());
-        verify(compraService).buscarTodos();
+        verify(compraService).buscarTodos(null, null);
     }
 
     @Test
@@ -190,5 +191,14 @@ class SecurityConfigTest {
         p.setAtivo(ativo);
         p.setSenhaHash("hash");
         return p;
+    }
+
+    @Test
+    void documentacaoSwaggerEPublica() throws Exception {
+        // Neste teste de fatia o springdoc não sobe: o importante é a segurança não barrar (não ser 401/403).
+        for (String rota : new String[]{"/v3/api-docs", "/swagger-ui.html", "/swagger-ui/index.html"}) {
+            int status = mvc.perform(get(rota)).andReturn().getResponse().getStatus();
+            assertThat(status).as(rota).isNotIn(401, 403);
+        }
     }
 }

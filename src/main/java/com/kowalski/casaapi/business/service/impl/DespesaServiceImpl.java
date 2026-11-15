@@ -21,8 +21,7 @@ public class DespesaServiceImpl implements DespesaService {
     private final DespesaDao despesaDao;
     private static final String[] MESES = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"};
 
-    @Override
-    public DespesaResponse buscarPorAnoMesNome(String ano, String mes, String pessoa) {
+    private DespesaResponse buscarPorAnoMesNome(String ano, String mes, String pessoa) {
         Assert.hasText(ano, "O ano não pode estar vazio");
         Assert.hasText(mes, "O mês não pode estar vazio");
         Assert.hasText(pessoa, "O nome da pessoa não pode estar vazio");

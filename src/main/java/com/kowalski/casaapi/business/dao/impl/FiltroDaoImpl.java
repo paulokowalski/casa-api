@@ -3,11 +3,13 @@ package com.kowalski.casaapi.business.dao.impl;
 import com.kowalski.casaapi.api.v1.response.FiltroResponse;
 import com.kowalski.casaapi.business.dao.FiltroDao;
 import com.kowalski.casaapi.business.enumerator.Meses;
+import com.kowalski.casaapi.util.Competencias;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Repository
@@ -43,10 +45,12 @@ public class FiltroDaoImpl implements FiltroDao {
     public List<FiltroResponse> buscarMeses(String ano){
         String sql = " select distinct cast(tb01.mes as text), cast(tb01.mes as text) from (" +
                      " select distinct DATE_PART('MONTH', dt_parcela) mes from compra_parcela cp " +
-                     " where remove_zeros_esquerda(cast(DATE_PART('YEAR', dt_parcela) as text)) = remove_zeros_esquerda(:ano) " +
+                     " where dt_parcela >= :inicio and dt_parcela < :fim " +
                      " ) tb01 order by cast(tb01.mes as text) asc ";
+        LocalDate inicio = Competencias.inicioDoAno(ano);
         Query query = entityManager.createNativeQuery(sql);
-        query.setParameter("ano", ano);
+        query.setParameter("inicio", inicio);
+        query.setParameter("fim", inicio.plusYears(1));
         List<Object[]> rows = query.getResultList();
         List<FiltroResponse> responses = new ArrayList<>();
         for (Object[] row : rows) {
@@ -63,11 +67,11 @@ public class FiltroDaoImpl implements FiltroDao {
     public List<FiltroResponse> buscarPessoas(String ano, String mes){
         String sql = " select distinct c.nm_pessoa_compra, c.nm_pessoa_compra from compra c " +
                      " join compra_parcela cp on cp.compra_id = c.id " +
-                     " where remove_zeros_esquerda(cast(DATE_PART('YEAR', dt_parcela) as text)) = remove_zeros_esquerda(:ano) " +
-                     "   and remove_zeros_esquerda(cast(DATE_PART('MONTH', dt_parcela) as text)) = remove_zeros_esquerda(:mes) ";
+                     " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim ";
+        LocalDate inicio = Competencias.de(ano, mes);
         Query query = entityManager.createNativeQuery(sql);
-        query.setParameter("ano", ano);
-        query.setParameter("mes", mes);
+        query.setParameter("inicio", inicio);
+        query.setParameter("fim", inicio.plusMonths(1));
         List<Object[]> rows = query.getResultList();
         List<FiltroResponse> responses = new ArrayList<>();
         for (Object[] row : rows) {
@@ -79,12 +83,12 @@ public class FiltroDaoImpl implements FiltroDao {
     public List<FiltroResponse> buscarCartoes(String ano, String mes, String pessoa){
         String sql = " select distinct c.nm_cartao, c.nm_cartao from compra c " +
                 " join compra_parcela cp on cp.compra_id = c.id " +
-                " where remove_zeros_esquerda(cast(DATE_PART('YEAR', dt_parcela) as text)) = remove_zeros_esquerda(:ano) " +
-                "   AND remove_zeros_esquerda(cast(DATE_PART('MONTH', dt_parcela) as text)) = remove_zeros_esquerda(:mes) " +
+                " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim " +
                 "   AND upper(c.nm_pessoa_compra) = upper(:pessoa) ";
+        LocalDate inicio = Competencias.de(ano, mes);
         Query query = entityManager.createNativeQuery(sql);
-        query.setParameter("ano", ano);
-        query.setParameter("mes", mes);
+        query.setParameter("inicio", inicio);
+        query.setParameter("fim", inicio.plusMonths(1));
         query.setParameter("pessoa", pessoa);
         List<Object[]> rows = query.getResultList();
         List<FiltroResponse> responses = new ArrayList<>();

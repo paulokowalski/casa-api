@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.business.service.impl;
 
 import com.kowalski.casaapi.api.v1.input.CompraInput;
+import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
@@ -11,6 +12,7 @@ import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
 import com.kowalski.casaapi.business.repository.CompraRepository;
 import com.kowalski.casaapi.business.service.TipoLancamentoService;
 import com.kowalski.casaapi.business.service.CompraService;
+import com.kowalski.casaapi.util.Competencias;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ public class CompraServiceImpl implements CompraService {
 
     private static final String CARTAO_TODOS = "TODOS";
     private static final int ESCALA_DECIMAL = 2;
+    static final int MAX_MESES_PERIODO = 36;
 
     private final CompraRepository compraRepository;
     private final TipoLancamentoService tipoLancamentoService;
@@ -40,9 +43,16 @@ public class CompraServiceImpl implements CompraService {
     private final UsuarioLogado usuarioLogado;
 
     @Override
-    public List<Compra> buscarTodos() {
-        if (usuarioLogado.isAdmin()) return compraRepository.findAll();
-        return compraRepository.findByNomePessoaCompraIgnoreCase(usuarioLogado.atual().getNome().trim());
+    public List<CompraRegistroResponse> buscarTodos(String pessoa, String cartao) {
+        String nome = StringUtils.hasText(pessoa)
+                ? usuarioLogado.nomePessoa(pessoa.trim())
+                : (usuarioLogado.isAdmin() ? null : usuarioLogado.atual().getNome().trim());
+        String cartaoFiltro = StringUtils.hasText(cartao) && !CARTAO_TODOS.equalsIgnoreCase(cartao.trim()) ? cartao.trim() : null;
+
+        if (nome == null && cartaoFiltro == null) return compraRepository.listarRegistros();
+        if (nome == null) return compraRepository.listarRegistrosDoCartao(cartaoFiltro);
+        if (cartaoFiltro == null) return compraRepository.listarRegistrosDaPessoa(nome);
+        return compraRepository.listarRegistrosDaPessoaECartao(nome, cartaoFiltro);
     }
 
     @Override
@@ -52,8 +62,22 @@ public class CompraServiceImpl implements CompraService {
         Assert.hasText(pessoa, "A pessoa é obrigatória");
         Assert.hasText(cartao, "O cartão é obrigatório");
 
-        var compras = buscarComprasFiltradas(ano, mes, pessoa, cartao, ultimaParcelaSelecionado);
-        return new CompraResponse(null, null).to(compras, ultimaParcelaSelecionado);
+        LocalDate inicio = Competencias.de(ano, mes);
+        var compras = buscarParcelas(inicio, inicio.plusMonths(1), pessoa, cartao);
+        return CompraResponse.de(compras, ultimaParcelaSelecionado);
+    }
+
+    @Override
+    public CompraResponse buscarPorPeriodo(String de, String ate, String pessoa, String cartao) {
+        Assert.hasText(pessoa, "A pessoa é obrigatória");
+        LocalDate inicio = Competencias.parse(de, "de");
+        LocalDate fim = Competencias.parse(ate, "ate");
+        Assert.isTrue(!fim.isBefore(inicio), "O mês final deve ser igual ou posterior ao inicial");
+        Assert.isTrue(Competencias.mesesEntre(inicio, fim) < MAX_MESES_PERIODO,
+                "O período pode ter no máximo " + MAX_MESES_PERIODO + " meses");
+
+        var compras = buscarParcelas(inicio, fim.plusMonths(1), pessoa, cartao);
+        return CompraResponse.de(compras, CARTAO_TODOS);
     }
 
     @Override
@@ -97,11 +121,11 @@ public class CompraServiceImpl implements CompraService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Compra não encontrada"));
     }
 
-    private List<CompraParcela> buscarComprasFiltradas(String ano, String mes, String pessoa, String cartao, String ultimaParcelaSelecionado) {
-        if (StringUtils.hasText(ultimaParcelaSelecionado) && !CARTAO_TODOS.equals(cartao)) {
-            return compraParcelaRepository.buscarPorMesENomeEPessoaCartao(ano, mes, pessoa, cartao);
+    private List<CompraParcela> buscarParcelas(LocalDate inicio, LocalDate fim, String pessoa, String cartao) {
+        if (StringUtils.hasText(cartao) && !CARTAO_TODOS.equalsIgnoreCase(cartao)) {
+            return compraParcelaRepository.buscarPorPeriodoECartao(inicio, fim, pessoa, cartao);
         }
-        return compraParcelaRepository.buscarPorMesENomeEPessoa(ano, mes, pessoa);
+        return compraParcelaRepository.buscarPorPeriodo(inicio, fim, pessoa);
     }
 
     private void validarCompraInput(CompraInput compraInput) {
@@ -119,7 +143,6 @@ public class CompraServiceImpl implements CompraService {
         var categoria = categoriasService.findByUUid(compraInput.categoriaId());
 
         return Compra.builder()
-                .id(UUID.randomUUID())
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())
                 .nomeCartao(tipoLancamento.getNome())
                 .tipoLancamento(tipoLancamento)
@@ -151,7 +174,6 @@ public class CompraServiceImpl implements CompraService {
 
     private CompraParcela criarParcela(Compra compra, BigDecimal valorParcela, LocalDate dataParcela, int numeroParcela) {
         return CompraParcela.builder()
-                .id(UUID.randomUUID())
                 .compra(compra)
                 .dataParcela(dataParcela.plusMonths(1))
                 .numeroParcela(numeroParcela)
