@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.business.monitor;
 
 import com.kowalski.casaapi.api.v1.response.ServidorAgoraResponse;
+import com.kowalski.casaapi.api.v1.response.ServidorContainerResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorDiscoResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -26,7 +28,8 @@ import java.util.function.Supplier;
  * <p>
  * A cada minuto lê os contadores do kernel e grava em {@code amostra_servidor} as médias do minuto que passou
  * (CPU, rede e disco são a diferença entre a leitura atual e a anterior). O espaço dos discos muda devagar e é
- * gravado a cada 10 minutos. Falhas na coleta só geram um aviso no log: a API continua no ar.
+ * gravado a cada 10 minutos. Com {@code monitor.docker-url} configurado, grava também uma amostra por container
+ * em {@code amostra_container}. Falhas na coleta só geram um aviso no log: a API continua no ar.
  */
 @Slf4j
 @Service
@@ -37,15 +40,19 @@ public class MonitorService {
     private static final int MINUTOS_ENTRE_DISCOS = 10;
 
     private final LeitorSistema leitor;
+    private final LeitorContainers leitorContainers;
     private final MonitorRepository repository;
     private final MonitorProperties props;
 
     private volatile LeitorSistema.Contadores anterior;
+    private volatile LeitorContainers.Leitura anteriorContainers;
     private volatile boolean tabelasProntas;
     private volatile LocalDateTime ultimaGravacaoDiscos;
 
-    public MonitorService(LeitorSistema leitor, MonitorRepository repository, MonitorProperties props) {
+    public MonitorService(LeitorSistema leitor, LeitorContainers leitorContainers, MonitorRepository repository,
+                          MonitorProperties props) {
         this.leitor = leitor;
+        this.leitorContainers = leitorContainers;
         this.repository = repository;
         this.props = props;
     }
@@ -61,6 +68,14 @@ public class MonitorService {
         } catch (RuntimeException e) {
             log.warn("Monitoramento: não foi possível ler o sistema: {}", e.getMessage());
         }
+        if (leitorContainers.habilitado()) {
+            try {
+                anteriorContainers = leitorContainers.ler();
+                log.info("Monitoramento: {} containers encontrados", anteriorContainers.containers().size());
+            } catch (RuntimeException e) {
+                log.warn("Monitoramento: não foi possível ler os containers: {}", e.getMessage());
+            }
+        }
         prepararTabelas();
     }
 
@@ -68,6 +83,11 @@ public class MonitorService {
     public void coletar() {
         if (!props.habilitado()) return;
         LocalDateTime agora = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        coletarServidor(agora);
+        coletarContainers(agora);
+    }
+
+    private void coletarServidor(LocalDateTime agora) {
         try {
             LeitorSistema.Contadores atual = leitor.contadores();
             LeitorSistema.Contadores antes = anterior;
@@ -86,26 +106,52 @@ public class MonitorService {
         }
     }
 
+    private void coletarContainers(LocalDateTime agora) {
+        if (!leitorContainers.habilitado()) return;
+        try {
+            LeitorContainers.Leitura atual = leitorContainers.ler();
+            LeitorContainers.Leitura antes = anteriorContainers;
+            anteriorContainers = atual;
+            if (antes == null || !prepararTabelas()) return;
+            repository.inserirContainers(AmostraContainer.de(agora, antes, atual));
+        } catch (RuntimeException e) {
+            log.warn("Monitoramento: falha na coleta dos containers das {}: {}", agora.toLocalTime(), e.getMessage());
+        }
+    }
+
     @Scheduled(cron = "0 15 3 * * *")
     public void limparAntigas() {
         if (!props.habilitado() || !prepararTabelas()) return;
         try {
             int apagadas = repository.apagarAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
             if (apagadas > 0) log.info("Monitoramento: {} amostras com mais de {} dias apagadas", apagadas, props.retencaoDias());
+            int containers = repository.apagarContainersAntesDe(
+                    LocalDate.now().minusDays(props.retencaoContainersDias()).atStartOfDay());
+            if (containers > 0) {
+                log.info("Monitoramento: {} amostras de containers com mais de {} dias apagadas", containers,
+                        props.retencaoContainersDias());
+            }
         } catch (DataAccessException e) {
             log.warn("Monitoramento: falha ao apagar amostras antigas: {}", e.getMessage());
         }
     }
 
-    /** Leitura ao vivo: CPU, rede e disco medidos num intervalo de meio segundo. */
+    /**
+     * Leitura ao vivo: CPU, rede e disco medidos num intervalo de meio segundo. Se o Docker não responder,
+     * a leitura do servidor sai mesmo assim, só sem os containers.
+     */
     public ServidorAgoraResponse agora() {
         try {
             LeitorSistema.Contadores antes = leitor.contadores();
+            LeitorContainers.Leitura containersAntes = lerContainersSemFalhar();
             Thread.sleep(MEIO_SEGUNDO);
             LeitorSistema.Contadores atual = leitor.contadores();
+            LeitorContainers.Leitura containersDepois = containersAntes == null ? null : lerContainersSemFalhar();
             LeitorSistema.Instantaneo inst = leitor.instantaneo();
             LeitorSistema.Identificacao id = leitor.identificacao();
-            return montarAgora(id, antes, atual, inst);
+            List<ServidorContainerResponse> containers = containersDepois == null ? List.of()
+                    : containersAgora(containersAntes, containersDepois);
+            return montarAgora(id, antes, atual, inst, containers);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MonitorIndisponivelException("Leitura do servidor interrompida", e);
@@ -118,7 +164,7 @@ public class MonitorService {
         LocalDateTime de = data.atStartOfDay();
         LocalDateTime ate = data.plusDays(1).atStartOfDay();
         return historico(() -> new ServidorDiaResponse(data, repository.resumo(de, ate), repository.serie(de, ate),
-                repository.discos(de, ate)));
+                repository.discos(de, ate), repository.containers(de, ate), repository.serieContainers(de, ate)));
     }
 
     public List<ServidorResumoDiaResponse> dias(LocalDate de, LocalDate ate) {
@@ -126,6 +172,29 @@ public class MonitorService {
         Assert.isTrue(ChronoUnit.DAYS.between(de, ate) < MAX_DIAS_CONSULTA,
                 "Consulte no máximo " + MAX_DIAS_CONSULTA + " dias por vez");
         return historico(() -> repository.porDia(de, ate));
+    }
+
+    private LeitorContainers.Leitura lerContainersSemFalhar() {
+        if (!leitorContainers.habilitado()) return null;
+        try {
+            return leitorContainers.ler();
+        } catch (RuntimeException e) {
+            log.warn("Monitoramento: não foi possível ler os containers: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** Rodando primeiro, depois os que mais usam CPU. */
+    static List<ServidorContainerResponse> containersAgora(LeitorContainers.Leitura antes, LeitorContainers.Leitura depois) {
+        return AmostraContainer.de(LocalDateTime.now(), antes, depois).stream()
+                .map(a -> new ServidorContainerResponse(a.nome(), a.imagem(), a.estado(), a.status(), a.saude(),
+                        arredondar(a.cpuPct()), a.memUsada(), a.memLimite(), arredondar(a.memPct()),
+                        arredondar(a.redeRxBps()), arredondar(a.redeTxBps()),
+                        arredondar(a.discoLeituraBps()), arredondar(a.discoEscritaBps()), a.processos()))
+                .sorted(Comparator.comparing((ServidorContainerResponse c) -> !"running".equals(c.estado()))
+                        .thenComparing(c -> c.cpuPct() == null ? -1 : c.cpuPct(), Comparator.reverseOrder())
+                        .thenComparing(ServidorContainerResponse::nome))
+                .toList();
     }
 
     private <T> T historico(Supplier<T> consulta) {
@@ -153,7 +222,8 @@ public class MonitorService {
     }
 
     static ServidorAgoraResponse montarAgora(LeitorSistema.Identificacao id, LeitorSistema.Contadores antes,
-                                              LeitorSistema.Contadores atual, LeitorSistema.Instantaneo inst) {
+                                              LeitorSistema.Contadores atual, LeitorSistema.Instantaneo inst,
+                                              List<ServidorContainerResponse> containers) {
         double seg = atual.segundosDesde(antes);
 
         List<ServidorAgoraResponse.Nucleo> nucleos = new ArrayList<>();
@@ -185,10 +255,15 @@ public class MonitorService {
                 rede,
                 new ServidorAgoraResponse.DiscoIo(
                         Math.round(Math.max(atual.discoLidos() - antes.discoLidos(), 0) / seg),
-                        Math.round(Math.max(atual.discoEscritos() - antes.discoEscritos(), 0) / seg)));
+                        Math.round(Math.max(atual.discoEscritos() - antes.discoEscritos(), 0) / seg)),
+                containers);
     }
 
     private static double arredondar(double v) {
         return Math.round(v * 10) / 10.0;
+    }
+
+    private static Double arredondar(Double v) {
+        return v == null ? null : arredondar(v.doubleValue());
     }
 }

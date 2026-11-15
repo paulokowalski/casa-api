@@ -10,7 +10,38 @@ public record ServidorDiaResponse(
         @Schema(description = "Dia", example = "2026-11-15") LocalDate data,
         @Schema(description = "Estatísticas do dia") ServidorEstatisticasResponse resumo,
         @Schema(description = "Médias a cada 5 minutos (só os blocos com amostras)") List<Ponto> serie,
-        @Schema(description = "Última medição do dia de cada disco") List<ServidorDiscoResponse> discos) {
+        @Schema(description = "Última medição do dia de cada disco") List<ServidorDiscoResponse> discos,
+        @Schema(description = "Resumo do dia de cada container, os que mais usaram CPU primeiro") List<ContainerDia> containers,
+        @Schema(description = "CPU e memória de cada container a cada 5 minutos (só enquanto rodando)") List<SerieContainer> serieContainers) {
+
+    @Schema(description = "Um container ao longo do dia")
+    public record ContainerDia(
+            @Schema(example = "jellyfin") String nome,
+            @Schema(description = "Imagem na última amostra", example = "linuxserver/jellyfin:latest") String imagem,
+            @Schema(description = "Estado na última amostra", example = "running") String estado,
+            @Schema(description = "Situação na última amostra", example = "ligado há 44 horas") String status,
+            @Schema(description = "Healthcheck na última amostra", example = "saudavel") String saude,
+            @Schema(description = "Minutos com amostra no dia", example = "1440") long minutos,
+            @Schema(description = "Minutos rodando no dia", example = "1440") long minutosRodando,
+            @Schema(description = "CPU média (% do servidor)", example = "2.1") Double cpuMedia,
+            @Schema(description = "CPU máxima (% do servidor)", example = "35.0") Double cpuMax,
+            @Schema(description = "Memória média (bytes)", example = "900000000") Long memMedia,
+            @Schema(description = "Memória máxima (bytes)", example = "1200000000") Long memMax,
+            @Schema(description = "Bytes recebidos pela rede no dia", example = "15595616") Long redeRecebidaBytes,
+            @Schema(description = "Bytes enviados pela rede no dia", example = "2082874275") Long redeEnviadaBytes,
+            @Schema(description = "Bytes lidos do disco no dia", example = "3497443328") Long discoLidoBytes,
+            @Schema(description = "Bytes escritos no disco no dia", example = "15233024") Long discoEscritoBytes) { }
+
+    @Schema(description = "Série de um container")
+    public record SerieContainer(
+            @Schema(example = "jellyfin") String nome,
+            List<PontoContainer> pontos) { }
+
+    public record PontoContainer(
+            @Schema(description = "Início do bloco (HH:mm)", example = "14:35") String horario,
+            @Schema(description = "CPU média (% do servidor)", example = "2.5") Double cpu,
+            @Schema(description = "Memória média (bytes)", example = "900000000") Long memoria) { }
+
 
     @Schema(description = "Médias de um bloco de 5 minutos")
     public record Ponto(

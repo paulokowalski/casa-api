@@ -395,18 +395,22 @@ class ContratoEndpointsTest {
             when(monitorService.agora()).thenReturn(new ServidorAgoraResponse(null, "casa", null, null, 60,
                     new ServidorAgoraResponse.Cpu(12.5, 0.1, List.of()), new ServidorAgoraResponse.Carga(1, 1, 1, 100),
                     new ServidorAgoraResponse.Memoria(100, 50, 50, 0, 0, 0), List.of(), null, List.of(), List.of(),
-                    new ServidorAgoraResponse.DiscoIo(0, 0)));
+                    new ServidorAgoraResponse.DiscoIo(0, 0),
+                    List.of(new ServidorContainerResponse("jellyfin", "linuxserver/jellyfin", "running", "ligado há 2 horas",
+                            null, 11.6, 100L, 1000L, 10.0, null, null, 0.0, 0.0, 30))));
 
             mvc.perform(get("/v1/servidor/agora"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.host").value("casa"))
                     .andExpect(jsonPath("$.cpu.usoPct").value(12.5))
-                    .andExpect(jsonPath("$.memoria.pct").value(50.0));
+                    .andExpect(jsonPath("$.memoria.pct").value(50.0))
+                    .andExpect(jsonPath("$.containers[0].nome").value("jellyfin"))
+                    .andExpect(jsonPath("$.containers[0].cpuPct").value(11.6));
         }
 
         @Test
         void diaUsaHojeComoPadrao() throws Exception {
-            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of()));
+            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of()));
 
             mvc.perform(get("/v1/servidor/dia")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value(LocalDate.now().toString()))

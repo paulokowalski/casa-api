@@ -67,7 +67,8 @@ class LeitorSistemaTest {
     private LeitorSistema leitor() {
         return new LeitorSistema(new MonitorProperties(true, 365, proc.toString(), sys.toString(),
                 raiz.resolve("hostname").toString(),
-                List.of("Raiz=" + raiz, "Inexistente=/caminho/que/nao/existe", "Desmontado=" + raiz.resolve("proc")), null));
+                List.of("Raiz=" + raiz, "Inexistente=/caminho/que/nao/existe", "Desmontado=" + raiz.resolve("proc")),
+                null, null, null));
     }
 
     @Test
@@ -178,7 +179,7 @@ class LeitorSistemaTest {
                 List.of(new LeitorSistema.CpuTempos(5_050, 4_250, 250), new LeitorSistema.CpuTempos(5_050, 4_300, 250)),
                 Map.of("enP4p65s0", new LeitorSistema.Trafego(5_500, 10_000)), antes.discoLidos(), antes.discoEscritos());
 
-        ServidorAgoraResponse r = MonitorService.montarAgora(leitor.identificacao(), antes, depois, leitor.instantaneo());
+        ServidorAgoraResponse r = MonitorService.montarAgora(leitor.identificacao(), antes, depois, leitor.instantaneo(), List.of());
 
         assertThat(r.host()).isEqualTo("orangepi5plus");
         assertThat(r.cpu().usoPct()).isEqualTo(50.0);
@@ -203,13 +204,16 @@ class LeitorSistemaTest {
     @Test
     void discosConfiguradosComNome() {
         var props = new MonitorProperties(null, null, null, null, null,
-                List.of("NVMe=/", " Mídia = /host/discos/media ", "/sem/nome"), null);
+                List.of("NVMe=/", " Mídia = /host/discos/media ", "/sem/nome"), " http://proxy:2375/ ", null, null);
         assertThat(props.discosMonitorados()).containsExactly(
                 new MonitorProperties.DiscoMonitorado("NVMe", "/"),
                 new MonitorProperties.DiscoMonitorado("Mídia", "/host/discos/media"),
                 new MonitorProperties.DiscoMonitorado("/sem/nome", "/sem/nome"));
         assertThat(props.retencaoDias()).isEqualTo(365);
         assertThat(props.habilitado()).isTrue();
+        assertThat(props.dockerUrl()).isEqualTo("http://proxy:2375");
+        assertThat(props.retencaoContainersDias()).isEqualTo(90);
+        assertThat(new MonitorProperties(null, null, null, null, null, null, " ", null, null).containersHabilitados()).isFalse();
     }
 
     private void zona(int n, String tipo, int miliGraus) throws IOException {

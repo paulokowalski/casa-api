@@ -12,6 +12,8 @@ import java.util.List;
  * @param hostnameArquivo arquivo com o nome do host
  * @param discos          discos a acompanhar, no formato {@code Nome=/caminho}; o caminho é qualquer arquivo ou pasta
  *                        dentro do sistema de arquivos que se quer medir
+ * @param dockerUrl       API do Docker (de preferência um proxy só-leitura); vazio desliga o monitoramento de containers
+ * @param retencaoContainersDias por quantos dias guardar as amostras dos containers (uma por container por minuto)
  */
 @ConfigurationProperties(prefix = "monitor")
 public record MonitorProperties(Boolean habilitado,
@@ -20,6 +22,8 @@ public record MonitorProperties(Boolean habilitado,
                                 String sysPath,
                                 String hostnameArquivo,
                                 List<String> discos,
+                                String dockerUrl,
+                                Integer retencaoContainersDias,
                                 Datasource datasource) {
 
     public MonitorProperties {
@@ -29,7 +33,13 @@ public record MonitorProperties(Boolean habilitado,
         sysPath = vazio(sysPath) ? "/sys" : sysPath;
         hostnameArquivo = vazio(hostnameArquivo) ? "/etc/hostname" : hostnameArquivo;
         discos = discos == null || discos.isEmpty() ? List.of("Sistema=/") : List.copyOf(discos);
+        dockerUrl = vazio(dockerUrl) ? null : dockerUrl.trim().replaceAll("/+$", "");
+        retencaoContainersDias = retencaoContainersDias == null || retencaoContainersDias < 1 ? 90 : retencaoContainersDias;
         datasource = datasource == null ? new Datasource(null, null, null) : datasource;
+    }
+
+    public boolean containersHabilitados() {
+        return dockerUrl != null;
     }
 
     public record Datasource(String url, String username, String password) {

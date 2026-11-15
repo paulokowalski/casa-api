@@ -15,7 +15,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Histórico do monitoramento no MariaDB (banco {@code casa_monitor}). As tabelas são criadas pela própria
@@ -64,6 +67,60 @@ public class MonitorRepository {
                 pct         DOUBLE       NOT NULL,
                 KEY ix_amostra_disco_coletado (coletado_em, nome)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """;
+
+    private static final String TABELA_CONTAINER = """
+            CREATE TABLE IF NOT EXISTS amostra_container (
+                id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+                coletado_em       DATETIME     NOT NULL,
+                intervalo_seg     INT          NOT NULL,
+                nome              VARCHAR(128) NOT NULL,
+                imagem            VARCHAR(255) NOT NULL,
+                estado            VARCHAR(20)  NOT NULL,
+                saude             VARCHAR(20)  NULL,
+                status            VARCHAR(160) NULL,
+                cpu_pct           DOUBLE       NULL,
+                mem_usada         BIGINT       NULL,
+                mem_limite        BIGINT       NULL,
+                rede_rx_bps       DOUBLE       NULL,
+                rede_tx_bps       DOUBLE       NULL,
+                disco_leitura_bps DOUBLE       NULL,
+                disco_escrita_bps DOUBLE       NULL,
+                processos         INT          NULL,
+                KEY ix_amostra_container_coletado (coletado_em, nome)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """;
+
+    private static final String INSERIR_CONTAINER = """
+            INSERT INTO amostra_container (coletado_em, intervalo_seg, nome, imagem, estado, saude, status, cpu_pct,
+                mem_usada, mem_limite, rede_rx_bps, rede_tx_bps, disco_leitura_bps, disco_escrita_bps, processos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+
+    /** Agregados de cada container no período, com imagem/estado/status da última amostra. */
+    private static final String CONTAINERS_DO_DIA = """
+            SELECT g.*, u.imagem, u.estado, u.status, u.saude
+              FROM (SELECT nome, MAX(id) AS ultimo_id, COUNT(*) AS minutos,
+                           SUM(estado = 'running') AS rodando,
+                           AVG(cpu_pct) AS cpu_med, MAX(cpu_pct) AS cpu_max,
+                           AVG(mem_usada) AS mem_med, MAX(mem_usada) AS mem_max,
+                           SUM(rede_rx_bps * intervalo_seg) AS rede_rx, SUM(rede_tx_bps * intervalo_seg) AS rede_tx,
+                           SUM(disco_leitura_bps * intervalo_seg) AS disco_lido,
+                           SUM(disco_escrita_bps * intervalo_seg) AS disco_escrito
+                      FROM amostra_container
+                     WHERE coletado_em >= ? AND coletado_em < ?
+                     GROUP BY nome) g
+              JOIN amostra_container u ON u.id = g.ultimo_id
+             ORDER BY g.cpu_med IS NULL, g.cpu_med DESC, g.nome
+            """;
+
+    private static final String SERIE_CONTAINERS = """
+            SELECT nome, HOUR(coletado_em) * 60 + FLOOR(MINUTE(coletado_em) / 5) * 5 AS minuto,
+                   AVG(cpu_pct) AS cpu, AVG(mem_usada) AS mem
+              FROM amostra_container
+             WHERE coletado_em >= ? AND coletado_em < ? AND estado = 'running'
+             GROUP BY nome, minuto
+             ORDER BY nome, minuto
             """;
 
     private static final String INSERIR = """
@@ -116,6 +173,7 @@ public class MonitorRepository {
     public void criarTabelas() {
         jdbc.execute(TABELA_AMOSTRA);
         jdbc.execute(TABELA_DISCO);
+        jdbc.execute(TABELA_CONTAINER);
     }
 
     public void inserir(Amostra a) {
@@ -129,6 +187,43 @@ public class MonitorRepository {
         if (discos.isEmpty()) return;
         jdbc.batchUpdate("INSERT INTO amostra_disco (coletado_em, nome, caminho, total, usado, pct) VALUES (?, ?, ?, ?, ?, ?)",
                 discos.stream().map(d -> new Object[]{coletadoEm, d.nome(), d.caminho(), d.total(), d.usado(), d.pct()}).toList());
+    }
+
+    public void inserirContainers(List<AmostraContainer> amostras) {
+        if (amostras.isEmpty()) return;
+        jdbc.batchUpdate(INSERIR_CONTAINER, amostras.stream().map(a -> new Object[]{a.coletadoEm(), a.intervaloSeg(),
+                corte(a.nome(), 128), corte(a.imagem(), 255), corte(a.estado(), 20), a.saude(), corte(a.status(), 160),
+                a.cpuPct(), a.memUsada(), a.memLimite(), a.redeRxBps(), a.redeTxBps(), a.discoLeituraBps(),
+                a.discoEscritaBps(), a.processos()}).toList());
+    }
+
+    public List<ServidorDiaResponse.ContainerDia> containers(LocalDateTime de, LocalDateTime ate) {
+        return jdbc.query(CONTAINERS_DO_DIA, (rs, i) -> new ServidorDiaResponse.ContainerDia(
+                rs.getString("nome"), rs.getString("imagem"), rs.getString("estado"), rs.getString("status"),
+                rs.getString("saude"), rs.getLong("minutos"), rs.getLong("rodando"),
+                numero(rs, "cpu_med"), numero(rs, "cpu_max"), inteiro(rs, "mem_med"), inteiro(rs, "mem_max"),
+                inteiro(rs, "rede_rx"), inteiro(rs, "rede_tx"), inteiro(rs, "disco_lido"), inteiro(rs, "disco_escrito")),
+                de, ate);
+    }
+
+    public List<ServidorDiaResponse.SerieContainer> serieContainers(LocalDateTime de, LocalDateTime ate) {
+        Map<String, List<ServidorDiaResponse.PontoContainer>> porNome = new LinkedHashMap<>();
+        jdbc.query(SERIE_CONTAINERS, rs -> {
+            int minuto = rs.getInt("minuto");
+            porNome.computeIfAbsent(rs.getString("nome"), n -> new ArrayList<>())
+                    .add(new ServidorDiaResponse.PontoContainer("%02d:%02d".formatted(minuto / 60, minuto % 60),
+                            numero(rs, "cpu"), inteiro(rs, "mem")));
+        }, de, ate);
+        return porNome.entrySet().stream()
+                .map(e -> new ServidorDiaResponse.SerieContainer(e.getKey(), e.getValue())).toList();
+    }
+
+    public int apagarContainersAntesDe(LocalDateTime limite) {
+        return jdbc.update("DELETE FROM amostra_container WHERE coletado_em < ?", limite);
+    }
+
+    private static String corte(String s, int max) {
+        return s == null || s.length() <= max ? s : s.substring(0, max);
     }
 
     public ServidorEstatisticasResponse resumo(LocalDateTime de, LocalDateTime ate) {

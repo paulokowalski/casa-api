@@ -33,7 +33,8 @@ docker compose up -d --build casa-api
 O `docker-compose.yml` (fora do git) lê as variáveis do `.env` e conecta nas redes `casa-network` (a mesma
 do container do front) e `mariadb_default` (do container `mariadb`). Também monta, só leitura, o `/sys` e o
 `/etc/hostname` do host e o `lost+found` de cada disco externo, usados pelo
-[monitoramento do servidor](#monitoramento-do-servidor). A aplicação leva cerca de 25 s para subir; requisições nesse intervalo
+[monitoramento do servidor](#monitoramento-do-servidor). O mesmo arquivo sobe o `casa-docker-proxy`, que dá à
+API acesso só-leitura à lista e às estatísticas dos containers. A aplicação leva cerca de 25 s para subir; requisições nesse intervalo
 recebem 502 do nginx.
 
 ### Desenvolvimento local
@@ -69,6 +70,8 @@ Todas as opções vêm de variáveis de ambiente (ou do `config/dev-secrets.yaml
 | `MONITOR_SYS_PATH` | não | `/sys` | `/sys` do host (no container, `/host/sys`; sem ele a rede mostra só a do container) |
 | `MONITOR_PROC_PATH` | não | `/proc` | `/proc` a ler (o do container já mostra CPU, memória e discos do host) |
 | `MONITOR_HOSTNAME_ARQUIVO` | não | `/etc/hostname` | Arquivo com o nome do host (no container, `/host/hostname`) |
+| `MONITOR_DOCKER_URL` | não | vazio | API do Docker para os containers (no servidor, `http://casa-docker-proxy:2375`); vazio desliga essa parte |
+| `MONITOR_RETENCAO_CONTAINERS_DIAS` | não | `90` | Dias de histórico dos containers (uma linha por container por minuto) |
 | `MONITOR_DISCOS` | não | `Sistema=/` | Discos a medir, `Nome=caminho` separados por vírgula; o caminho é qualquer arquivo ou pasta dentro do disco |
 
 ## Banco de dados e migrations
@@ -108,10 +111,21 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
 | Rede | `/sys/class/net/*/statistics`, só interfaces físicas (sem `lo`, bridges, `veth` e VPN) |
 | Leitura/escrita de disco | `/proc/diskstats`, só discos inteiros (sem partições, `zram` e `loop`) |
 | Espaço em disco | caminhos de `MONITOR_DISCOS`; um disco desmontado (cuja pasta cai no disco do sistema) é ignorado |
+| Containers Docker | `GET /containers/json` e `GET /containers/{id}/stats?one-shot=true`, pelo proxy só-leitura |
 
 - **Tabelas** (criadas pela própria API na subida, com `CREATE TABLE IF NOT EXISTS`):
-  `amostra_servidor` (uma linha por minuto, com as médias do minuto) e `amostra_disco` (espaço de cada
-  disco, a cada 10 minutos). São ~1.440 linhas por dia; a retenção padrão é de 365 dias.
+  `amostra_servidor` (uma linha por minuto, com as médias do minuto), `amostra_disco` (espaço de cada
+  disco, a cada 10 minutos) e `amostra_container` (uma linha por container por minuto, inclusive os
+  parados, para contar o tempo fora do ar). A retenção padrão é de 365 dias para o servidor e 90 para os
+  containers (~20 mil linhas por dia com 14 containers).
+- **Containers:** CPU em % do servidor inteiro (100% = todos os núcleos ocupados), memória sem o cache
+  inativo (o mesmo cálculo do `docker stats`), rede (nula para quem usa a rede do host), leitura/escrita
+  de disco, processos, estado e healthcheck. Contadores que zeram (container reiniciado) não geram taxa.
+- **Acesso ao Docker:** a API **não** monta o `docker.sock`, que daria controle total do servidor. Ela fala
+  com o `casa-docker-proxy` ([`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy)),
+  numa rede interna sem saída para a internet e sem porta publicada, com as regras de
+  `config/docker-proxy/haproxy.cfg.template`: só `GET /containers/json` e `GET /containers/{id}/stats`
+  passam. Inspect (que mostra variáveis de ambiente), logs, archive, export e qualquer escrita respondem 403.
 - **Falhas:** se o MariaDB ou a leitura do sistema falhar, a coleta só registra um aviso no log e tenta
   de novo no minuto seguinte. A API sobe mesmo com o MariaDB fora do ar; o histórico responde 503.
 - **Banco e usuário** (já criados no servidor; para recriar, pelo socket do container `mariadb`):
@@ -179,8 +193,8 @@ Resumo; detalhes, parâmetros e exemplos no Swagger. Mês/competência é sempre
 | | `GET /v1/geracao-solar/{ano}/{mes}` · `GET /v1/geracao-solar/{ano}` | Geração por dia · por mês |
 | | `POST /v1/geracao-solar` | Grava leitura (integração, `X-API-KEY`) |
 | Carros | `GET /v1/carros/{codigoFipe}` | Histórico FIPE |
-| Servidor (só `ADMIN`) | `GET /v1/servidor/agora` | Leitura ao vivo: CPU por núcleo, carga, memória, temperaturas, discos, rede |
-| | `GET /v1/servidor/dia?data` | Mín/média/máx do dia, série a cada 5 min e espaço dos discos (padrão: hoje) |
+| Servidor (só `ADMIN`) | `GET /v1/servidor/agora` | Leitura ao vivo: CPU por núcleo, carga, memória, temperaturas, discos, rede e containers |
+| | `GET /v1/servidor/dia?data` | Mín/média/máx do dia, série a cada 5 min, espaço dos discos e resumo/série de cada container (padrão: hoje) |
 | | `GET /v1/servidor/dias?de&ate` | Estatísticas por dia (padrão: últimos 30 dias; até 366 por consulta) |
 
 ## Erros
@@ -216,7 +230,7 @@ src/main/java/com/kowalski/casaapi/
 │   ├── dao/          # Consultas nativas (filtros e totais de despesas)
 │   ├── model/        # Entidades JPA
 │   ├── enumerator/   # Papel, TipoConta, Meses
-│   ├── monitor/      # Saúde do servidor: leitura de /proc e /sys, coleta agendada e histórico no MariaDB
+│   ├── monitor/      # Saúde do servidor: /proc, /sys e containers (API do Docker), coleta agendada e histórico no MariaDB
 │   └── exception/    # RecursoNaoEncontradoException, MonitorIndisponivelException
 ├── config/           # Segurança, CORS, OpenAPI, filtro da API key, DataSource do monitoramento
 └── util/             # Competencias (datas aaaa-mm), Util
@@ -233,7 +247,7 @@ mvn test
 
 São testes unitários (services com mocks) e de fatia web (`@WebMvcTest`): contrato dos endpoints,
 regras de segurança e formato dos erros. O leitor do monitoramento é testado com um `/proc` e um `/sys`
-falsos em pasta temporária. **Nenhum teste acessa o banco**, então as consultas JPQL e
+falsos em pasta temporária, e o dos containers com respostas no formato da API do Docker. **Nenhum teste acessa o banco**, então as consultas JPQL e
 nativas só são exercitadas com a aplicação rodando.
 
 ## Notas de desempenho

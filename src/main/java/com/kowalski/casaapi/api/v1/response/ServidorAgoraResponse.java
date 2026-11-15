@@ -19,7 +19,9 @@ public record ServidorAgoraResponse(
         @Schema(description = "Maior temperatura entre os sensores (°C)", example = "55.0") Double temperaturaMax,
         @Schema(description = "Espaço dos discos") List<ServidorDiscoResponse> discos,
         @Schema(description = "Tráfego das interfaces físicas") List<Rede> rede,
-        @Schema(description = "Leitura e escrita somando os discos") DiscoIo discoIo) {
+        @Schema(description = "Leitura e escrita somando os discos") DiscoIo discoIo,
+        @Schema(description = "Containers Docker, os que mais usam CPU primeiro (vazio se o monitoramento de containers estiver desligado)")
+        List<ServidorContainerResponse> containers) {
 
     @Schema(description = "Uso de CPU")
     public record Cpu(
