@@ -397,7 +397,8 @@ class ContratoEndpointsTest {
                     new ServidorAgoraResponse.Memoria(100, 50, 50, 0, 0, 0), List.of(), null, List.of(), List.of(),
                     new ServidorAgoraResponse.DiscoIo(0, 0),
                     List.of(new ServidorContainerResponse("jellyfin", "linuxserver/jellyfin", "running", "ligado há 2 horas",
-                            null, 11.6, 100L, 1000L, 10.0, null, null, 0.0, 0.0, 30))));
+                            null, 11.6, 100L, 1000L, 10.0, null, null, 0.0, 0.0, 30)),
+                    new ServidorAgoraResponse.Pressao(1.5, 0.0, 0.0, 0.4, 0.2), 3.0, List.of(), 100.0, List.of(), 1.2, 0));
 
             mvc.perform(get("/v1/servidor/agora"))
                     .andExpect(status().isOk())
@@ -405,7 +406,9 @@ class ContratoEndpointsTest {
                     .andExpect(jsonPath("$.cpu.usoPct").value(12.5))
                     .andExpect(jsonPath("$.memoria.pct").value(50.0))
                     .andExpect(jsonPath("$.containers[0].nome").value("jellyfin"))
-                    .andExpect(jsonPath("$.containers[0].cpuPct").value(11.6));
+                    .andExpect(jsonPath("$.containers[0].cpuPct").value(11.6))
+                    .andExpect(jsonPath("$.pressao.cpu").value(1.5))
+                    .andExpect(jsonPath("$.cpuLimitePct").value(100.0));
         }
 
         @Test

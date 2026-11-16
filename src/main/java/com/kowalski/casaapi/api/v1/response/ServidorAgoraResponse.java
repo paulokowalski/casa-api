@@ -21,7 +21,35 @@ public record ServidorAgoraResponse(
         @Schema(description = "Tráfego das interfaces físicas") List<Rede> rede,
         @Schema(description = "Leitura e escrita somando os discos") DiscoIo discoIo,
         @Schema(description = "Containers Docker, os que mais usam CPU primeiro (vazio se o monitoramento de containers estiver desligado)")
-        List<ServidorContainerResponse> containers) {
+        List<ServidorContainerResponse> containers,
+        @Schema(description = "Pressão (PSI) nos últimos 10 s") Pressao pressao,
+        @Schema(description = "Uso da GPU (%), pelo devfreq; nulo se a placa não informa", example = "4.0") Double gpuPct,
+        @Schema(description = "Frequência e limite de cada grupo de núcleos") List<Cluster> clusters,
+        @Schema(description = "Menor limite de frequência entre os grupos (% do máximo); abaixo de 100 a CPU está sendo segurada (calor)", example = "100.0") Double cpuLimitePct,
+        @Schema(description = "Ocupação e latência de cada disco no intervalo") List<DiscoAtividade> discosAtividade,
+        @Schema(description = "Latência média por operação somando os discos (ms); nula sem operações", example = "1.8") Double discoLatenciaMs,
+        @Schema(description = "Erros e descartes na rede no intervalo", example = "0") long redeErros) {
+
+    @Schema(description = "% do tempo em que tarefas esperaram pelo recurso nos últimos 10 s (some: alguma; full: todas)")
+    public record Pressao(
+            @Schema(example = "1.5") Double cpu,
+            @Schema(example = "0.0") Double memoria,
+            @Schema(example = "0.0") Double memoriaTotal,
+            @Schema(example = "0.4") Double io,
+            @Schema(example = "0.2") Double ioTotal) { }
+
+    public record Cluster(
+            @Schema(example = "policy4") String nome,
+            @Schema(example = "[4, 5]") List<Integer> nucleos,
+            @Schema(description = "Frequência atual (MHz)", example = "1800") Long atualMhz,
+            @Schema(description = "Máxima do hardware (MHz)", example = "2400") Long maxMhz,
+            @Schema(description = "Limite atual (MHz)", example = "2400") Long limiteMhz,
+            @Schema(description = "Limite em % do máximo", example = "100.0") Double limitePct) { }
+
+    public record DiscoAtividade(
+            @Schema(example = "sdd") String disco,
+            @Schema(description = "% do tempo com operação em andamento", example = "12.5") double ocupacaoPct,
+            @Schema(description = "Latência média por operação (ms)", example = "4.2") Double latenciaMs) { }
 
     @Schema(description = "Uso de CPU")
     public record Cpu(

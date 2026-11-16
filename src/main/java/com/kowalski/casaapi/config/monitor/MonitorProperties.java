@@ -16,6 +16,8 @@ import java.util.List;
  * @param retencaoContainersDias por quantos dias guardar as amostras dos containers (uma por container por minuto)
  * @param smartArquivo    JSON com a temperatura dos discos, gravado no host pelo casa-monitor-smart (config/smart);
  *                        vazio desliga as temperaturas dos discos
+ * @param hostArquivo     JSON com o status do host (backup, serviços, montagens, rede...), gravado pelo timer
+ *                        casa-monitor-host (config/host); vazio desliga essa parte
  */
 @ConfigurationProperties(prefix = "monitor")
 public record MonitorProperties(Boolean habilitado,
@@ -27,6 +29,7 @@ public record MonitorProperties(Boolean habilitado,
                                 String dockerUrl,
                                 Integer retencaoContainersDias,
                                 String smartArquivo,
+                                String hostArquivo,
                                 Datasource datasource) {
 
     public MonitorProperties {
@@ -39,6 +42,7 @@ public record MonitorProperties(Boolean habilitado,
         dockerUrl = vazio(dockerUrl) ? null : dockerUrl.trim().replaceAll("/+$", "");
         retencaoContainersDias = retencaoContainersDias == null || retencaoContainersDias < 1 ? 90 : retencaoContainersDias;
         smartArquivo = vazio(smartArquivo) ? null : smartArquivo.trim();
+        hostArquivo = vazio(hostArquivo) ? null : hostArquivo.trim();
         datasource = datasource == null ? new Datasource(null, null, null) : datasource;
     }
 

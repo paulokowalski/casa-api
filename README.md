@@ -73,6 +73,7 @@ Todas as opções vêm de variáveis de ambiente (ou do `config/dev-secrets.yaml
 | `MONITOR_DOCKER_URL` | não | vazio | API do Docker para os containers (no servidor, `http://casa-docker-proxy:2375`); vazio desliga essa parte |
 | `MONITOR_RETENCAO_CONTAINERS_DIAS` | não | `90` | Dias de histórico dos containers (uma linha por container por minuto) |
 | `MONITOR_SMART_ARQUIVO` | não | vazio | JSON com a temperatura dos discos, gravado pelo timer `casa-monitor-smart` (no container, `/host/smart/smart.json`); vazio desliga |
+| `MONITOR_HOST_ARQUIVO` | não | vazio | JSON com o status do host, gravado pelo timer `casa-monitor-host` (no container, `/host/smart/host.json`); vazio desliga |
 | `MONITOR_DISCOS` | não | `Sistema=/` | Discos a medir, `Nome=caminho` separados por vírgula; o caminho é qualquer arquivo ou pasta dentro do disco |
 
 ## Banco de dados e migrations
@@ -114,6 +115,12 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
 | Espaço em disco | caminhos de `MONITOR_DISCOS`; um disco desmontado (cuja pasta cai no disco do sistema) é ignorado |
 | Containers Docker | `GET /containers/json` e `GET /containers/{id}/stats?one-shot=true`, pelo proxy só-leitura |
 | Temperatura dos discos | SMART, lido no host pelo timer `casa-monitor-smart` (veja abaixo) |
+| Pressão (PSI) | `/proc/pressure/{cpu,memory,io}`, média de 10 s |
+| GPU | `/sys/class/devfreq/*gpu*/load` |
+| Limite da CPU (calor) | `scaling_max_freq` ÷ `cpuinfo_max_freq` de cada policy do cpufreq |
+| Latência e ocupação dos discos | `/proc/diskstats` (tempo por operação e tempo com I/O em andamento) |
+| Erros de rede | `rx/tx_errors` e `rx/tx_dropped` das interfaces físicas |
+| Status do host | backup, serviços, montagens, alertas, kernel, atualizações, internet, SSH, NPU e Docker, pelo timer `casa-monitor-host` (veja abaixo) |
 
 - **Tabelas** (criadas pela própria API na subida, com `CREATE TABLE IF NOT EXISTS`):
   `amostra_servidor` (uma linha por minuto, com as médias do minuto), `amostra_disco` (espaço e
@@ -135,6 +142,20 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
   sudo install -m 755 config/smart/casa-monitor-smart.sh /usr/local/sbin/casa-monitor-smart
   sudo install -m 644 config/smart/casa-monitor-smart.{service,timer} /etc/systemd/system/
   sudo systemctl daemon-reload && sudo systemctl enable --now casa-monitor-smart.timer
+  ```
+- **Status do host:** o que só o host enxerga (backup restic, timers e serviços do systemd, montagens, alertas do
+  `monitorar-servidor`, erros do kernel, apt/Diun, ping/DNS/Tailscale, logins SSH, NPU, reinícios e espaço do Docker)
+  é lido pelo script `config/host/casa-monitor-host.sh`, a cada minuto (segundo 50), e gravado em
+  `/var/lib/casa-monitor/host.json` (mesma pasta do SMART, já montada). Só lê; partes caras (apt, Diun, `docker system df`)
+  ficam em cache de 1 h. A API repassa o JSON em `GET /v1/servidor/host` e a cada minuto grava `amostra_host`
+  (internet, DNS, Tailscale, NPU, alertas, serviços, backup...) e os eventos novos em `evento_host`
+  (`GET /v1/servidor/eventos`): logins SSH, backups, alertas novos/resolvidos, serviços que falharam, discos
+  desmontados, quedas de internet (2 minutos seguidos), containers que reiniciaram, linhas de erro do kernel e boots.
+  Eventos têm chave única: reler o arquivo ou reiniciar a API não duplica. Para instalar ou atualizar no host:
+  ```bash
+  sudo install -m 755 config/host/casa-monitor-host.sh /usr/local/sbin/casa-monitor-host
+  sudo install -m 644 config/host/casa-monitor-host.{service,timer} /etc/systemd/system/
+  sudo systemctl daemon-reload && sudo systemctl enable --now casa-monitor-host.timer
   ```
 - **Acesso ao Docker:** a API **não** monta o `docker.sock`, que daria controle total do servidor. Ela fala
   com o `casa-docker-proxy` ([`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy)),

@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import com.kowalski.casaapi.api.v1.response.ServidorEventoResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,6 +38,32 @@ public class ServidorController {
     @ApiResponse(responseCode = "503", description = "Não foi possível ler o sistema")
     public ServidorAgoraResponse agora() {
         return monitorService.agora();
+    }
+
+    @GetMapping("/host")
+    @Operation(summary = "Status do host",
+            description = "Backup (3 cópias), serviços e timers, montagens, inodes, alertas do monitor, erros do kernel, "
+                    + "atualizações (apt e Diun), internet/DNS/Tailscale, logins SSH, NPU e Docker (reinícios e espaço). "
+                    + "Gravado pelo host a cada minuto; `desatualizado` = arquivo com mais de 5 minutos.")
+    @ApiResponse(responseCode = "200", description = "Status atual")
+    @ApiResponse(responseCode = "503", description = "Arquivo do host ausente ou desligado")
+    public Map<String, Object> host() {
+        return monitorService.host();
+    }
+
+    @GetMapping("/eventos")
+    @Operation(summary = "Eventos do servidor",
+            description = "Logins SSH, backups, alertas, quedas de internet, discos, containers que reiniciaram, kernel e boots. "
+                    + "Mais recentes primeiro, até 500.")
+    @ApiResponse(responseCode = "200", description = "Eventos do período")
+    @ApiResponse(responseCode = "503", description = "Banco do monitoramento indisponível")
+    public List<ServidorEventoResponse> eventos(
+            @Parameter(description = "Primeiro dia; padrão: 6 dias antes de `ate`", example = "2026-11-09")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
+            @Parameter(description = "Último dia; padrão: hoje", example = "2026-11-15")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
+        LocalDate fim = ate != null ? ate : LocalDate.now();
+        return monitorService.eventos(de != null ? de : fim.minusDays(6), fim);
     }
 
     @GetMapping("/dia")

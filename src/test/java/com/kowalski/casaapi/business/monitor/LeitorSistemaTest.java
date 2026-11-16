@@ -68,7 +68,7 @@ class LeitorSistemaTest {
         return new LeitorSistema(new MonitorProperties(true, 365, proc.toString(), sys.toString(),
                 raiz.resolve("hostname").toString(),
                 List.of("Raiz=" + raiz, "Inexistente=/caminho/que/nao/existe", "Desmontado=" + raiz.resolve("proc")),
-                null, null, raiz.resolve("smart.json").toString(), null));
+                null, null, raiz.resolve("smart.json").toString(), null, null));
     }
 
     @Test
@@ -303,7 +303,7 @@ class LeitorSistemaTest {
     @Test
     void discosConfiguradosComNome() {
         var props = new MonitorProperties(null, null, null, null, null,
-                List.of("NVMe=/", " Mídia = /host/discos/media ", "/sem/nome"), " http://proxy:2375/ ", null, " ", null);
+                List.of("NVMe=/", " Mídia = /host/discos/media ", "/sem/nome"), " http://proxy:2375/ ", null, " ", null, null);
         assertThat(props.discosMonitorados()).containsExactly(
                 new MonitorProperties.DiscoMonitorado("NVMe", "/"),
                 new MonitorProperties.DiscoMonitorado("Mídia", "/host/discos/media"),
@@ -313,7 +313,7 @@ class LeitorSistemaTest {
         assertThat(props.dockerUrl()).isEqualTo("http://proxy:2375");
         assertThat(props.retencaoContainersDias()).isEqualTo(90);
         assertThat(props.smartArquivo()).isNull();
-        assertThat(new MonitorProperties(null, null, null, null, null, null, " ", null, null, null).containersHabilitados()).isFalse();
+        assertThat(new MonitorProperties(null, null, null, null, null, null, " ", null, null, null, null).containersHabilitados()).isFalse();
     }
 
     private void zona(int n, String tipo, int miliGraus) throws IOException {

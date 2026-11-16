@@ -1,0 +1,10 @@
+[Unit]
+Description=Status do host a cada minuto (casa-api)
+
+[Timer]
+OnCalendar=*-*-* *:*:50
+AccuracySec=1s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

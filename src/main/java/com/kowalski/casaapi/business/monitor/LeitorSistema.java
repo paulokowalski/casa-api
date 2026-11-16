@@ -42,6 +42,8 @@ public class LeitorSistema {
     private static final Pattern DISCO_INTEIRO = Pattern.compile("nvme\\d+n\\d+|mmcblk\\d+|sd[a-z]+|vd[a-z]+|hd[a-z]+");
     private static final Pattern ZONA_TERMICA = Pattern.compile("thermal_zone(\\d+)");
     private static final Pattern NUCLEO = Pattern.compile("cpu(\\d+)");
+    private static final Pattern POLITICA = Pattern.compile("policy(\\d+)");
+    private static final Pattern MEDIA10 = Pattern.compile("avg10=([0-9.]+)");
     private static final long SETOR = 512;
 
     private final Path proc;
@@ -76,12 +78,90 @@ public class LeitorSistema {
     public record Trafego(long recebidos, long enviados) {
     }
 
+    /**
+     * Contadores de um disco inteiro no /proc/diskstats.
+     *
+     * @param operacoes leituras + escritas concluídas
+     * @param msEspera  tempo somado das operações (ms), fila incluída
+     * @param msOcupado tempo com alguma operação em andamento (ms)
+     */
+    public record DiscoContadores(long operacoes, long msEspera, long msOcupado) {
+    }
+
+    /** Ocupação e latência de um disco no intervalo. */
+    public record DiscoAtividade(String disco, double ocupacaoPct, Double latenciaMs) {
+    }
+
     /** Contadores acumulados; a diferença entre duas leituras dá as taxas do intervalo. */
     public record Contadores(long nanos, CpuTempos cpu, List<CpuTempos> nucleos, Map<String, Trafego> rede,
-                             long discoLidos, long discoEscritos) {
+                             long discoLidos, long discoEscritos, Map<String, DiscoContadores> discosIo,
+                             long redeErros) {
+
+        public Contadores(long nanos, CpuTempos cpu, List<CpuTempos> nucleos, Map<String, Trafego> rede,
+                          long discoLidos, long discoEscritos) {
+            this(nanos, cpu, nucleos, rede, discoLidos, discoEscritos, Map.of(), 0);
+        }
 
         public double segundosDesde(Contadores antes) {
             return Math.max((nanos - antes.nanos) / 1e9, 0.001);
+        }
+
+        /** Ocupação e latência média por operação de cada disco que existia nas duas leituras. */
+        public List<DiscoAtividade> atividadeDiscos(Contadores antes) {
+            double ms = segundosDesde(antes) * 1000;
+            List<DiscoAtividade> lista = new ArrayList<>();
+            discosIo.forEach((nome, d) -> {
+                DiscoContadores a = antes.discosIo.get(nome);
+                if (a == null) return;
+                long ops = d.operacoes() - a.operacoes();
+                long espera = d.msEspera() - a.msEspera();
+                long ocupado = Math.max(d.msOcupado() - a.msOcupado(), 0);
+                lista.add(new DiscoAtividade(nome, limitar(100.0 * ocupado / ms),
+                        ops > 0 && espera >= 0 ? (double) espera / ops : null));
+            });
+            return lista;
+        }
+
+        /** Latência média por operação somando todos os discos; nula sem operações no intervalo. */
+        public Double latenciaDiscosMs(Contadores antes) {
+            long ops = 0;
+            long espera = 0;
+            for (var e : discosIo.entrySet()) {
+                DiscoContadores a = antes.discosIo.get(e.getKey());
+                if (a == null) continue;
+                long o = e.getValue().operacoes() - a.operacoes();
+                long t = e.getValue().msEspera() - a.msEspera();
+                if (o <= 0 || t < 0) continue;
+                ops += o;
+                espera += t;
+            }
+            return ops > 0 ? (double) espera / ops : null;
+        }
+
+        /** Ocupação do disco mais ocupado (%); 100% = sempre com operação em andamento. */
+        public Double ocupacaoMaxDiscosPct(Contadores antes) {
+            return atividadeDiscos(antes).stream().map(DiscoAtividade::ocupacaoPct).max(Double::compare).orElse(null);
+        }
+
+        /** Erros e pacotes descartados nas interfaces físicas no intervalo (zero se o contador zerou). */
+        public long redeErrosDesde(Contadores antes) {
+            return Math.max(redeErros - antes.redeErros, 0);
+        }
+    }
+
+    /**
+     * Pressão (PSI) nos últimos 10 s: % do tempo em que alguma tarefa (some) ou todas (full) esperaram pelo recurso.
+     * Nulos se o kernel não tem PSI.
+     */
+    public record Pressao(Double cpu, Double memoria, Double memoriaTotal, Double io, Double ioTotal) {
+    }
+
+    /** Um grupo de núcleos que muda de frequência junto (policy do cpufreq). */
+    public record Cluster(String nome, List<Integer> nucleos, Long atualMhz, Long maxMhz, Long limiteMhz) {
+
+        /** Limite atual em % do máximo do hardware; abaixo de 100 o kernel está segurando a frequência (calor). */
+        public Double limitePct() {
+            return maxMhz == null || limiteMhz == null || maxMhz <= 0 ? null : limitar(100.0 * limiteMhz / maxMhz);
         }
     }
 
@@ -115,7 +195,21 @@ public class LeitorSistema {
     /** Valores que já são instantâneos (não precisam de duas leituras). */
     public record Instantaneo(long memTotal, long memDisponivel, long swapTotal, long swapLivre,
                               double load1, double load5, double load15, int processos, long uptimeSegundos,
-                              List<Temperatura> temperaturas, List<EspacoDisco> discos, List<Long> frequenciasMhz) {
+                              List<Temperatura> temperaturas, List<EspacoDisco> discos, List<Long> frequenciasMhz,
+                              Pressao pressao, Double gpuPct, List<Cluster> clusters) {
+
+        public Instantaneo(long memTotal, long memDisponivel, long swapTotal, long swapLivre,
+                           double load1, double load5, double load15, int processos, long uptimeSegundos,
+                           List<Temperatura> temperaturas, List<EspacoDisco> discos, List<Long> frequenciasMhz) {
+            this(memTotal, memDisponivel, swapTotal, swapLivre, load1, load5, load15, processos, uptimeSegundos,
+                    temperaturas, discos, frequenciasMhz, new Pressao(null, null, null, null, null), null, List.of());
+        }
+
+        /** Menor limite entre os clusters (% do máximo); 100 = nenhum núcleo limitado. */
+        public Double cpuLimitePct() {
+            return clusters.stream().map(Cluster::limitePct).filter(java.util.Objects::nonNull)
+                    .min(Double::compare).orElse(null);
+        }
 
         public long memUsada() {
             return Math.max(memTotal - memDisponivel, 0);
@@ -154,9 +248,10 @@ public class LeitorSistema {
 
     public Contadores contadores() {
         List<CpuTempos> cpus = parseStat(linhas(proc.resolve("stat")));
-        long[] disco = parseDiskstats(linhas(proc.resolve("diskstats")));
+        List<String> diskstats = linhas(proc.resolve("diskstats"));
+        long[] disco = parseDiskstats(diskstats);
         return new Contadores(System.nanoTime(), cpus.get(0), cpus.subList(1, cpus.size()), lerRede(),
-                disco[0], disco[1]);
+                disco[0], disco[1], parseDiskstatsPorDisco(diskstats), lerErrosRede());
     }
 
     public Instantaneo instantaneo() {
@@ -169,7 +264,7 @@ public class LeitorSistema {
                 mem.getOrDefault("SwapTotal", 0L), mem.getOrDefault("SwapFree", 0L),
                 Double.parseDouble(load[0]), Double.parseDouble(load[1]), Double.parseDouble(load[2]), processos,
                 (long) Double.parseDouble(uptime[0]),
-                lerTemperaturas(), lerDiscos(), lerFrequencias());
+                lerTemperaturas(), lerDiscos(), lerFrequencias(), lerPressao(), lerGpu(), lerClusters());
     }
 
     public Identificacao identificacao() {
@@ -232,6 +327,40 @@ public class LeitorSistema {
         return new long[]{lidos, escritos};
     }
 
+    /** Contadores de operações e tempo de cada disco inteiro (sem partições, zram e loop). */
+    static Map<String, DiscoContadores> parseDiskstatsPorDisco(List<String> linhas) {
+        Map<String, DiscoContadores> discos = new LinkedHashMap<>();
+        for (String linha : linhas) {
+            String[] p = linha.trim().split("\\s+");
+            if (p.length < 13 || !DISCO_INTEIRO.matcher(p[2]).matches()) continue;
+            // 3 leituras, 6 ms lendo, 7 escritas, 10 ms escrevendo, 12 ms com I/O em andamento
+            discos.put(p[2], new DiscoContadores(Long.parseLong(p[3]) + Long.parseLong(p[7]),
+                    Long.parseLong(p[6]) + Long.parseLong(p[10]), Long.parseLong(p[12])));
+        }
+        return discos;
+    }
+
+    /** avg10 da linha "some" ou "full" de um arquivo do /proc/pressure; nulo se não houver. */
+    static Double parsePressao(List<String> linhas, String tipo) {
+        for (String linha : linhas) {
+            if (!linha.startsWith(tipo + " ")) continue;
+            Matcher m = MEDIA10.matcher(linha);
+            if (m.find()) return Double.parseDouble(m.group(1));
+        }
+        return null;
+    }
+
+    /** "37@800000000Hz" (load do devfreq) vira 37. */
+    static Double parseCargaDevfreq(String texto) {
+        if (texto == null) return null;
+        int i = texto.indexOf('@');
+        try {
+            return limitar(Double.parseDouble((i < 0 ? texto : texto.substring(0, i)).trim()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     /** "soc-thermal" vira "soc"; "bigcore0_thermal" vira "bigcore0". */
     static String nomeSensor(String tipo) {
         return tipo.trim().replaceAll("[-_ ]?thermal$", "");
@@ -255,6 +384,92 @@ public class LeitorSistema {
             if (rx != null && tx != null) rede.put(iface.getFileName().toString(), new Trafego(rx, tx));
         }
         return rede;
+    }
+
+    /** Soma de erros e descartes (rx/tx) das interfaces físicas. */
+    private long lerErrosRede() {
+        long total = 0;
+        Path dir = sys.resolve("class/net");
+        if (!Files.isDirectory(dir)) return 0;
+        for (Path iface : ordenados(dir)) {
+            if (!Files.exists(iface.resolve("device"))) continue;
+            for (String c : List.of("rx_errors", "tx_errors", "rx_dropped", "tx_dropped")) {
+                Long v = numero(iface.resolve("statistics/" + c));
+                if (v != null) total += v;
+            }
+        }
+        return total;
+    }
+
+    private Pressao lerPressao() {
+        Path dir = proc.resolve("pressure");
+        List<String> cpu = linhasOuVazio(dir.resolve("cpu"));
+        List<String> mem = linhasOuVazio(dir.resolve("memory"));
+        List<String> io = linhasOuVazio(dir.resolve("io"));
+        return new Pressao(parsePressao(cpu, "some"), parsePressao(mem, "some"), parsePressao(mem, "full"),
+                parsePressao(io, "some"), parsePressao(io, "full"));
+    }
+
+    /** Carga da GPU pelo devfreq (Mali do RK3588: {@code /sys/class/devfreq/*.gpu/load}). */
+    private Double lerGpu() {
+        Path dir = sys.resolve("class/devfreq");
+        if (!Files.isDirectory(dir)) return null;
+        for (Path d : ordenados(dir)) {
+            if (d.getFileName().toString().toLowerCase().contains("gpu")) return parseCargaDevfreq(textoOuNulo(d.resolve("load")));
+        }
+        return null;
+    }
+
+    /** Frequência atual, máxima do hardware e limite atual de cada policy do cpufreq. */
+    private List<Cluster> lerClusters() {
+        List<Cluster> lista = new ArrayList<>();
+        Path dir = sys.resolve("devices/system/cpu/cpufreq");
+        if (!Files.isDirectory(dir)) return lista;
+        List<Path> politicas = new ArrayList<>(ordenados(dir).stream()
+                .filter(p -> POLITICA.matcher(p.getFileName().toString()).matches()).toList());
+        politicas.sort(Comparator.comparingInt(p -> numeroNoNome(POLITICA, p)));
+        for (Path p : politicas) {
+            List<Integer> nucleos = new ArrayList<>();
+            String rel = textoOuNulo(p.resolve("related_cpus"));
+            if (rel != null) {
+                for (String n : rel.split("\\s+")) {
+                    try {
+                        nucleos.add(Integer.parseInt(n));
+                    } catch (NumberFormatException e) {
+                        // ignora
+                    }
+                }
+            }
+            lista.add(new Cluster(p.getFileName().toString(), List.copyOf(nucleos), mhz(numero(p.resolve("scaling_cur_freq"))),
+                    mhz(numero(p.resolve("cpuinfo_max_freq"))), mhz(numero(p.resolve("scaling_max_freq")))));
+        }
+        return lista;
+    }
+
+    private static Long mhz(Long khz) {
+        return khz == null ? null : khz / 1000;
+    }
+
+    /** Momento do boot (linha btime do /proc/stat, segundos desde a época); nulo se não der para ler. */
+    public Long bootEpoch() {
+        for (String linha : linhasOuVazio(proc.resolve("stat"))) {
+            if (linha.startsWith("btime ")) {
+                try {
+                    return Long.parseLong(linha.substring(6).trim());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static List<String> linhasOuVazio(Path p) {
+        try {
+            return Files.readAllLines(p, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return List.of();
+        }
     }
 
     private List<Temperatura> lerTemperaturas() {

@@ -4,6 +4,8 @@ import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorDiscoResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorEstatisticasResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorEstatisticasResponse.Faixa;
+import com.kowalski.casaapi.api.v1.response.ServidorEventoResponse;
+import com.kowalski.casaapi.api.v1.response.ServidorHostDiaResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
 import com.kowalski.casaapi.config.monitor.MonitorConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -82,6 +84,82 @@ public class MonitorRepository {
                 ADD COLUMN IF NOT EXISTS estado      VARCHAR(12)  NULL
             """;
 
+    /** Pressão, GPU, limite da CPU, latência de disco e erros de rede, acrescentados depois. */
+    private static final String COLUNAS_SISTEMA = """
+            ALTER TABLE amostra_servidor
+                ADD COLUMN IF NOT EXISTS psi_cpu            DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS psi_mem            DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS psi_io             DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS gpu_pct            DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS cpu_limite_pct     DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS disco_latencia_ms  DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS disco_ocupacao_pct DOUBLE NULL,
+                ADD COLUMN IF NOT EXISTS rede_erros         BIGINT NULL
+            """;
+
+    private static final String TABELA_HOST = """
+            CREATE TABLE IF NOT EXISTS amostra_host (
+                id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+                coletado_em         DATETIME NOT NULL,
+                internet_ok         BOOLEAN  NULL,
+                internet_ms         DOUBLE   NULL,
+                gateway_ms          DOUBLE   NULL,
+                dns_ok              BOOLEAN  NULL,
+                dns_ms              DOUBLE   NULL,
+                tailscale_online    BOOLEAN  NULL,
+                npu_pct             DOUBLE   NULL,
+                alertas             INT      NOT NULL,
+                pendentes           INT      NOT NULL,
+                servicos_falhos     INT      NOT NULL,
+                discos_desmontados  INT      NOT NULL,
+                kernel_eventos_24h  INT      NULL,
+                apt_pendentes       INT      NULL,
+                apt_seguranca       INT      NULL,
+                reinicio_necessario BOOLEAN  NULL,
+                backup_idade_seg    BIGINT   NULL,
+                backup_ok           BOOLEAN  NULL,
+                containers_reinicios BIGINT  NULL,
+                KEY ix_amostra_host_coletado (coletado_em)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """;
+
+    private static final String TABELA_EVENTO = """
+            CREATE TABLE IF NOT EXISTS evento_host (
+                id       BIGINT AUTO_INCREMENT PRIMARY KEY,
+                quando   DATETIME     NOT NULL,
+                tipo     VARCHAR(20)  NOT NULL,
+                chave    VARCHAR(190) NOT NULL,
+                nivel    VARCHAR(10)  NOT NULL,
+                mensagem VARCHAR(500) NOT NULL,
+                UNIQUE KEY ux_evento_host_chave (chave),
+                KEY ix_evento_host_quando (quando)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """;
+
+    private static final String AGREGADOS_HOST = """
+            COUNT(*) AS amostras,
+            COALESCE(SUM(internet_ok = FALSE), 0) AS sem_internet,
+            MIN(internet_ms) AS net_min, AVG(internet_ms) AS net_med, MAX(internet_ms) AS net_max,
+            AVG(gateway_ms) AS gw_med,
+            COALESCE(SUM(dns_ok = FALSE), 0) AS dns_falha, AVG(dns_ms) AS dns_med,
+            COALESCE(SUM(tailscale_online = FALSE), 0) AS ts_off,
+            AVG(npu_pct) AS npu_med, MAX(npu_pct) AS npu_max,
+            MAX(alertas) AS alertas_max, COALESCE(SUM(alertas > 0), 0) AS min_alerta,
+            MAX(servicos_falhos) AS serv_max, COALESCE(SUM(discos_desmontados > 0), 0) AS min_desm,
+            MAX(backup_idade_seg) AS bkp_max,
+            MAX(containers_reinicios) - MIN(containers_reinicios) AS reinicios
+            """;
+
+    private static final String SERIE_HOST = """
+            SELECT HOUR(coletado_em) * 60 + FLOOR(MINUTE(coletado_em) / 5) * 5 AS minuto,
+                   AVG(internet_ms) AS net, MAX(internet_ms) AS net_max, AVG(gateway_ms) AS gw, AVG(dns_ms) AS dns,
+                   100 * AVG(internet_ok = FALSE) AS fora, AVG(npu_pct) AS npu
+              FROM amostra_host
+             WHERE coletado_em >= ? AND coletado_em < ?
+             GROUP BY minuto
+             ORDER BY minuto
+            """;
+
     private static final String SERIE_DISCOS = """
             SELECT nome, HOUR(coletado_em) * 60 + FLOOR(MINUTE(coletado_em) / 5) * 5 AS minuto,
                    AVG(temperatura) AS temperatura
@@ -148,8 +226,9 @@ public class MonitorRepository {
     private static final String INSERIR = """
             INSERT INTO amostra_servidor (coletado_em, intervalo_seg, cpu_pct, iowait_pct, load1, load5, load15,
                 processos, mem_total, mem_usada, mem_pct, swap_total, swap_usada, swap_pct,
-                temp_max, temp_soc, temp_cpu, temp_gpu, rede_rx_bps, rede_tx_bps, disco_leitura_bps, disco_escrita_bps)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                temp_max, temp_soc, temp_cpu, temp_gpu, rede_rx_bps, rede_tx_bps, disco_leitura_bps, disco_escrita_bps,
+                psi_cpu, psi_mem, psi_io, gpu_pct, cpu_limite_pct, disco_latencia_ms, disco_ocupacao_pct, rede_erros)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
     /** Agregados usados tanto no resumo do dia quanto na lista de dias. */
@@ -161,7 +240,12 @@ public class MonitorRepository {
             MIN(load1) AS load_min, AVG(load1) AS load_med, MAX(load1) AS load_max,
             MAX(swap_pct) AS swap_max, AVG(iowait_pct) AS iowait_med,
             SUM(rede_rx_bps * intervalo_seg) AS rede_rx, SUM(rede_tx_bps * intervalo_seg) AS rede_tx,
-            SUM(disco_leitura_bps * intervalo_seg) AS disco_lido, SUM(disco_escrita_bps * intervalo_seg) AS disco_escrito
+            SUM(disco_leitura_bps * intervalo_seg) AS disco_lido, SUM(disco_escrita_bps * intervalo_seg) AS disco_escrito,
+            AVG(psi_cpu) AS psi_cpu_med, MAX(psi_cpu) AS psi_cpu_max, AVG(psi_mem) AS psi_mem_med, MAX(psi_mem) AS psi_mem_max,
+            AVG(psi_io) AS psi_io_med, MAX(psi_io) AS psi_io_max, AVG(gpu_pct) AS gpu_med, MAX(gpu_pct) AS gpu_max,
+            MIN(cpu_limite_pct) AS cpu_limite_min, SUM(cpu_limite_pct < 99.5) AS minutos_limitada,
+            AVG(disco_latencia_ms) AS lat_med, MAX(disco_latencia_ms) AS lat_max, MAX(disco_ocupacao_pct) AS ocup_max,
+            SUM(rede_erros) AS rede_erros
             """;
 
     private static final String SERIE = """
@@ -169,7 +253,10 @@ public class MonitorRepository {
                    AVG(cpu_pct) AS cpu, MAX(cpu_pct) AS cpu_max, AVG(mem_pct) AS mem, AVG(swap_pct) AS swap,
                    AVG(temp_max) AS temp, MAX(temp_max) AS temp_max, AVG(load1) AS carga, AVG(iowait_pct) AS iowait,
                    AVG(rede_rx_bps) AS rx, AVG(rede_tx_bps) AS tx,
-                   AVG(disco_leitura_bps) AS leitura, AVG(disco_escrita_bps) AS escrita
+                   AVG(disco_leitura_bps) AS leitura, AVG(disco_escrita_bps) AS escrita,
+                   AVG(psi_cpu) AS psi_cpu, AVG(psi_mem) AS psi_mem, AVG(psi_io) AS psi_io, AVG(gpu_pct) AS gpu,
+                   MIN(cpu_limite_pct) AS cpu_limite, AVG(disco_latencia_ms) AS lat, MAX(disco_latencia_ms) AS lat_max,
+                   AVG(disco_ocupacao_pct) AS ocup, SUM(rede_erros) AS rede_erros
               FROM amostra_servidor
              WHERE coletado_em >= ? AND coletado_em < ?
              GROUP BY minuto
@@ -196,16 +283,131 @@ public class MonitorRepository {
 
     public void criarTabelas() {
         jdbc.execute(TABELA_AMOSTRA);
+        jdbc.execute(COLUNAS_SISTEMA);
         jdbc.execute(TABELA_DISCO);
         jdbc.execute(COLUNAS_TEMPERATURA_DISCO);
         jdbc.execute(TABELA_CONTAINER);
+        jdbc.execute(TABELA_HOST);
+        jdbc.execute(TABELA_EVENTO);
+    }
+
+    // ---- host ----
+
+    public void inserirHost(AmostraHost a) {
+        jdbc.update("""
+                        INSERT INTO amostra_host (coletado_em, internet_ok, internet_ms, gateway_ms, dns_ok, dns_ms,
+                            tailscale_online, npu_pct, alertas, pendentes, servicos_falhos, discos_desmontados,
+                            kernel_eventos_24h, apt_pendentes, apt_seguranca, reinicio_necessario, backup_idade_seg,
+                            backup_ok, containers_reinicios)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                a.coletadoEm(), a.internetOk(), a.internetMs(), a.gatewayMs(), a.dnsOk(), a.dnsMs(), a.tailscaleOnline(),
+                a.npuPct(), a.alertas(), a.pendentes(), a.servicosFalhos(), a.discosDesmontados(), a.kernelEventos24h(),
+                a.aptPendentes(), a.aptSeguranca(), a.reinicioNecessario(), a.backupIdadeSeg(), a.backupOk(),
+                a.containersReinicios());
+    }
+
+    /** Grava os eventos novos; os que já existem (mesma chave) são ignorados. Devolve quantos entraram. */
+    public int inserirEventos(List<EventosHost.Evento> eventos) {
+        if (eventos.isEmpty()) return 0;
+        int[] r = jdbc.batchUpdate("INSERT IGNORE INTO evento_host (quando, tipo, chave, nivel, mensagem) VALUES (?, ?, ?, ?, ?)",
+                eventos.stream().map(e -> new Object[]{e.quando(), corte(e.tipo(), 20), corte(e.chave(), 190),
+                        corte(e.nivel(), 10), corte(e.mensagem(), 500)}).toList());
+        int n = 0;
+        for (int x : r) if (x > 0) n++;
+        return n;
+    }
+
+    public List<ServidorEventoResponse> eventos(LocalDateTime de, LocalDateTime ate, int limite) {
+        return jdbc.query("SELECT quando, tipo, nivel, mensagem FROM evento_host WHERE quando >= ? AND quando < ?"
+                        + " ORDER BY quando DESC, id DESC LIMIT ?",
+                (rs, i) -> new ServidorEventoResponse(rs.getObject("quando", LocalDateTime.class), rs.getString("tipo"),
+                        rs.getString("nivel"), rs.getString("mensagem")), de, ate, limite);
+    }
+
+    public List<ServidorHostDiaResponse.Ponto> serieHost(LocalDateTime de, LocalDateTime ate) {
+        return jdbc.query(SERIE_HOST, (rs, i) -> {
+            int minuto = rs.getInt("minuto");
+            return new ServidorHostDiaResponse.Ponto("%02d:%02d".formatted(minuto / 60, minuto % 60),
+                    numero(rs, "net"), numero(rs, "net_max"), numero(rs, "gw"), numero(rs, "dns"),
+                    rs.getDouble("fora"), numero(rs, "npu"));
+        }, de, ate);
+    }
+
+    /** Resumo do host no período; nulo sem amostras. */
+    public ServidorHostDiaResponse.Resumo resumoHost(LocalDateTime de, LocalDateTime ate) {
+        ServidorHostDiaResponse.Resumo r = jdbc.queryForObject(
+                "SELECT " + AGREGADOS_HOST + " FROM amostra_host WHERE coletado_em >= ? AND coletado_em < ?",
+                (rs, i) -> resumoHost(rs), de, ate);
+        if (r == null || r.amostras() == 0) return null;
+        return completarHost(r, de, ate);
+    }
+
+    /** Resumo do host por dia do período. */
+    public Map<LocalDate, ServidorHostDiaResponse.Resumo> resumoHostPorDia(LocalDateTime de, LocalDateTime ate) {
+        Map<LocalDate, ServidorHostDiaResponse.Resumo> porDia = new LinkedHashMap<>();
+        jdbc.query("SELECT DATE(coletado_em) AS dia, " + AGREGADOS_HOST
+                        + " FROM amostra_host WHERE coletado_em >= ? AND coletado_em < ? GROUP BY DATE(coletado_em)",
+                rs -> {
+                    porDia.put(rs.getObject("dia", LocalDate.class), resumoHost(rs));
+                }, de, ate);
+        Map<LocalDate, long[]> eventos = new LinkedHashMap<>();
+        jdbc.query("SELECT DATE(quando) AS dia, COUNT(*) AS n, SUM(nivel = 'erro') AS erros FROM evento_host"
+                        + " WHERE quando >= ? AND quando < ? GROUP BY DATE(quando)",
+                rs -> {
+                    eventos.put(rs.getObject("dia", LocalDate.class), new long[]{rs.getLong("n"), rs.getLong("erros")});
+                }, de, ate);
+        porDia.replaceAll((dia, r) -> {
+            long[] ev = eventos.getOrDefault(dia, new long[]{0, 0});
+            return comEventos(r, ev[0], ev[1], null, null);
+        });
+        return porDia;
+    }
+
+    private ServidorHostDiaResponse.Resumo completarHost(ServidorHostDiaResponse.Resumo r, LocalDateTime de, LocalDateTime ate) {
+        long[] ev = jdbc.queryForObject("SELECT COUNT(*) AS n, COALESCE(SUM(nivel = 'erro'), 0) AS erros FROM evento_host"
+                + " WHERE quando >= ? AND quando < ?", (rs, i) -> new long[]{rs.getLong("n"), rs.getLong("erros")}, de, ate);
+        List<Object[]> ultima = jdbc.query("SELECT apt_pendentes, reinicio_necessario FROM amostra_host"
+                        + " WHERE coletado_em >= ? AND coletado_em < ? ORDER BY coletado_em DESC LIMIT 1",
+                (rs, i) -> new Object[]{inteiro(rs, "apt_pendentes"), logicoOuNulo(rs, "reinicio_necessario")}, de, ate);
+        Object[] u = ultima.isEmpty() ? new Object[]{null, null} : ultima.get(0);
+        return comEventos(r, ev == null ? 0 : ev[0], ev == null ? 0 : ev[1], (Long) u[0], (Boolean) u[1]);
+    }
+
+    private static ServidorHostDiaResponse.Resumo comEventos(ServidorHostDiaResponse.Resumo r, long eventos, long erros,
+                                                             Long apt, Boolean reboot) {
+        return new ServidorHostDiaResponse.Resumo(r.amostras(), r.minutosSemInternet(), r.internetLatencia(),
+                r.gatewayLatenciaMedia(), r.minutosDnsFalhando(), r.dnsTempoMedio(), r.minutosTailscaleOffline(), r.npu(),
+                r.alertasMax(), r.minutosComAlerta(), r.servicosFalhosMax(), r.minutosDiscoDesmontado(),
+                r.backupIdadeMaxHoras(), r.containersReinicios(), apt, reboot, eventos, erros);
+    }
+
+    private static ServidorHostDiaResponse.Resumo resumoHost(ResultSet rs) throws SQLException {
+        Long bkp = inteiro(rs, "bkp_max");
+        return new ServidorHostDiaResponse.Resumo(rs.getLong("amostras"), rs.getLong("sem_internet"),
+                new Faixa(numero(rs, "net_min"), numero(rs, "net_med"), numero(rs, "net_max")), numero(rs, "gw_med"),
+                rs.getLong("dns_falha"), numero(rs, "dns_med"), rs.getLong("ts_off"),
+                new Faixa(null, numero(rs, "npu_med"), numero(rs, "npu_max")),
+                rs.getLong("alertas_max"), rs.getLong("min_alerta"), rs.getLong("serv_max"), rs.getLong("min_desm"),
+                bkp == null ? null : Math.round(bkp / 360.0) / 10.0, inteiro(rs, "reinicios"), null, null, 0, 0);
+    }
+
+    private static Boolean logicoOuNulo(ResultSet rs, String coluna) throws SQLException {
+        boolean v = rs.getBoolean(coluna);
+        return rs.wasNull() ? null : v;
+    }
+
+    public int apagarHostAntesDe(LocalDateTime limite) {
+        return jdbc.update("DELETE FROM amostra_host WHERE coletado_em < ?", limite)
+                + jdbc.update("DELETE FROM evento_host WHERE quando < ?", limite);
     }
 
     public void inserir(Amostra a) {
         jdbc.update(INSERIR, a.coletadoEm(), a.intervaloSeg(), a.cpuPct(), a.iowaitPct(), a.load1(), a.load5(),
                 a.load15(), a.processos(), a.memTotal(), a.memUsada(), a.memPct(), a.swapTotal(), a.swapUsada(),
                 a.swapPct(), a.tempMax(), a.tempSoc(), a.tempCpu(), a.tempGpu(), a.redeRxBps(), a.redeTxBps(),
-                a.discoLeituraBps(), a.discoEscritaBps());
+                a.discoLeituraBps(), a.discoEscritaBps(), a.psiCpu(), a.psiMemoria(), a.psiIo(), a.gpuPct(),
+                a.cpuLimitePct(), a.discoLatenciaMs(), a.discoOcupacaoPct(), a.redeErros());
     }
 
     public void inserirDiscos(LocalDateTime coletadoEm, List<LeitorSistema.EspacoDisco> discos) {
@@ -270,7 +472,10 @@ public class MonitorRepository {
                     "%02d:%02d".formatted(minuto / 60, minuto % 60),
                     rs.getDouble("cpu"), rs.getDouble("cpu_max"), rs.getDouble("mem"), rs.getDouble("swap"),
                     numero(rs, "temp"), numero(rs, "temp_max"), rs.getDouble("carga"), rs.getDouble("iowait"),
-                    rs.getDouble("rx"), rs.getDouble("tx"), rs.getDouble("leitura"), rs.getDouble("escrita"));
+                    rs.getDouble("rx"), rs.getDouble("tx"), rs.getDouble("leitura"), rs.getDouble("escrita"),
+                    numero(rs, "psi_cpu"), numero(rs, "psi_mem"), numero(rs, "psi_io"), numero(rs, "gpu"),
+                    numero(rs, "cpu_limite"), numero(rs, "lat"), numero(rs, "lat_max"), numero(rs, "ocup"),
+                    inteiro(rs, "rede_erros"));
         }, de, ate);
     }
 
@@ -308,12 +513,14 @@ public class MonitorRepository {
         LocalDateTime inicio = de.atStartOfDay();
         LocalDateTime fim = ate.plusDays(1).atStartOfDay();
         Map<LocalDate, Double> discos = temperaturaMaxDiscosPorDia(inicio, fim);
+        Map<LocalDate, ServidorHostDiaResponse.Resumo> hosts = resumoHostPorDia(inicio, fim);
         return jdbc.query("SELECT DATE(coletado_em) AS dia, " + AGREGADOS
                         + " FROM amostra_servidor WHERE coletado_em >= ? AND coletado_em < ?"
                         + " GROUP BY DATE(coletado_em) ORDER BY dia DESC",
                 (rs, i) -> {
                     LocalDate dia = rs.getObject("dia", LocalDate.class);
-                    return new ServidorResumoDiaResponse(dia, estatisticas(rs).comDiscoTemperaturaMax(discos.get(dia)));
+                    return new ServidorResumoDiaResponse(dia, estatisticas(rs).comDiscoTemperaturaMax(discos.get(dia)),
+                            hosts.get(dia));
                 }, inicio, fim);
     }
 
@@ -332,7 +539,14 @@ public class MonitorRepository {
                 new Faixa(numero(rs, "load_min"), numero(rs, "load_med"), numero(rs, "load_max")),
                 numero(rs, "swap_max"), numero(rs, "iowait_med"),
                 inteiro(rs, "rede_rx"), inteiro(rs, "rede_tx"), inteiro(rs, "disco_lido"), inteiro(rs, "disco_escrito"),
-                null);
+                null,
+                new Faixa(null, numero(rs, "psi_cpu_med"), numero(rs, "psi_cpu_max")),
+                new Faixa(null, numero(rs, "psi_mem_med"), numero(rs, "psi_mem_max")),
+                new Faixa(null, numero(rs, "psi_io_med"), numero(rs, "psi_io_max")),
+                new Faixa(null, numero(rs, "gpu_med"), numero(rs, "gpu_max")),
+                numero(rs, "cpu_limite_min"), inteiro(rs, "minutos_limitada"),
+                new Faixa(null, numero(rs, "lat_med"), numero(rs, "lat_max")),
+                numero(rs, "ocup_max"), inteiro(rs, "rede_erros"));
     }
 
     private static Double numero(ResultSet rs, String coluna) throws SQLException {

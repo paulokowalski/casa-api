@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -43,7 +44,10 @@ public class MonitorService {
 
     private final LeitorSistema leitor;
     private final LeitorContainers leitorContainers;
+    private final LeitorHost leitorHost;
     private final MonitorRepository repository;
+    private final EventosHost.Estado estadoHost = new EventosHost.Estado();
+    private static final int MAX_EVENTOS_DIA = 500;
     private final MonitorProperties props;
 
     private volatile LeitorSistema.Contadores anterior;
@@ -51,10 +55,11 @@ public class MonitorService {
     private volatile boolean tabelasProntas;
     private volatile LocalDateTime ultimaGravacaoDiscos;
 
-    public MonitorService(LeitorSistema leitor, LeitorContainers leitorContainers, MonitorRepository repository,
-                          MonitorProperties props) {
+    public MonitorService(LeitorSistema leitor, LeitorContainers leitorContainers, LeitorHost leitorHost,
+                          MonitorRepository repository, MonitorProperties props) {
         this.leitor = leitor;
         this.leitorContainers = leitorContainers;
+        this.leitorHost = leitorHost;
         this.repository = repository;
         this.props = props;
     }
@@ -87,6 +92,44 @@ public class MonitorService {
         LocalDateTime agora = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
         coletarServidor(agora);
         coletarContainers(agora);
+        coletarHost(agora);
+    }
+
+    /** Status do host (arquivo do casa-monitor-host): uma amostra por minuto e os eventos novos. */
+    private void coletarHost(LocalDateTime agora) {
+        if (!prepararTabelas()) return;
+        try {
+            Long boot = leitor.bootEpoch();
+            List<EventosHost.Evento> eventos = new ArrayList<>();
+            if (boot != null) eventos.add(EventosHost.boot(boot));
+            Map<String, Object> host = leitorHost.habilitado() ? leitorHost.ler() : null;
+            if (host != null && !LeitorHost.desatualizado(host, java.time.Instant.now())) {
+                repository.inserirHost(AmostraHost.de(agora, host));
+                eventos.addAll(EventosHost.calcular(agora, host, estadoHost));
+            }
+            int novos = repository.inserirEventos(eventos);
+            if (novos > 0) log.info("Monitoramento: {} evento(s) novo(s) do host", novos);
+        } catch (RuntimeException e) {
+            log.warn("Monitoramento: falha na coleta do host das {}: {}", agora.toLocalTime(), e.getMessage());
+        }
+    }
+
+    /** Status atual do host para a tela; 503 se o arquivo não existe. */
+    public Map<String, Object> host() {
+        if (!leitorHost.habilitado()) {
+            throw new MonitorIndisponivelException("Status do host desligado (MONITOR_HOST_ARQUIVO vazio)", null);
+        }
+        Map<String, Object> h = leitorHost.lerParaTela();
+        if (h == null) throw new MonitorIndisponivelException("Status do host indisponível (timer casa-monitor-host parado?)", null);
+        return h;
+    }
+
+    /** Eventos de um período, do mais recente para o mais antigo. */
+    public List<com.kowalski.casaapi.api.v1.response.ServidorEventoResponse> eventos(LocalDate de, LocalDate ate) {
+        Assert.isTrue(!de.isAfter(ate), "A data inicial deve ser anterior ou igual à final");
+        Assert.isTrue(ChronoUnit.DAYS.between(de, ate) < MAX_DIAS_CONSULTA,
+                "Consulte no máximo " + MAX_DIAS_CONSULTA + " dias por vez");
+        return historico(() -> repository.eventos(de.atStartOfDay(), ate.plusDays(1).atStartOfDay(), MAX_EVENTOS_DIA));
     }
 
     private void coletarServidor(LocalDateTime agora) {
@@ -127,6 +170,7 @@ public class MonitorService {
         try {
             int apagadas = repository.apagarAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
             if (apagadas > 0) log.info("Monitoramento: {} amostras com mais de {} dias apagadas", apagadas, props.retencaoDias());
+            repository.apagarHostAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
             int containers = repository.apagarContainersAntesDe(
                     LocalDate.now().minusDays(props.retencaoContainersDias()).atStartOfDay());
             if (containers > 0) {
@@ -167,7 +211,8 @@ public class MonitorService {
         LocalDateTime ate = data.plusDays(1).atStartOfDay();
         return historico(() -> new ServidorDiaResponse(data, repository.resumo(de, ate), repository.serie(de, ate),
                 repository.discos(de, ate), repository.containers(de, ate), repository.serieContainers(de, ate),
-                repository.serieDiscos(de, ate)));
+                repository.serieDiscos(de, ate), repository.resumoHost(de, ate), repository.serieHost(de, ate),
+                repository.eventos(de, ate, MAX_EVENTOS_DIA)));
     }
 
     public List<ServidorResumoDiaResponse> dias(LocalDate de, LocalDate ate) {
@@ -260,7 +305,17 @@ public class MonitorService {
                 new ServidorAgoraResponse.DiscoIo(
                         Math.round(Math.max(atual.discoLidos() - antes.discoLidos(), 0) / seg),
                         Math.round(Math.max(atual.discoEscritos() - antes.discoEscritos(), 0) / seg)),
-                containers);
+                containers,
+                new ServidorAgoraResponse.Pressao(inst.pressao().cpu(), inst.pressao().memoria(), inst.pressao().memoriaTotal(),
+                        inst.pressao().io(), inst.pressao().ioTotal()),
+                inst.gpuPct(),
+                inst.clusters().stream().map(c -> new ServidorAgoraResponse.Cluster(c.nome(), c.nucleos(), c.atualMhz(),
+                        c.maxMhz(), c.limiteMhz(), arredondar(c.limitePct()))).toList(),
+                arredondar(inst.cpuLimitePct()),
+                atual.atividadeDiscos(antes).stream().map(d -> new ServidorAgoraResponse.DiscoAtividade(d.disco(),
+                        arredondar(d.ocupacaoPct()), arredondar(d.latenciaMs()))).toList(),
+                arredondar(atual.latenciaDiscosMs(antes)),
+                atual.redeErrosDesde(antes));
     }
 
     private static double arredondar(double v) {

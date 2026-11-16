@@ -10,7 +10,9 @@ public record Amostra(LocalDateTime coletadoEm, int intervaloSeg,
                       long swapTotal, long swapUsada, double swapPct,
                       Double tempMax, Double tempSoc, Double tempCpu, Double tempGpu,
                       double redeRxBps, double redeTxBps,
-                      double discoLeituraBps, double discoEscritaBps) {
+                      double discoLeituraBps, double discoEscritaBps,
+                      Double psiCpu, Double psiMemoria, Double psiIo, Double gpuPct, Double cpuLimitePct,
+                      Double discoLatenciaMs, Double discoOcupacaoPct, long redeErros) {
 
     /** Calcula a amostra a partir de duas leituras dos contadores e dos valores instantâneos. */
     public static Amostra de(LocalDateTime coletadoEm, LeitorSistema.Contadores antes, LeitorSistema.Contadores atual,
@@ -32,6 +34,8 @@ public record Amostra(LocalDateTime coletadoEm, int intervaloSeg,
                 inst.temperaturaMax(), inst.temperatura("soc"), inst.temperatura("core", "cpu"), inst.temperatura("gpu"),
                 rx / seg, tx / seg,
                 Math.max(atual.discoLidos() - antes.discoLidos(), 0) / seg,
-                Math.max(atual.discoEscritos() - antes.discoEscritos(), 0) / seg);
+                Math.max(atual.discoEscritos() - antes.discoEscritos(), 0) / seg,
+                inst.pressao().cpu(), inst.pressao().memoria(), inst.pressao().io(), inst.gpuPct(), inst.cpuLimitePct(),
+                atual.latenciaDiscosMs(antes), atual.ocupacaoMaxDiscosPct(antes), atual.redeErrosDesde(antes));
     }
 }

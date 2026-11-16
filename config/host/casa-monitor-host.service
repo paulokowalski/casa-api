@@ -1,0 +1,9 @@
+[Unit]
+Description=Status do host para a tela Saúde do servidor (casa-api)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/casa-monitor-host
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=60
