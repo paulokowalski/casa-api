@@ -14,6 +14,7 @@ pessoas/acessos e monitoramento (geração solar, histórico FIPE e saúde do se
 - [Configuração](#configuração)
 - [Banco de dados e migrations](#banco-de-dados-e-migrations)
 - [Monitoramento do servidor](#monitoramento-do-servidor)
+- [Crescimento das crianças](#crescimento-das-crianças)
 - [Autenticação e permissões](#autenticação-e-permissões)
 - [Swagger / OpenAPI](#swagger--openapi)
 - [Endpoints](#endpoints)
@@ -88,6 +89,11 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V3__login.sql` | Senha, papel e ativo em `pessoa` (login por pessoa) |
 | `V4__indices_compras.sql` | Índices de `compra_parcela` (compra e data) e de `compra` (pessoa) |
 | `V5__remove_funcao_remove_zeros_esquerda.sql` | Remove a função SQL que os filtros antigos usavam |
+| `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
+| `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
+| `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
+| `db/crescimento/V4__resumo_ia.sql` | Resumos do mês gerados por IA (um por criança e mês de vida) |
+| `db/crescimento/V5__perguntas_ia.sql` | Perguntas dos pais à IA sobre um mês e as respostas |
 
 Para aplicar um script no servidor:
 
@@ -173,6 +179,85 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
   SQL
   ```
   A senha vai em `MONITOR_DATASOURCE_PASSWORD` no `.env`.
+
+## Crescimento das crianças
+
+Módulo `com.kowalski.casaapi.crescimento`: famílias, crianças, medidas com os percentis da OMS e fotos.
+Foi feito para **poder virar um produto separado** (com app iOS/Android) sem reescrever:
+
+- **Código isolado:** nada do módulo importa outros pacotes do casa-api (garantido pelo `ArquiteturaCrescimentoTest`).
+  A ligação com o login é pelas interfaces `crescimento.identidade.UsuarioAtual` e `DiretorioUsuarios`, implementadas
+  em `config/crescimento/IdentidadeCrescimento` (pessoa logada do casa). No produto, só essa classe muda.
+- **Banco próprio:** schema `crescimento` (script `src/main/resources/db/crescimento/V1__estrutura.sql`, aplicado à mão
+  como os demais). Nenhuma chave estrangeira para tabelas do casa: o usuário é guardado só pelo id.
+- **Família como unidade:** cada família tem membros `RESPONSAVEL` (alteram tudo) ou `LEITOR` (avós, só veem). Quem
+  não é membro recebe 404, para não revelar que a criança existe. O ADMIN do casa **não** vê famílias de que não faz parte.
+- **Curvas da OMS:** tabelas LMS oficiais por dia de vida, de 0 a 5 anos (`resources/crescimento/oms`, do pacote
+  [anthro](https://github.com/WorldHealthOrganization/anthro) da OMS), com escore-z, percentil e o ajuste da OMS além de
+  ±3 DP no peso. Prematuros (< 37 semanas) usam a idade corrigida até os 2 anos.
+- **Alertas** (`/resumo`): medida fora de P3–P97, duas linhas de percentil cruzadas, peso que caiu, ganho de peso
+  abaixo do esperado e pesagem atrasada.
+- **Fotos em disco** atrás de `FotoStorage` (`DiscoFotoStorage` hoje; S3/MinIO no produto):
+  - pasta `CRESCIMENTO_FOTOS_DIRETORIO` (no servidor, `/mnt/media/crescimento` montada em `/dados/crescimento`), com o
+    arquivo `.armazenamento-crescimento`. Sem ele a API responde 503 em vez de gravar no lugar errado (disco caído);
+  - cada foto vira 3 JPEGs (`original`, `media` 1600 px, `mini` 480 px) em `{familia}/{crianca}/{ano}/{uuid}-{variante}.jpg`,
+    endireitados pela orientação EXIF e **sem metadados** (a localização GPS é descartada). A data em que foi tirada é
+    guardada no banco. A mesma foto enviada de novo não é duplicada (SHA-256);
+  - as imagens são servidas por **links assinados** (HMAC, `CRESCIMENTO_LINK_SEGREDO`, padrão = `JWT_SECRET`) que valem
+    de 6 a 12 h e funcionam em `<img>` sem login; renove com `GET /v1/crescimento/fotos/{id}`;
+  - limite de 25 MB por foto (Spring) e 30 MB no nginx do front; fotos acima de 16 MP são reduzidas na leitura
+    (`CRESCIMENTO_FOTO_MAX_MEGAPIXELS`), uma por vez, para caber nos 512 MB de heap;
+  - backup: `/mnt/media/crescimento` entra no restic diário (`/usr/local/sbin/backup-servidor.sh`), com a cópia no hd320;
+    se `/mnt/media` cair e voltar, o `remontar-discos.sh` reinicia o casa-api para o bind enxergar o disco de novo.
+
+| Endpoint (`/v1/crescimento/...`) | |
+|---|---|
+| `GET/POST familias`, `PUT familias/{id}/membros`, `DELETE familias/{id}/membros/{usuarioId}` | Famílias e membros |
+| `GET/POST familias/{id}/criancas`, `GET/PUT/DELETE criancas/{id}` | Crianças (o PUT também define a foto de perfil) |
+| `GET/POST criancas/{id}/medicoes`, `PUT/DELETE criancas/{id}/medicoes/{medicaoId}` | Medidas com escore-z e percentil |
+| `GET criancas/{id}/resumo` | Últimas medidas, ganho de peso e alertas |
+| `GET criancas/{id}/curvas/{PESO\|COMPRIMENTO\|PERIMETRO}` | Linhas P3–P97 da OMS e os pontos da criança |
+| `POST criancas/{id}/fotos` (multipart, campo `arquivo`), `GET criancas/{id}/fotos`, `GET/DELETE fotos/{id}` | Fotos |
+| `GET fotos/{id}/arquivo?v=MINI\|MEDIA\|ORIGINAL&exp=&sig=` | A imagem (sem login; link assinado) |
+| `GET criancas/{id}/linha-do-tempo?tipo=&soComFotos=&pagina=&tamanho=` | Registros e medições avulsas, do mais recente ao mais antigo, com fotos, mês de vida e ganho de peso |
+| `POST criancas/{id}/registros`, `GET/PUT/DELETE criancas/{id}/registros/{registroId}` | Diário: `PESAGEM`, `MOMENTO` ou `CONSULTA` (profissional, retorno), com fotos e medidas |
+| `GET criancas/{id}/album` | Mêsversários (situação, capa, peso, aviso de mêsversário), primeiras vezes e momentos especiais |
+| `PUT/DELETE criancas/{id}/album/{chave}`, `POST criancas/{id}/album/especiais` | Guardar fotos num lugar do álbum (`nascimento`, `mes-3`, `ano-1`, `primeira-sorriso`...) |
+| `GET criancas/{id}/marcos`, `PUT/DELETE criancas/{id}/marcos/{marcoId}` | Marcos do desenvolvimento por fase (Caderneta da Criança), com idade corrigida e brincadeiras |
+| `GET criancas/{id}/vacinas`, `PUT/DELETE criancas/{id}/vacinas/{vacinaId}`, `POST criancas/{id}/vacinas/extras` | Carteira de vacinação (calendário do SUS) e vacinas extras |
+| `GET criancas/{id}/agenda` | Vacinas atrasadas e dos próximos 60 dias, retorno marcado e próximo mêsversário |
+| `GET criancas/{id}/resumos`, `POST/DELETE criancas/{id}/resumos/{mes}` | Resumo do mês de vida com perguntas para a consulta, gerado por IA só quando pedido (`mes` 0 = 1º mês) |
+| `POST criancas/{id}/resumos/{mes}/perguntas`, `DELETE criancas/{id}/resumos/perguntas/{id}` | Pergunta dos pais à IA sobre o mês (só assuntos da criança; outros dão 400), guardada com a resposta |
+
+**Diário e álbum:** um lugar do álbum é um registro do diário com `album_chave` (no máximo um por lugar e criança),
+então tudo o que vai para o álbum aparece também na linha do tempo. As fotos são enviadas antes (`POST .../fotos`) e
+ligadas ao registro por `fotoIds`, na ordem; foto tirada de um registro é apagada (a de perfil só fica solta). Medidas
+informadas num registro viram uma medição com percentil. Os mêsversários seguem `LocalDate.plusMonths` (quem nasceu em
+31/01 faz 1 mês em 28/02), também usado no mês de vida da linha do tempo. Script: `db/crescimento/V2__diario_e_album.sql`.
+
+**Marcos e vacinas:** os catálogos ficam no código (`CatalogoMarcos`, `CatalogoVacinas`, com versão); o banco guarda
+só o que foi registrado, pelo id do catálogo, que nunca deve ser reaproveitado com outro sentido. Marcos usam a idade
+corrigida dos prematuros; vacinas, a idade real. Script: `db/crescimento/V3__marcos_e_vacinas.sql`.
+
+**Resumo do mês com IA:** `ResumoService` monta um texto com as medidas (e percentis), o diário, os marcos e as
+vacinas do mês, sem fotos, sem links, sem o nome da criança (trocado por "a criança") e sem o nome dos profissionais,
+e `GeradorIa.resumirMes` devolve o resumo e de 3 a 6 perguntas para o pediatra. A IA só faz essa tarefa: as instruções
+ficam no serviço de IA, não aqui. No casa, `CasaIaGerador` chama o container `casa-ia` (`/opt/projetos/casa-ia`, ver o
+README dele para as barreiras), que roda o Claude Code sem ferramentas com a assinatura pessoal
+(`CLAUDE_CODE_OAUTH_TOKEN`, vale 1 ano: renovar com `claude setup-token`). Limite de 5 resumos por criança por dia.
+`BloqueioRedeIaFilter` recusa toda requisição vinda do IP do casa-ia (`CRESCIMENTO_IA_REDE_BLOQUEADA`), e
+`ArquiteturaCrescimentoTest` garante que o pacote `ia` não usa nada de fotos. Configuração: `CRESCIMENTO_IA_URL` (sem
+ela o botão some) e `CRESCIMENTO_IA_SEGREDO` (igual a `IA_SEGREDO` do casa-ia). A assinatura é só para uso pessoal:
+num produto para outras famílias, implemente `GeradorIa` com chave de API. Script: `db/crescimento/V4__resumo_ia.sql`.
+
+**Perguntas à IA:** abaixo do resumo, os responsáveis podem perguntar sobre a criança naquele mês (até 500 caracteres,
+20 por criança por dia). A IA recebe os mesmos dados do resumo, o resumo e as 4 últimas perguntas; o serviço de IA
+marca `foraDoAssunto` para o que não for crescimento, saúde e cuidados da criança, e a casa-api recusa sem guardar.
+Apagar o resumo apaga as perguntas do mês. Script: `db/crescimento/V5__perguntas_ia.sql`.
+
+**Para levar a outro projeto:** copie o pacote `crescimento`, `resources/crescimento`, `db/crescimento` e os testes;
+implemente `UsuarioAtual`/`DiretorioUsuarios` com o login do produto; exporte o schema (`pg_dump -n crescimento`) e a
+pasta das fotos.
 
 ## Autenticação e permissões
 
@@ -299,6 +384,19 @@ nativas só são exercitadas com a aplicação rodando.
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 1.1.0 — 22/11/2026
+
+Novo módulo Crescimento para acompanhar as crianças da família: medidas com curvas da OMS, diário, álbum, fotos, marcos do desenvolvimento, vacinas, agenda e resumo do mês feito por IA.
+
+- Famílias e crianças em /v1/crescimento/familias e /v1/crescimento/criancas/{id}, com membros nos papéis RESPONSAVEL ou LEITOR; o usuário do módulo é a pessoa logada no casa
+- Medidas em /medicoes, com avaliação pelas tabelas da OMS em /resumo e curvas em /curvas/{indicador}
+- Diário com pesagens, momentos e consultas (/registros e /linha-do-tempo) e álbum com mêsversários, primeiras vezes e momentos especiais (/album)
+- Fotos enviadas por multipart (até 25 MB), guardadas em disco nas versões original, média e mini; o arquivo da foto é servido por link assinado com HMAC e prazo de validade, sem precisar de login
+- Marcos do desenvolvimento (/marcos), cartão de vacinas com doses extras (/vacinas) e agenda com vacinas atrasadas ou dos próximos 60 dias, retorno marcado e próximo mêsversário (/agenda)
+- Resumo do mês de vida e perguntas dos pais respondidas pelo container casa-ia (/resumos/{mes} e /resumos/{mes}/perguntas); requisições vindas da rede da IA são recusadas
+- Novas variáveis de ambiente, todas com valor padrão: CRESCIMENTO_FOTOS_DIRETORIO, CRESCIMENTO_LINK_SEGREDO, CRESCIMENTO_LINK_VALIDADE, CRESCIMENTO_FOTO_MAX_MEGAPIXELS, CRESCIMENTO_IA_URL, CRESCIMENTO_IA_SEGREDO, CRESCIMENTO_IA_TEMPO e CRESCIMENTO_IA_REDE_BLOQUEADA. A pasta das fotos precisa ter o arquivo .armazenamento-crescimento
+- Migrações a aplicar à mão no servidor, em ordem: src/main/resources/db/crescimento/V1__estrutura.sql até V5__perguntas_ia.sql (criam o schema crescimento)
 
 ### 1.0.1 — 22/11/2026
 

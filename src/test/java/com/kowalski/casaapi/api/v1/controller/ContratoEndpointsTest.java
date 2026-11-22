@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest
 @AutoConfigureMockMvc(addFilters = false)
-@Import(UsuarioLogado.class)
+@Import({UsuarioLogado.class, com.kowalski.casaapi.crescimento.comum.CrescimentoConfig.class})
 class ContratoEndpointsTest {
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
@@ -61,6 +61,17 @@ class ContratoEndpointsTest {
     @MockitoBean AuthService authService;
     @MockitoBean PessoaRepository pessoaRepository;
     @MockitoBean MonitorService monitorService;
+    // módulo crescimento: controllers carregados pelo @WebMvcTest
+    @MockitoBean com.kowalski.casaapi.crescimento.familia.FamiliaService familiaService;
+    @MockitoBean com.kowalski.casaapi.crescimento.crianca.CriancaService criancaService;
+    @MockitoBean com.kowalski.casaapi.crescimento.medida.MedicaoService medicaoService;
+    @MockitoBean com.kowalski.casaapi.crescimento.ia.ResumoService resumoService;
+    @MockitoBean com.kowalski.casaapi.crescimento.foto.FotoService fotoService;
+    @MockitoBean com.kowalski.casaapi.crescimento.diario.RegistroService registroService;
+    @MockitoBean com.kowalski.casaapi.crescimento.album.AlbumService albumService;
+    @MockitoBean com.kowalski.casaapi.crescimento.marco.MarcoService marcoService;
+    @MockitoBean com.kowalski.casaapi.crescimento.vacina.VacinaService vacinaService;
+    @MockitoBean com.kowalski.casaapi.crescimento.agenda.AgendaService agendaService;
 
     @BeforeEach
     void ana() {

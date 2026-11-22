@@ -12,7 +12,7 @@
 
 	<groupId>com.kowalski</groupId>
 	<artifactId>casa-api</artifactId>
-	<version>1.0.1</version>
+	<version>1.1.0</version>
 	<name>casa-api</name>
 
 	<properties>
@@ -71,6 +71,13 @@
 			<groupId>org.mariadb.jdbc</groupId>
 			<artifactId>mariadb-java-client</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Módulo crescimento: lê orientação e data das fotos (EXIF) -->
+		<dependency>
+			<groupId>com.drewnoakes</groupId>
+			<artifactId>metadata-extractor</artifactId>
+			<version>2.19.0</version>
 		</dependency>
 
 		<dependency>

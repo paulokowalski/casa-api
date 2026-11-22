@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.config;
 
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
+import com.kowalski.casaapi.crescimento.foto.FotoController;
 import com.kowalski.casaapi.config.security.PessoaJwtConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -38,6 +39,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/auth/login").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+                // fotos do módulo crescimento: a assinatura do link (HMAC com validade) é a autorização
+                .requestMatchers(HttpMethod.GET, FotoController.CAMINHO_ARQUIVO).permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/geracao-solar").hasAnyRole("INTEGRACAO", ADMIN)
                 .requestMatchers(HttpMethod.POST, "/v1/pessoas").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/v1/pessoas/**").hasRole(ADMIN)
