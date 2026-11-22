@@ -40,6 +40,11 @@ spring:
                             LOG_QUERIES_SLOWER_THAN_MS: 1000
     hibernate:
         ddl-auto: none
+    servlet:
+        multipart:
+            # fotos do módulo crescimento (até 25 MB cada)
+            max-file-size: 25MB
+            max-request-size: 26MB
     jackson:
         serialization:
             FAIL_ON_EMPTY_BEANS: false
@@ -90,3 +95,19 @@ monitor:
         url: ${MONITOR_DATASOURCE_URL:jdbc:mariadb://mariadb:3306/casa_monitor}
         username: ${MONITOR_DATASOURCE_USERNAME:casa_monitor}
         password: ${MONITOR_DATASOURCE_PASSWORD:}
+
+# Módulo crescimento (acompanhamento das crianças). As fotos ficam em disco, numa pasta com o arquivo
+# .armazenamento-crescimento (sem ele o módulo recusa gravar: o disco pode ter caído).
+crescimento:
+    fotos-diretorio: ${CRESCIMENTO_FOTOS_DIRETORIO:/dados/crescimento}
+    # chave dos links temporários das fotos (>= 32 caracteres); vazio usa a do JWT
+    link-segredo: ${CRESCIMENTO_LINK_SEGREDO:${JWT_SECRET:}}
+    link-validade: ${CRESCIMENTO_LINK_VALIDADE:6h}
+    foto-max-megapixels: ${CRESCIMENTO_FOTO_MAX_MEGAPIXELS:16}
+    # resumo do mês com IA (container casa-ia); sem url fica desligado
+    ia:
+        url: ${CRESCIMENTO_IA_URL:}
+        segredo: ${CRESCIMENTO_IA_SEGREDO:}
+        tempo: ${CRESCIMENTO_IA_TEMPO:58s} # o nginx do casa corta em 60s
+        # a rede do casa-ia: requisições vindas dela são recusadas (a IA nunca chama a API nem vê fotos)
+        rede-bloqueada: ${CRESCIMENTO_IA_REDE_BLOQUEADA:}
