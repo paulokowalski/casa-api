@@ -165,6 +165,74 @@ class MonitorHostTest {
                 .satisfies(e -> assertThat(e.mensagem()).isEqualTo("Internet voltou (fora por ~4 min)"));
     }
 
+    private Map<String, Object> vpn(long ipadRx, String ipadHandshake, String dono) {
+        return host("""
+                {"rede":{"tailscale":{"online":true,"usuario":"eu@casa","aparelhos":[
+                  {"id":"n1","nome":"ipad157","so":"iOS","ip":"100.71.41.49","dono":"%s","online":true,
+                   "ultimoHandshake":%s,"recebidos":%d,"enviados":%d,"criado":"2025-01-01T00:00:00Z"},
+                  {"id":"n2","nome":"desktop","so":"windows","ip":"100.109.174.99","dono":"eu@casa","online":false,
+                   "ultimoHandshake":null,"recebidos":0,"enviados":0,"criado":"2025-01-01T00:00:00Z"}]}}}
+                """.formatted(dono, ipadHandshake == null ? "null" : "\"" + ipadHandshake + "\"", ipadRx, ipadRx / 2));
+    }
+
+    private static List<String> mensagens(List<EventosHost.Evento> eventos) {
+        return eventos.stream().filter(e -> e.tipo().equals("tailscale")).map(EventosHost.Evento::mensagem).toList();
+    }
+
+    @Test
+    void acessoPelaVpnComecaComTrafegoETerminaDepoisDeOcioso() {
+        var estado = new EventosHost.Estado();
+        var t = LocalDateTime.of(2026, 11, 16, 15, 0);
+
+        assertThat(mensagens(EventosHost.calcular(t, vpn(0, null, "eu@casa"), estado))).isEmpty(); // base
+
+        // tráfego novo com o servidor: começou a acessar (online sozinho não conta: o desktop não aparece)
+        assertThat(mensagens(EventosHost.calcular(t.plusMinutes(1), vpn(2048, "2026-11-16T18:01:00Z", "eu@casa"), estado)))
+                .containsExactly("ipad157 (iOS · 100.71.41.49) começou a acessar o servidor pela VPN");
+        // continua acessando: nada novo
+        assertThat(mensagens(EventosHost.calcular(t.plusMinutes(3), vpn(1024 * 1024 * 3, "2026-11-16T18:01:00Z", "eu@casa"), estado)))
+                .isEmpty();
+        // parado há menos de 5 min: ainda conta como acesso
+        assertThat(mensagens(EventosHost.calcular(t.plusMinutes(7), vpn(1024 * 1024 * 3, "2026-11-16T18:01:00Z", "eu@casa"), estado)))
+                .isEmpty();
+        var fim = EventosHost.calcular(t.plusMinutes(8), vpn(1024 * 1024 * 3, "2026-11-16T18:01:00Z", "eu@casa"), estado);
+        assertThat(mensagens(fim)).containsExactly(
+                "ipad157 (iOS · 100.71.41.49) parou de acessar o servidor pela VPN (2 min, 4,5 MB trocados)");
+
+        // contador zerado pelo Tailscale e tráfego de novo: novo acesso; aparelho de outra conta mostra o dono
+        assertThat(mensagens(EventosHost.calcular(t.plusMinutes(20), vpn(100, "2026-11-16T18:20:00Z", "visita@x"), estado)))
+                .containsExactly("ipad157 (iOS · 100.71.41.49 · de visita@x) começou a acessar o servidor pela VPN");
+    }
+
+    @Test
+    void acessoEmAndamentoQuandoAApiSobeNaoTemInicio() {
+        var estado = new EventosHost.Estado();
+        var t = LocalDateTime.of(2026, 11, 16, 15, 0);
+        String agoraUtc = t.atZone(java.time.ZoneId.systemDefault()).toInstant().toString();
+
+        assertThat(mensagens(EventosHost.calcular(t, vpn(500, agoraUtc, "eu@casa"), estado))).isEmpty();
+        assertThat(mensagens(EventosHost.calcular(t.plusMinutes(6), vpn(500, agoraUtc, "eu@casa"), estado)))
+                .containsExactly("ipad157 (iOS · 100.71.41.49) parou de acessar o servidor pela VPN (0 B trocados desde que a API subiu)");
+    }
+
+    @Test
+    void aparelhoNovoNaTailnetTemChaveEstavel() {
+        var t = LocalDateTime.of(2026, 11, 16, 15, 0);
+        var h = host("""
+                {"rede":{"tailscale":{"usuario":"eu@casa","aparelhos":[
+                  {"id":"n9","nome":"celular","so":"android","ip":"100.1.2.3","dono":"eu@casa","criado":"2026-11-15T12:00:00Z"}]}}}
+                """);
+        var a = EventosHost.calcular(t, h, new EventosHost.Estado());
+        var b = EventosHost.calcular(t.plusMinutes(1), h, new EventosHost.Estado());
+        assertThat(a).filteredOn(e -> e.tipo().equals("tailscale")).singleElement().satisfies(e -> {
+            assertThat(e.mensagem()).isEqualTo("Aparelho novo na rede Tailscale: celular (android · 100.1.2.3)");
+            assertThat(e.nivel()).isEqualTo(EventosHost.ATENCAO);
+        });
+        assertThat(a).extracting(EventosHost.Evento::chave).isEqualTo(b.stream().map(EventosHost.Evento::chave).toList());
+        // criado há mais de 7 dias: não é novo
+        assertThat(mensagens(EventosHost.calcular(t.plusDays(8), h, new EventosHost.Estado()))).isEmpty();
+    }
+
     @Test
     void arquivoVelhoEstaDesatualizado() {
         var h = host(HOST.formatted("2026-11-15T10:00:00-03:00", "[]", true, 0));

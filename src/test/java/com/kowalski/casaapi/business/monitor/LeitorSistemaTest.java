@@ -243,6 +243,33 @@ class LeitorSistemaTest {
     }
 
     @Test
+    void espacoEDispositivoVemDasMontagensDoHost() throws IOException {
+        // o caminho é o ponto de montagem no host; nada é medido localmente (o "8:17" não existe aqui)
+        escrever(raiz.resolve("smart.json"), """
+                {"lidoEm":"%s","discos":[
+                  {"dispositivo":"sdb","modelo":"WDC WD30PURX","tipo":"hdd","temperatura":57,"estado":"ativo",
+                   "dispositivos":["8:16","8:17"]}],
+                 "montagens":[
+                  {"ponto":"/","dispositivo":"179:2","total":1000,"usado":100,"disponivel":850},
+                  {"ponto":"%s","dispositivo":"8:17","total":4000,"usado":1000,"disponivel":3000},
+                  {"ponto":"/sem/espaco","dispositivo":"8:1"}]}
+                """.formatted(java.time.OffsetDateTime.now(), raiz + "/"));
+
+        // "Inexistente" e "Desmontado" não estão nas montagens do host: ficam de fora
+        assertThat(leitor().instantaneo().discos()).singleElement().satisfies(d -> {
+            assertThat(d.nome()).isEqualTo("Raiz");
+            assertThat(d.total()).isEqualTo(4000);
+            assertThat(d.usado()).isEqualTo(1000);
+            assertThat(d.pct()).isEqualTo(25.0);
+            assertThat(d.dispositivo()).isEqualTo("8:17");
+            assertThat(d.modelo()).isEqualTo("WDC WD30PURX");
+            assertThat(d.temperatura()).isEqualTo(57.0);
+        });
+        assertThat(LeitorSistema.lerArquivoSmart(raiz.resolve("smart.json"), java.time.OffsetDateTime.now())
+                .montagens()).hasSize(2); // a sem espaço é ignorada
+    }
+
+    @Test
     void smartVelhoInvalidoOuAusenteEhIgnorado() throws IOException {
         Path arquivo = raiz.resolve("smart.json");
         var agora = java.time.OffsetDateTime.parse("2026-11-15T12:00:00-03:00");

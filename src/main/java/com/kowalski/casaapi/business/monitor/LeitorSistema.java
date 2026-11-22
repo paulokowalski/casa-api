@@ -189,6 +189,15 @@ public class LeitorSistema {
                              List<String> dispositivos, SaudeSmart saude) {
     }
 
+    /** Uma montagem do host no arquivo do SMART: ponto, major:minor e espaço em bytes (como o df). */
+    public record MontagemHost(String ponto, String dispositivo, long total, long usado, long disponivel) {
+    }
+
+    /** Conteúdo do arquivo do SMART; listas vazias quando o arquivo não existe, está inválido ou velho demais. */
+    public record ArquivoSmart(List<DiscoSmart> discos, List<MontagemHost> montagens) {
+        static final ArquivoSmart VAZIO = new ArquivoSmart(List.of(), List.of());
+    }
+
     /** Leituras do SMART mais velhas que isso são ignoradas (o timer do host parou). */
     static final Duration SMART_VALIDADE = Duration.ofMinutes(5);
 
@@ -489,24 +498,30 @@ public class LeitorSistema {
     }
 
     /**
-     * Espaço dos discos configurados. Caminhos que caem num sistema de arquivos já medido são ignorados: assim um
-     * disco externo desmontado (cuja pasta passa a ficar no disco do sistema) não aparece com os números do sistema.
+     * Espaço dos discos configurados.
+     * <p>
+     * Quando o arquivo do SMART traz as montagens do host, o caminho de cada disco é o ponto de montagem no host
+     * (ex.: {@code /mnt/media}) e espaço e dispositivo vêm de lá: a API não precisa enxergar os discos e nunca fica
+     * presa a uma montagem antiga (um bind mount no container continua apontando para o sistema de arquivos de
+     * quando o container subiu, mesmo depois de o disco cair e ser remontado no host). Disco desmontado não aparece.
+     * <p>
+     * Sem essas montagens (arquivo ausente ou velho), mede o caminho localmente. Caminhos que caem num sistema de
+     * arquivos já medido são ignorados: assim um disco externo desmontado (cuja pasta passa a ficar no disco do
+     * sistema) não aparece com os números do sistema.
      */
     private List<EspacoDisco> lerDiscos() {
-        List<DiscoSmart> smart = lerSmart(arquivoSmart, OffsetDateTime.now());
+        ArquivoSmart arquivo = lerArquivoSmart(arquivoSmart, OffsetDateTime.now());
+        List<DiscoSmart> smart = arquivo.discos();
         List<EspacoDisco> lista = new ArrayList<>();
         Set<String> medidos = new HashSet<>();
         for (DiscoMonitorado d : discos) {
-            File f = new File(d.caminho());
-            long total = f.getTotalSpace();
-            if (total <= 0) continue;
-            long livre = f.getFreeSpace();
-            long disponivel = f.getUsableSpace();
-            if (!medidos.add(total + ":" + livre + ":" + disponivel)) continue;
-            long usado = total - livre;
+            MontagemHost m = arquivo.montagens().isEmpty() ? medirLocal(d.caminho()) : montagem(arquivo.montagens(), d.caminho());
+            if (m == null || m.total() <= 0) continue;
+            long total = m.total(), usado = m.usado(), disponivel = m.disponivel();
+            if (!medidos.add(m.dispositivo() != null ? m.dispositivo() : total + ":" + usado + ":" + disponivel)) continue;
             // mesmo cálculo do df: o espaço reservado ao root não conta como disponível
             double pct = usado + disponivel > 0 ? limitar(100.0 * usado / (usado + disponivel)) : 0;
-            String dispositivo = dispositivo(f.toPath());
+            String dispositivo = m.dispositivo();
             DiscoSmart s = dispositivo == null ? null : smart.stream()
                     .filter(x -> x.dispositivos().contains(dispositivo)).findFirst().orElse(null);
             lista.add(s == null
@@ -515,6 +530,24 @@ public class LeitorSistema {
                             s.temperatura(), s.estado(), s.saude()));
         }
         return lista;
+    }
+
+    /** A montagem do host cujo ponto é o caminho (barra no fim é ignorada), ou nulo se ele não está montado. */
+    static MontagemHost montagem(List<MontagemHost> montagens, String caminho) {
+        String alvo = semBarraFinal(caminho);
+        return montagens.stream().filter(m -> semBarraFinal(m.ponto()).equals(alvo)).findFirst().orElse(null);
+    }
+
+    private static String semBarraFinal(String p) {
+        return p.length() > 1 && p.endsWith("/") ? p.substring(0, p.length() - 1) : p;
+    }
+
+    /** Espaço e dispositivo do caminho medidos aqui mesmo (fora do servidor ou sem o arquivo do SMART). */
+    private static MontagemHost medirLocal(String caminho) {
+        File f = new File(caminho);
+        long total = f.getTotalSpace();
+        if (total <= 0) return null;
+        return new MontagemHost(caminho, dispositivo(f.toPath()), total, total - f.getFreeSpace(), f.getUsableSpace());
     }
 
     /** major:minor do sistema de arquivos onde o caminho está (o st_dev do stat), ou nulo se não der para saber. */
@@ -536,11 +569,25 @@ public class LeitorSistema {
 
     /** Discos do arquivo do SMART; lista vazia se o arquivo não existe, está inválido ou velho demais. */
     static List<DiscoSmart> lerSmart(Path arquivo, OffsetDateTime agora) {
-        if (arquivo == null || !Files.isReadable(arquivo)) return List.of();
+        return lerArquivoSmart(arquivo, agora).discos();
+    }
+
+    /** Discos e montagens do arquivo do SMART; vazio se o arquivo não existe, está inválido ou velho demais. */
+    static ArquivoSmart lerArquivoSmart(Path arquivo, OffsetDateTime agora) {
+        if (arquivo == null || !Files.isReadable(arquivo)) return ArquivoSmart.VAZIO;
         try {
             Map<?, ?> json = JsonMapper.shared().readValue(arquivo, Map.class);
             OffsetDateTime lidoEm = OffsetDateTime.parse(String.valueOf(json.get("lidoEm")));
-            if (lidoEm.isBefore(agora.minus(SMART_VALIDADE))) return List.of();
+            if (lidoEm.isBefore(agora.minus(SMART_VALIDADE))) return ArquivoSmart.VAZIO;
+            List<MontagemHost> montagens = new ArrayList<>();
+            if (json.get("montagens") instanceof List<?> ms) {
+                for (Object o : ms) {
+                    if (!(o instanceof Map<?, ?> m) || m.get("ponto") == null) continue;
+                    Long total = inteiro(m.get("total")), usado = inteiro(m.get("usado")), disp = inteiro(m.get("disponivel"));
+                    if (total == null || usado == null || disp == null) continue;
+                    montagens.add(new MontagemHost(textoDe(m.get("ponto")), textoDe(m.get("dispositivo")), total, usado, disp));
+                }
+            }
             List<DiscoSmart> lista = new ArrayList<>();
             if (json.get("discos") instanceof List<?> discos) {
                 for (Object o : discos) {
@@ -552,9 +599,9 @@ public class LeitorSistema {
                             d.get("saude") instanceof Map<?, ?> saude ? lerSaude(saude) : null));
                 }
             }
-            return lista;
+            return new ArquivoSmart(List.copyOf(lista), List.copyOf(montagens));
         } catch (RuntimeException e) {
-            return List.of();
+            return ArquivoSmart.VAZIO;
         }
     }
 

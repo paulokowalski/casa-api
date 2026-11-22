@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.kowalski.casaapi.api.v1.controller.GeracaoController;
 import com.kowalski.casaapi.api.v1.controller.PessoaController;
 import com.kowalski.casaapi.api.v1.controller.ServidorController;
+import com.kowalski.casaapi.api.v1.controller.VentilacaoController;
 import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.api.v1.handler.ApiExceptionHandler;
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
@@ -49,7 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {CompraController.class, PessoaController.class, GeracaoController.class, AuthController.class,
-        ServidorController.class})
+        ServidorController.class, VentilacaoController.class,
+        com.kowalski.casaapi.api.v1.controller.PassagensController.class})
 @Import({SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class,
         UsuarioLogado.class, ApiExceptionHandler.class, ErroSegurancaJson.class, AuthService.class, AdminInicial.class})
 @TestPropertySource(properties = {
@@ -69,6 +71,9 @@ class SecurityConfigTest {
     @MockitoBean PessoaService pessoaService;
     @MockitoBean GeracaoService geracaoService;
     @MockitoBean MonitorService monitorService;
+    @MockitoBean com.kowalski.casaapi.business.monitor.VentilacaoService ventilacaoService;
+    @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
+    @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
 
     @BeforeEach
     void pessoas() {
@@ -184,6 +189,20 @@ class SecurityConfigTest {
     }
 
     @Test
+    void chaveDeIntegracaoSoGravaAVentilacao() throws Exception {
+        String leitura = "{\"tomada\":\"on\"}";
+        mvc.perform(post("/v1/servidor/ventilacao").header("X-API-KEY", "chave-integracao")
+                .contentType(MediaType.APPLICATION_JSON).content(leitura)).andExpect(status().isNoContent());
+        mvc.perform(get("/v1/servidor/ventilacao").header("X-API-KEY", "chave-integracao")).andExpect(status().isForbidden());
+        mvc.perform(get("/v1/servidor/ventilacao/dia").header("X-API-KEY", "chave-integracao")).andExpect(status().isForbidden());
+        mvc.perform(post("/v1/servidor/ventilacao").contentType(MediaType.APPLICATION_JSON).content(leitura))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/v1/servidor/ventilacao").header("Authorization", bearer(1L))
+                .contentType(MediaType.APPLICATION_JSON).content(leitura)).andExpect(status().isForbidden());
+        mvc.perform(get("/v1/servidor/ventilacao").header("Authorization", bearer(3L))).andExpect(status().isOk());
+    }
+
+    @Test
     void chaveErradaNaoAutentica() throws Exception {
         mvc.perform(post("/v1/geracao-solar").header("X-API-KEY", "errada")
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
@@ -215,5 +234,34 @@ class SecurityConfigTest {
             int status = mvc.perform(get(rota)).andReturn().getResponse().getStatus();
             assertThat(status).as(rota).isNotIn(401, 403);
         }
+    }
+
+    @Test
+    void passagensSoParaAdmin() throws Exception {
+        String rota = "{\"nome\":\"Teste\"}";
+        // ADMIN lê, cria, edita e remove
+        mvc.perform(get("/v1/passagens").header("Authorization", bearer(3L))).andExpect(status().is2xxSuccessful());
+        mvc.perform(post("/v1/passagens/rotas").header("Authorization", bearer(3L))
+                .contentType(MediaType.APPLICATION_JSON).content(rota)).andExpect(status().is2xxSuccessful());
+        mvc.perform(put("/v1/passagens/rotas/1").header("Authorization", bearer(3L))
+                .contentType(MediaType.APPLICATION_JSON).content(rota)).andExpect(status().is2xxSuccessful());
+        mvc.perform(delete("/v1/passagens/rotas/1?historico=true").header("Authorization", bearer(3L)))
+                .andExpect(status().is2xxSuccessful());
+
+        // USUARIO e a chave de integração não fazem nada
+        for (var cabecalho : java.util.List.of(new String[]{"Authorization", bearer(1L)},
+                new String[]{"X-API-KEY", "chave-integracao"})) {
+            mvc.perform(get("/v1/passagens").header(cabecalho[0], cabecalho[1])).andExpect(status().isForbidden());
+            mvc.perform(post("/v1/passagens/rotas").header(cabecalho[0], cabecalho[1])
+                    .contentType(MediaType.APPLICATION_JSON).content(rota)).andExpect(status().isForbidden());
+            mvc.perform(put("/v1/passagens/rotas/1").header(cabecalho[0], cabecalho[1])
+                    .contentType(MediaType.APPLICATION_JSON).content(rota)).andExpect(status().isForbidden());
+            mvc.perform(delete("/v1/passagens/rotas/1?historico=true").header(cabecalho[0], cabecalho[1]))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(get("/v1/passagens")).andExpect(status().isUnauthorized());
+        org.mockito.Mockito.verify(rotasPassagemService).remover(1L, true);
+        org.mockito.Mockito.verify(rotasPassagemService, org.mockito.Mockito.times(1)).remover(org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyBoolean());
     }
 }

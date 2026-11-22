@@ -1,0 +1,10 @@
+[Unit]
+Description=Internet da casa a cada minuto (casa-api)
+
+[Timer]
+OnCalendar=*-*-* *:*:20
+AccuracySec=1s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

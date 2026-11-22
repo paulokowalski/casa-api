@@ -53,7 +53,7 @@ public class ServidorController {
 
     @GetMapping("/eventos")
     @Operation(summary = "Eventos do servidor",
-            description = "Logins SSH, backups, alertas, quedas de internet, discos, containers que reiniciaram, kernel e boots. "
+            description = "Logins SSH, backups, alertas, quedas de internet, discos, containers que reiniciaram, acessos pela VPN (Tailscale), kernel e boots. "
                     + "Mais recentes primeiro, até 500.")
     @ApiResponse(responseCode = "200", description = "Eventos do período")
     @ApiResponse(responseCode = "503", description = "Banco do monitoramento indisponível")

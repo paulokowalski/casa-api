@@ -10,8 +10,9 @@ import java.util.List;
  * @param procPath        onde está o /proc do host (no container o /proc já é o do host para CPU, memória e discos)
  * @param sysPath         onde está o /sys do host; precisa ser o do host para enxergar as interfaces de rede
  * @param hostnameArquivo arquivo com o nome do host
- * @param discos          discos a acompanhar, no formato {@code Nome=/caminho}; o caminho é qualquer arquivo ou pasta
- *                        dentro do sistema de arquivos que se quer medir
+ * @param discos          discos a acompanhar, no formato {@code Nome=/caminho}. Com o arquivo do SMART (que traz as
+ *                        montagens do host), o caminho é o ponto de montagem no host, ex.: {@code Mídia=/mnt/media};
+ *                        sem ele, é qualquer arquivo ou pasta dentro do sistema de arquivos que se quer medir
  * @param dockerUrl       API do Docker (de preferência um proxy só-leitura); vazio desliga o monitoramento de containers
  * @param retencaoContainersDias por quantos dias guardar as amostras dos containers (uma por container por minuto)
  * @param smartArquivo    JSON com a temperatura dos discos, gravado no host pelo casa-monitor-smart (config/smart);

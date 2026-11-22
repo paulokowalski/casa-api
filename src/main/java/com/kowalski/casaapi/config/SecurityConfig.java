@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.config;
 
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
+import com.kowalski.casaapi.api.v1.controller.VentilacaoController;
 import com.kowalski.casaapi.crescimento.foto.FotoController;
 import com.kowalski.casaapi.config.security.PessoaJwtConverter;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +46,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/pessoas").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/v1/pessoas/**").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/v1/pessoas/**").hasRole(ADMIN)
+                // o Home Assistant envia a leitura da ventilação do servidor (X-API-KEY)
+                .requestMatchers(HttpMethod.POST, VentilacaoController.CAMINHO).hasAnyRole("INTEGRACAO", ADMIN)
                 .requestMatchers("/v1/servidor/**").hasRole(ADMIN)
+                .requestMatchers("/v1/passagens", "/v1/passagens/**").hasRole(ADMIN)
                 .anyRequest().hasAnyRole(ADMIN, USUARIO)
             )
             .exceptionHandling(e -> e.authenticationEntryPoint(erroSegurancaJson).accessDeniedHandler(erroSegurancaJson))

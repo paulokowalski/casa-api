@@ -61,6 +61,10 @@ class ContratoEndpointsTest {
     @MockitoBean AuthService authService;
     @MockitoBean PessoaRepository pessoaRepository;
     @MockitoBean MonitorService monitorService;
+    @MockitoBean com.kowalski.casaapi.business.monitor.InternetService internetService;
+    @MockitoBean com.kowalski.casaapi.business.monitor.VentilacaoService ventilacaoService;
+    @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
+    @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
     // módulo crescimento: controllers carregados pelo @WebMvcTest
     @MockitoBean com.kowalski.casaapi.crescimento.familia.FamiliaService familiaService;
     @MockitoBean com.kowalski.casaapi.crescimento.crianca.CriancaService criancaService;

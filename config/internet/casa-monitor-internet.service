@@ -1,0 +1,9 @@
+[Unit]
+Description=Internet da casa (ping, DNS, IP público, Pi-hole) para a tela Saúde do servidor
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/casa-monitor-internet
+Nice=10
+TimeoutStartSec=50

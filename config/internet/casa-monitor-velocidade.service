@@ -1,0 +1,10 @@
+[Unit]
+Description=Teste de velocidade da internet para a tela Saúde do servidor
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/casa-monitor-velocidade
+Nice=10
+# pior caso do script: latência 15 s + download 35 s + upload 35 s (+ conexão); folga para gravar o erro
+TimeoutStartSec=180

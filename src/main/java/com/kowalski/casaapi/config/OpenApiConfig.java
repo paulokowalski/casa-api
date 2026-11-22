@@ -54,8 +54,9 @@ public class OpenApiConfig {
                                 renda, faturas, pessoas e monitoramento (geração solar e FIPE).
 
                                 **Autenticação:** faça `POST /v1/auth/login`, copie o `token` da resposta e \
-                                use o botão **Authorize** (esquema `jwt`). Integrações (ex.: Node-RED) usam o \
-                                cabeçalho `X-API-KEY` (esquema `apiKey`), aceito só em `POST /v1/geracao-solar`.
+                                use o botão **Authorize** (esquema `jwt`). Integrações usam o cabeçalho \
+                                `X-API-KEY` (esquema `apiKey`), aceito só em `POST /v1/geracao-solar` (Node-RED) \
+                                e `POST /v1/servidor/ventilacao` (Home Assistant).
 
                                 **Permissões:** `ADMIN` vê e altera dados de todas as pessoas; `USUARIO` só os \
                                 próprios — pedir dados de outra pessoa responde 403.
@@ -69,7 +70,7 @@ public class OpenApiConfig {
                                 .description("Token devolvido por POST /v1/auth/login (vale 8 horas por padrão)."))
                         .addSecuritySchemes(API_KEY, new SecurityScheme()
                                 .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.HEADER).name("X-API-KEY")
-                                .description("Chave de integração (variável API_KEY). Só para POST /v1/geracao-solar.")))
+                                .description("Chave de integração (variável API_KEY). Só para POST /v1/geracao-solar e POST /v1/servidor/ventilacao.")))
                 .addSecurityItem(new SecurityRequirement().addList(JWT));
     }
 

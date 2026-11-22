@@ -46,7 +46,7 @@ mostrar B backup-servidor.service Result ExecMainStatus ExecMainStartTimestamp E
 b_res=$B_Result b_status=$B_ExecMainStatus b_ini=$B_ExecMainStartTimestamp b_fim=$B_ExecMainExitTimestamp b_ativo=$B_ActiveState
 backup=$(jq -n \
   --argjson repos "$(jq -s . <(repo "HD Mídia" /mnt/media/_backup-servidor/restic /mnt/media) \
-                            <(repo "HD WD 500" /mnt/wd500/_backup-servidor/restic /mnt/wd500))" \
+                            <(repo "HD 320" /mnt/hd320/_backup-servidor/restic /mnt/hd320))" \
   --argjson od "$(epoch_iso "$od")" --argjson odIdade "$(idade "$od")" \
   --arg res "$b_res" --argjson falhas "${b_status:-null}" --arg ativo "$b_ativo" \
   --argjson ini "$(iso "$b_ini")" --argjson fim "$(iso "$b_fim")" \
@@ -82,6 +82,8 @@ servicos=$(jq -s . \
   <(unidade remontar-discos.service remontar-discos.timer) \
   <(unidade avisar-atualizacoes.service avisar-atualizacoes.timer) \
   <(unidade casa-monitor-smart.service casa-monitor-smart.timer) \
+  <(unidade casa-monitor-internet.service casa-monitor-internet.timer) \
+  <(unidade casa-monitor-velocidade.service casa-monitor-velocidade.timer) \
   <(unidade docker.service) <(unidade smartmontools.service) <(unidade pihole-FTL.service) \
   <(unidade smbd.service) <(unidade tailscaled.service) <(unidade ssh.service))
 falhos=$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' | jq -R . | jq -s .)
@@ -133,8 +135,19 @@ dns_ms=$(( ($(date +%s%N) - dns_ini) / 1000000 ))
 ts=$(tailscale status --json 2>/dev/null)
 rede=$(jq -n --argjson lat "${lat:-null}" --argjson latgw "${latgw:-null}" --arg gw "$gw" \
   --argjson dok $dns_ok --argjson dms $dns_ms \
-  --argjson ts "$( [ -n "$ts" ] && echo "$ts" | jq '{estado:.BackendState, online:.Self.Online, ip:.Self.TailscaleIPs[0],
-       pares:([.Peer[]?]|length), paresOnline:([.Peer[]?|select(.Online)]|length)}' || echo null)" \
+  --argjson ts "$( [ -n "$ts" ] && echo "$ts" | jq '
+       # datas "zero" do Go (0001-01-01) viram null
+       def data: if . == null or startswith("0001-") then null else . end;
+       . as $r
+       | {estado:.BackendState, online:.Self.Online, ip:.Self.TailscaleIPs[0],
+          usuario:(.User[(.Self.UserID|tostring)].LoginName // null),
+          pares:([.Peer[]?]|length), paresOnline:([.Peer[]?|select(.Online)]|length),
+          # cada aparelho da tailnet: bytes e último handshake WireGuard COM ESTE servidor (só mudam quando o
+          # aparelho troca tráfego com ele; "online" é só estar conectado à tailnet)
+          aparelhos:[.Peer[]? | {id:.ID, nome:(((.DNSName // "") | split(".")[0] | if . == "" then null else . end) // .HostName),
+                                so:.OS, ip:.TailscaleIPs[0], dono:($r.User[(.UserID|tostring)].LoginName // null),
+                                online:.Online, ultimoVisto:(.LastSeen|data), ultimoHandshake:(.LastHandshake|data),
+                                recebidos:.RxBytes, enviados:.TxBytes, criado:(.Created|data)}]}' || echo null)" \
   '{internet:{online:($lat!=null), latenciaMs:$lat}, gateway:{ip:$gw, latenciaMs:$latgw},
     dns:{ok:$dok, tempoMs:$dms}, tailscale:$ts}')
 

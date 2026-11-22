@@ -33,7 +33,7 @@ docker compose up -d --build casa-api
 
 O `docker-compose.yml` (fora do git) lê as variáveis do `.env` e conecta nas redes `casa-network` (a mesma
 do container do front) e `mariadb_default` (do container `mariadb`). Também monta, só leitura, o `/sys` e o
-`/etc/hostname` do host e o `lost+found` de cada disco externo, usados pelo
+`/etc/hostname` do host e a pasta `/var/lib/casa-monitor` (JSONs gravados pelos timers do host), usados pelo
 [monitoramento do servidor](#monitoramento-do-servidor). O mesmo arquivo sobe o `casa-docker-proxy`, que dá à
 API acesso só-leitura à lista e às estatísticas dos containers. A aplicação leva cerca de 25 s para subir; requisições nesse intervalo
 recebem 502 do nginx.
@@ -75,7 +75,7 @@ Todas as opções vêm de variáveis de ambiente (ou do `config/dev-secrets.yaml
 | `MONITOR_RETENCAO_CONTAINERS_DIAS` | não | `90` | Dias de histórico dos containers (uma linha por container por minuto) |
 | `MONITOR_SMART_ARQUIVO` | não | vazio | JSON com a temperatura dos discos, gravado pelo timer `casa-monitor-smart` (no container, `/host/smart/smart.json`); vazio desliga |
 | `MONITOR_HOST_ARQUIVO` | não | vazio | JSON com o status do host, gravado pelo timer `casa-monitor-host` (no container, `/host/smart/host.json`); vazio desliga |
-| `MONITOR_DISCOS` | não | `Sistema=/` | Discos a medir, `Nome=caminho` separados por vírgula; o caminho é qualquer arquivo ou pasta dentro do disco |
+| `MONITOR_DISCOS` | não | `Sistema=/` | Discos a medir, `Nome=caminho` separados por vírgula. No servidor o caminho é o ponto de montagem no host (ex.: `Mídia=/mnt/media`), lido das montagens do `smart.json`; sem esse arquivo, é qualquer arquivo ou pasta dentro do disco, medido localmente |
 
 ## Banco de dados e migrations
 
@@ -94,6 +94,8 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
 | `db/crescimento/V4__resumo_ia.sql` | Resumos do mês gerados por IA (um por criança e mês de vida) |
 | `db/crescimento/V5__perguntas_ia.sql` | Perguntas dos pais à IA sobre um mês e as respostas |
+| `db/passagens/V1__estrutura.sql` | Schema `passagens`: estado do robô, preços buscados e alertas (sem ele, `/v1/passagens` responde 503) |
+| `db/passagens/V2__rotas_pelo_casa.sql` | Tabela `passagens.rota`: as rotas passam a ser cadastradas pela aba Passagens (o robô só lê) |
 
 Para aplicar um script no servidor:
 
@@ -118,7 +120,7 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
 | Temperaturas | `/sys/class/thermal/thermal_zone*` |
 | Rede | `/sys/class/net/*/statistics`, só interfaces físicas (sem `lo`, bridges, `veth` e VPN) |
 | Leitura/escrita de disco | `/proc/diskstats`, só discos inteiros (sem partições, `zram` e `loop`) |
-| Espaço em disco | caminhos de `MONITOR_DISCOS`; um disco desmontado (cuja pasta cai no disco do sistema) é ignorado |
+| Espaço em disco | montagens do host no `smart.json` (pontos de `MONITOR_DISCOS`); um disco desmontado não aparece |
 | Containers Docker | `GET /containers/json` e `GET /containers/{id}/stats?one-shot=true`, pelo proxy só-leitura |
 | Temperatura dos discos | SMART, lido no host pelo timer `casa-monitor-smart` (veja abaixo) |
 | Pressão (PSI) | `/proc/pressure/{cpu,memory,io}`, média de 10 s |
@@ -139,9 +141,11 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
 - **Temperatura dos discos:** ler SMART exige root e acesso direto aos discos, que a API não tem. Quem lê é
   o host: o script `config/smart/casa-monitor-smart.sh`, rodado a cada minuto (segundo 40) pelo timer
   `casa-monitor-smart.timer`, grava `/var/lib/casa-monitor/smart.json` com modelo, tipo, temperatura e os
-  `major:minor` de cada disco e partição. A API lê esse arquivo (montado só-leitura) e liga cada caminho de
-  `MONITOR_DISCOS` ao disco pelo `st_dev` do caminho, então não depende de `sda`/`sdb`, que mudam entre
-  reinícios. Discos em repouso não são acordados (`smartctl -n standby`); leituras com mais de 5 minutos
+  `major:minor` de cada disco e partição, mais as montagens do host (ponto, `major:minor` e espaço, do
+  `findmnt`). A API lê esse arquivo (montado só-leitura), acha cada ponto de `MONITOR_DISCOS` nas montagens e
+  liga ao disco pelo `major:minor`. Tudo vem do host no mesmo instante, então não depende de `sda`/`sdb` (que
+  mudam quando a dock USB cai e volta) nem de bind mounts dos discos no container, que ficariam presos ao
+  sistema de arquivos de quando o container subiu. Discos em repouso não são acordados (`smartctl -n standby`); leituras com mais de 5 minutos
   são ignoradas. O espaço e a temperatura vão para `amostra_disco` a cada 5 minutos.
   Para instalar ou atualizar no host:
   ```bash
@@ -162,6 +166,22 @@ A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **M
   sudo install -m 755 config/host/casa-monitor-host.sh /usr/local/sbin/casa-monitor-host
   sudo install -m 644 config/host/casa-monitor-host.{service,timer} /etc/systemd/system/
   sudo systemctl daemon-reload && sudo systemctl enable --now casa-monitor-host.timer
+  ```
+- **Internet (aba Internet):** dois timers no host gravam na mesma pasta `/var/lib/casa-monitor`.
+  `casa-monitor-internet` roda a cada minuto (segundo 20) e grava `internet.json`: ping (média, jitter e perda) ao
+  roteador, ao provedor, à Cloudflare e ao Google, tempo de DNS (Pi-hole e públicos), IP público e Pi-hole.
+  `casa-monitor-velocidade` roda a cada 4 horas e grava `velocidade.json` com o teste de velocidade da Cloudflare
+  (~250 MB por teste; cada medição tem prazo de 30 s) e os 60 últimos testes. A API lê os dois a cada minuto
+  (segundo 40), grava `amostra_internet` e `teste_velocidade` (só quando chega um teste novo) e gera eventos: IP
+  público que mudou, perda de pacotes por 3 minutos seguidos (e o fim dela, com duração e pico), teste que falhou e
+  download abaixo da metade da mediana dos últimos testes. Para instalar ou atualizar no host:
+  ```bash
+  sudo install -m 755 config/internet/casa-monitor-internet.py /usr/local/sbin/casa-monitor-internet
+  sudo install -m 755 config/internet/casa-monitor-velocidade.py /usr/local/sbin/casa-monitor-velocidade
+  sudo install -m 644 config/internet/casa-monitor-{internet,velocidade}.{service,timer} /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now casa-monitor-internet.timer casa-monitor-velocidade.timer
+  sudo systemctl start casa-monitor-velocidade   # primeiro teste na hora, sem esperar 4 h
   ```
 - **Acesso ao Docker:** a API **não** monta o `docker.sock`, que daria controle total do servidor. Ela fala
   com o `casa-docker-proxy` ([`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy)),
@@ -269,7 +289,8 @@ pasta das fotos.
     que acessa o monitoramento do servidor (`/v1/servidor/**`).
   - `USUARIO` só acessa os próprios dados; pedir os de outra pessoa (por `pessoa` ou `pessoaId`) responde 403.
 - **Integrações:** o cabeçalho `X-API-KEY` (variável `API_KEY`) dá o papel `INTEGRACAO`, aceito apenas
-  em `POST /v1/geracao-solar` (usado pelo Node-RED para gravar as leituras do inversor).
+  em `POST /v1/geracao-solar` (usado pelo Node-RED para gravar as leituras do inversor) e em
+  `POST /v1/servidor/ventilacao` (usado pelo Home Assistant para gravar a ventilação do servidor).
 - **Rotas públicas:** login, `/actuator/health` e a documentação Swagger.
 
 ## Swagger / OpenAPI
@@ -317,6 +338,15 @@ Resumo; detalhes, parâmetros e exemplos no Swagger. Mês/competência é sempre
 | Servidor (só `ADMIN`) | `GET /v1/servidor/agora` | Leitura ao vivo: CPU por núcleo, carga, memória, temperaturas, discos, rede e containers |
 | | `GET /v1/servidor/dia?data` | Mín/média/máx do dia, série a cada 5 min, espaço e temperatura dos discos e resumo/série de cada container (padrão: hoje) |
 | | `GET /v1/servidor/dias?de&ate` | Estatísticas por dia (padrão: últimos 30 dias; até 366 por consulta) |
+| | `GET /v1/servidor/ventilacao` | Ventoinhas agora: tomada, temperaturas e limites que o HA usa, desde quando e tempo ligadas hoje |
+| | `GET /v1/servidor/ventilacao/dia?data` · `GET /v1/servidor/ventilacao/dias?de&ate` | Um ponto por minuto e períodos ligadas · tempo ligadas por dia |
+| | `POST /v1/servidor/ventilacao` | Grava a leitura do minuto (Home Assistant, `X-API-KEY`; tabela `amostra_ventilacao`) |
+| | `GET /v1/servidor/internet` | Internet agora (internet.json) e o último teste de velocidade |
+| | `GET /v1/servidor/internet/dia?data` · `GET /v1/servidor/internet/dias?de&ate` | Série do dia e resumo · resumo por dia (até 366 dias) |
+| | `GET /v1/servidor/internet/velocidade?de&ate` | Testes de velocidade do período |
+| Passagens (só `ADMIN`) | `GET /v1/passagens?dias` | Rotas, séries de preço e alertas (padrão: 30 dias; 0 = tudo) |
+| | `POST /v1/passagens/rotas` · `PUT /v1/passagens/rotas/{id}` | Cadastra · edita uma rota (o robô confere a cada 30 s) |
+| | `DELETE /v1/passagens/rotas/{id}?historico` | Remove a rota; `historico=true` apaga também preços e alertas |
 
 ## Erros
 
@@ -368,8 +398,14 @@ mvn test
 
 São testes unitários (services com mocks) e de fatia web (`@WebMvcTest`): contrato dos endpoints,
 regras de segurança e formato dos erros. O leitor do monitoramento é testado com um `/proc` e um `/sys`
-falsos em pasta temporária, e o dos containers com respostas no formato da API do Docker. **Nenhum teste acessa o banco**, então as consultas JPQL e
-nativas só são exercitadas com a aplicação rodando.
+falsos em pasta temporária, e o dos containers com respostas no formato da API do Docker. Esses testes não acessam
+o banco.
+
+**Testes de ponta a ponta** (`CasaApiE2ETest`): `bash e2e/rodar.sh` sobe numa rede Docker isolada um PostgreSQL 18
+com a estrutura do banco (`src/test/resources/e2e/estrutura.sql`, gerada com `pg_dump --schema-only`, mais os dados
+mínimos de `dados.sql`) e um MariaDB vazio, sobe a API inteira e a testa por HTTP, apagando tudo no fim. Precisa de
+Docker; não toca nos bancos de produção. Ao criar tabelas novas, gere o `estrutura.sql` de novo. O hook pre-commit
+roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes E2E dele (`CASA_API_DIR`).
 
 ## Notas de desempenho
 
@@ -384,6 +420,19 @@ nativas só são exercitadas com a aplicação rodando.
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 1.2.0 — 22/11/2026
+
+A Saúde do Servidor ganha o acompanhamento da internet, da ventilação e dos acessos pela VPN, e a API passa a ter o módulo Passagens, que cadastra as rotas do robô e mostra o histórico de preços.
+
+- Novos endpoints GET /v1/servidor/internet, /dia, /dias e /velocidade: ping, jitter e perda até o roteador, o provedor, a Cloudflare e o Google; tempo de DNS; IP público; dados do Pi-hole; interface de rede; e testes de velocidade. As tabelas amostra_internet e teste_velocidade são criadas pela própria API. Há eventos para troca de IP, perda de pacotes seguida e velocidade baixa.
+- Novos scripts casa-monitor-internet (a cada minuto) e casa-monitor-velocidade (a cada 4 h, cerca de 250 MB por teste), com seus .service e .timer em config/internet. Eles precisam ser instalados e ativados no host e gravam internet.json e velocidade.json na pasta do MONITOR_HOST_ARQUIVO.
+- Novos endpoints POST/GET /v1/servidor/ventilacao, /dia e /dias. O POST recebe pelo X-API-KEY a leitura que o Home Assistant manda a cada minuto (tomada das ventoinhas e temperaturas) e grava na tabela amostra_ventilacao.
+- Novos eventos de acesso pela VPN (Tailscale) em /v1/servidor/eventos: quando um aparelho começa ou para de acessar o servidor (com o tempo e o volume trocado) e quando um aparelho novo entra na tailnet. O casa-monitor-host agora coleta os aparelhos da tailnet.
+- Novo módulo Passagens (só ADMIN): GET /v1/passagens traz as rotas, o histórico de preços por trecho e os alertas; POST /v1/passagens/rotas, PUT e DELETE /v1/passagens/rotas/{id} cadastram, editam, pausam e removem as rotas do robô de passagens.
+- Migrações do schema passagens (V1__estrutura.sql e V2__rotas_pelo_casa.sql) precisam ser aplicadas à mão no Postgres. A V1 cria o usuário robo_passagens, cuja senha precisa ser definida no servidor.
+- Espaço dos discos agora medido pelas montagens do host, que o casa-monitor-smart passa a gravar. Em MONITOR_DISCOS o caminho passa a ser o ponto de montagem no host. O eMMC do sistema agora aparece com desgaste, total gravado e erros do kernel, e o backup passa a usar o HD 320.
+- Novos testes de ponta a ponta (e2e/rodar.sh e CasaApiE2ETest), que rodam contra PostgreSQL e MariaDB descartáveis em Docker, e novos testes unitários de internet, ventilação, VPN e passagens.
 
 ### 1.1.0 — 22/11/2026
 
