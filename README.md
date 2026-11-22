@@ -295,3 +295,16 @@ nativas só são exercitadas com a aplicação rodando.
   de `dt_parcela`; não use `date_part`/conversão para texto no `WHERE`.
 - Para várias competências, prefira `GET /v1/compras/parcelas?de&ate` a uma chamada por mês.
 - Consultas acima de 1 s são registradas no log (`LOG_QUERIES_SLOWER_THAN_MS`).
+
+## Histórico de versões
+
+Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 1.0.1 — 22/11/2026
+
+Inclui as tabelas de referência de crescimento infantil da OMS (2006), que servirão de base para acompanhar peso, comprimento/estatura e perímetro cefálico de crianças de 0 a 5 anos.
+
+- Nova tabela de referência crescimento/oms/peso.tsv com os parâmetros LMS de peso por idade da OMS, por sexo e dia de vida (0 a 1826 dias)
+- Nova tabela de referência crescimento/oms/comprimento.tsv com os parâmetros LMS de comprimento/estatura por idade: comprimento deitado até 730 dias e estatura em pé a partir de 731 dias, como orienta a Caderneta da Criança
+- Nova tabela de referência crescimento/oms/perimetro.tsv com os parâmetros LMS de perímetro cefálico por idade, por sexo e dia de vida
+- Dados obtidos do repositório oficial WorldHealthOrganization/anthro, com a fonte e as colunas descritas no cabeçalho de cada arquivo
