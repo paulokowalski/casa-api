@@ -4,7 +4,7 @@ import com.kowalski.casaapi.comum.RelogioConfig;
 import java.time.Clock;
 import java.time.Instant;
 
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.categoria.Categorias;
 import com.kowalski.casaapi.categoria.CategoriaService;

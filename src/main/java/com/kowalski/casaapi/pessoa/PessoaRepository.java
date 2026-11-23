@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.pessoa;
 
-import com.kowalski.casaapi.pessoa.Pessoa;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

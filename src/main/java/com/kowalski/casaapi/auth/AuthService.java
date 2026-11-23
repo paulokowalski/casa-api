@@ -1,9 +1,8 @@
-package com.kowalski.casaapi.business.auth;
+package com.kowalski.casaapi.auth;
 
-import com.kowalski.casaapi.api.v1.response.LoginResponse;
-import com.kowalski.casaapi.api.v1.response.UsuarioResponse;
 import com.kowalski.casaapi.pessoa.Pessoa;
-import com.kowalski.casaapi.pessoa.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaService;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.config.security.AuthProperties;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -30,7 +29,8 @@ public class AuthService {
     static final Duration BLOQUEIO = Duration.ofMinutes(15);
     private static final String CREDENCIAIS_INVALIDAS = "E-mail ou senha incorretos.";
 
-    private final PessoaRepository pessoaRepository;
+    private final PessoaService pessoaService;
+    private final UsuarioLogado usuarioLogado;
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
     private final Duration validade;
@@ -41,9 +41,10 @@ public class AuthService {
     private record Tentativas(int erros, Instant bloqueadoAte) {
     }
 
-    public AuthService(PessoaRepository pessoaRepository, PasswordEncoder passwordEncoder,
+    public AuthService(PessoaService pessoaService, UsuarioLogado usuarioLogado, PasswordEncoder passwordEncoder,
                        JwtEncoder jwtEncoder, AuthProperties props, Clock clock) {
-        this.pessoaRepository = pessoaRepository;
+        this.pessoaService = pessoaService;
+        this.usuarioLogado = usuarioLogado;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
         Integer horas = props.jwt() == null ? null : props.jwt().expiracaoHoras();
@@ -64,7 +65,7 @@ public class AuthService {
             throw new LockedException("Muitas tentativas erradas. Tente de novo em 15 minutos.");
         }
 
-        Pessoa pessoa = pessoaRepository.findByEmailIgnoreCase(email.trim())
+        Pessoa pessoa = pessoaService.porEmail(email)
                 .filter(p -> p.isAtivo() && p.getSenhaHash() != null)
                 .filter(p -> passwordEncoder.matches(senha, p.getSenhaHash()))
                 .orElse(null);
@@ -87,6 +88,13 @@ public class AuthService {
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
 
         return new LoginResponse(token, expira, UsuarioResponse.de(pessoa));
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse usuarioAtual() {
+        return pessoaService.porId(usuarioLogado.atual().getPessoaId())
+                .map(UsuarioResponse::de)
+                .orElseThrow(() -> new BadCredentialsException("Sessão inválida"));
     }
 
     private void registrarErro(String chave, Instant agora) {

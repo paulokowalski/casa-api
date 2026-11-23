@@ -1,9 +1,9 @@
-package com.kowalski.casaapi.business.auth;
+package com.kowalski.casaapi.auth;
 
-import com.kowalski.casaapi.api.v1.response.LoginResponse;
 import com.kowalski.casaapi.pessoa.Papel;
 import com.kowalski.casaapi.pessoa.Pessoa;
-import com.kowalski.casaapi.pessoa.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaService;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.config.security.AuthProperties;
 import com.kowalski.casaapi.config.security.JwtConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +32,7 @@ class AuthServiceTest {
     private static final String SEGREDO = "segredo-de-teste-com-mais-de-32-caracteres";
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
-    private final PessoaRepository repo = mock(PessoaRepository.class);
+    private final PessoaService repo = mock(PessoaService.class);
     private final RelogioAjustavel relogio = new RelogioAjustavel(Instant.now().truncatedTo(ChronoUnit.SECONDS));
     private JwtConfig jwtConfig;
     private AuthService service;
@@ -42,7 +42,7 @@ class AuthServiceTest {
     void setUp() {
         AuthProperties props = new AuthProperties(new AuthProperties.Jwt(SEGREDO, 8), null);
         jwtConfig = new JwtConfig(props);
-        service = new AuthService(repo, encoder, jwtConfig.jwtEncoder(), props, relogio);
+        service = new AuthService(repo, new UsuarioLogado(), encoder, jwtConfig.jwtEncoder(), props, relogio);
 
         ana = new Pessoa();
         ana.setId(7L);
@@ -50,8 +50,8 @@ class AuthServiceTest {
         ana.setEmail("ana@exemplo.com");
         ana.setPapel(Papel.USUARIO);
         ana.setSenhaHash(encoder.encode("senha-certa"));
-        when(repo.findByEmailIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(repo.findByEmailIgnoreCase("ana@exemplo.com")).thenReturn(Optional.of(ana));
+        when(repo.porEmail(anyString())).thenReturn(Optional.empty());
+        when(repo.porEmail("ana@exemplo.com")).thenReturn(Optional.of(ana));
     }
 
     @Test

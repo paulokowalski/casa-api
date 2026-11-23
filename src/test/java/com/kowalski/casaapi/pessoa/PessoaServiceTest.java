@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.pessoa;
 
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
@@ -142,6 +141,25 @@ class PessoaServiceTest {
         assertThat(service.referencia(Login.ANA_ID)).isSameAs(ana);
         assertThatThrownBy(() -> service.referencia(99L))
                 .isInstanceOf(RecursoNaoEncontradoException.class).hasMessage("Pessoa 99 não encontrada");
+    }
+
+    @Test
+    void porEmailIgnoraEspacos() {
+        Pessoa ana = Login.pessoa(Login.ANA_ID, "ANA");
+        when(repository.findByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.of(ana));
+
+        assertThat(service.porEmail("  ana@x.com ")).containsSame(ana);
+    }
+
+    @Test
+    void definirComoAdminGravaASenhaEOPapel() {
+        Pessoa ana = Login.pessoa(Login.ANA_ID, "ANA");
+
+        service.definirComoAdmin(ana, "segredo123");
+
+        assertThat(ana.getSenhaHash()).isEqualTo("HASH");
+        assertThat(ana.ehAdmin()).isTrue();
+        verify(repository).save(ana);
     }
 
     @Test

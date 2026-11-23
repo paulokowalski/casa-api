@@ -2,7 +2,7 @@ package com.kowalski.casaapi.support;
 
 import com.kowalski.casaapi.pessoa.Papel;
 import com.kowalski.casaapi.pessoa.Pessoa;
-import com.kowalski.casaapi.config.security.UsuarioAutenticado;
+import com.kowalski.casaapi.pessoa.UsuarioAutenticado;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 public final class Login {

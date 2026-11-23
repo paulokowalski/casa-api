@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.fatura;
 
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

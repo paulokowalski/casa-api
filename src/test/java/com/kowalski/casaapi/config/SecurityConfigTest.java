@@ -1,9 +1,9 @@
 package com.kowalski.casaapi.config;
 
-import com.kowalski.casaapi.api.v1.controller.AuthController;
+import com.kowalski.casaapi.auth.AuthController;
 import com.kowalski.casaapi.compra.CompraController;
-import com.kowalski.casaapi.business.auth.AdminInicial;
-import com.kowalski.casaapi.business.auth.AuthService;
+import com.kowalski.casaapi.auth.AdminInicial;
+import com.kowalski.casaapi.auth.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.kowalski.casaapi.geracao.GeracaoController;
 import com.kowalski.casaapi.pessoa.PessoaController;
@@ -14,10 +14,9 @@ import com.kowalski.casaapi.servidor.ServidorService;
 import com.kowalski.casaapi.comum.ApiExceptionHandler;
 import com.kowalski.casaapi.comum.RelogioConfig;
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.pessoa.Papel;
 import com.kowalski.casaapi.pessoa.Pessoa;
-import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.compra.CompraService;
 import com.kowalski.casaapi.geracao.GeracaoService;
 import com.kowalski.casaapi.pessoa.PessoaService;
@@ -69,7 +68,6 @@ class SecurityConfigTest {
     @Autowired JwtEncoder jwtEncoder;
     @Autowired PasswordEncoder passwordEncoder;
 
-    @MockitoBean PessoaRepository pessoaRepository;
     @MockitoBean CompraService compraService;
     @MockitoBean PessoaService pessoaService;
     @MockitoBean GeracaoService geracaoService;
@@ -81,18 +79,18 @@ class SecurityConfigTest {
 
     @BeforeEach
     void pessoas() {
-        when(pessoaRepository.findById(1L)).thenReturn(Optional.of(pessoa(1L, "Ana", Papel.USUARIO, true)));
-        when(pessoaRepository.findById(2L)).thenReturn(Optional.of(pessoa(2L, "Bruno", Papel.USUARIO, true)));
-        when(pessoaRepository.findById(3L)).thenReturn(Optional.of(pessoa(3L, "Admin", Papel.ADMIN, true)));
-        when(pessoaRepository.findById(4L)).thenReturn(Optional.of(pessoa(4L, "Inativo", Papel.USUARIO, false)));
+        when(pessoaService.porId(1L)).thenReturn(Optional.of(pessoa(1L, "Ana", Papel.USUARIO, true)));
+        when(pessoaService.porId(2L)).thenReturn(Optional.of(pessoa(2L, "Bruno", Papel.USUARIO, true)));
+        when(pessoaService.porId(3L)).thenReturn(Optional.of(pessoa(3L, "Admin", Papel.ADMIN, true)));
+        when(pessoaService.porId(4L)).thenReturn(Optional.of(pessoa(4L, "Inativo", Papel.USUARIO, false)));
     }
 
     @Test
     void loginPelaApiDevolveTokenQueFunciona() throws Exception {
         Pessoa ana = pessoa(1L, "Ana", Papel.USUARIO, true);
         ana.setSenhaHash(passwordEncoder.encode("senha-certa"));
-        when(pessoaRepository.findByEmailIgnoreCase("ana@exemplo.com")).thenReturn(Optional.of(ana));
-        when(pessoaRepository.findById(1L)).thenReturn(Optional.of(ana));
+        when(pessoaService.porEmail("ana@exemplo.com")).thenReturn(Optional.of(ana));
+        when(pessoaService.porId(1L)).thenReturn(Optional.of(ana));
 
         mvc.perform(post("/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"ana@exemplo.com\",\"senha\":\"errada\"}"))

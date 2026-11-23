@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.pessoa;
 
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -8,8 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +64,28 @@ public class PessoaService {
     @Transactional(readOnly = true)
     public Pessoa referencia(Long id) {
         return pessoaRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa " + id + " não encontrada"));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Pessoa> porEmail(String email) {
+        return pessoaRepository.findByEmailIgnoreCase(email.trim());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Pessoa> porId(Long id) {
+        return pessoaRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Pessoa> porIds(Collection<Long> ids) {
+        return pessoaRepository.findAllById(ids);
+    }
+
+    @Transactional
+    public void definirComoAdmin(Pessoa pessoa, String senha) {
+        pessoa.definirSenha(senha, passwordEncoder);
+        pessoa.tornarAdmin();
+        pessoaRepository.save(pessoa);
     }
 
     private Pessoa buscar(Long id) {

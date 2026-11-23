@@ -1,7 +1,5 @@
-package com.kowalski.casaapi.business.auth;
+package com.kowalski.casaapi.pessoa;
 
-import com.kowalski.casaapi.pessoa.Papel;
-import com.kowalski.casaapi.config.security.UsuarioAutenticado;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;

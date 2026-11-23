@@ -1,9 +1,8 @@
-package com.kowalski.casaapi.business.auth;
+package com.kowalski.casaapi.auth;
 
-import com.kowalski.casaapi.pessoa.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.config.security.AuthProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -16,8 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminInicial implements ApplicationRunner {
 
     private final AuthProperties props;
-    private final PessoaRepository pessoaRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PessoaService pessoaService;
 
     @Override
     @Transactional
@@ -27,11 +25,9 @@ public class AdminInicial implements ApplicationRunner {
                 || admin.senha() == null || admin.senha().isBlank()) {
             return;
         }
-        pessoaRepository.findByEmailIgnoreCase(admin.email().trim()).ifPresentOrElse(pessoa -> {
+        pessoaService.porEmail(admin.email()).ifPresentOrElse(pessoa -> {
             if (pessoa.getSenhaHash() != null) return;
-            pessoa.definirSenha(admin.senha(), passwordEncoder);
-            pessoa.tornarAdmin();
-            pessoaRepository.save(pessoa);
+            pessoaService.definirComoAdmin(pessoa, admin.senha());
             log.info("Admin inicial configurado para a pessoa {}", pessoa.getId());
         }, () -> log.warn("AUTH_ADMIN_EMAIL não corresponde a nenhuma pessoa cadastrada"));
     }

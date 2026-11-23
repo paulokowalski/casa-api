@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.config.security;
+package com.kowalski.casaapi.pessoa;
 
-import com.kowalski.casaapi.pessoa.Papel;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 

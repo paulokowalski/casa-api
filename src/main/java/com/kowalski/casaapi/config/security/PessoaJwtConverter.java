@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.config.security;
 
-import com.kowalski.casaapi.pessoa.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaService;
+import com.kowalski.casaapi.pessoa.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PessoaJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
-    private final PessoaRepository pessoaRepository;
+    private final PessoaService pessoaService;
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
@@ -22,7 +23,7 @@ public class PessoaJwtConverter implements Converter<Jwt, AbstractAuthentication
         } catch (NumberFormatException e) {
             throw new BadCredentialsException("Token inválido");
         }
-        return pessoaRepository.findById(id)
+        return pessoaService.porId(id)
                 .filter(p -> p.isAtivo() && p.getSenhaHash() != null)
                 .map(p -> new UsuarioAutenticado(p.getId(), p.getNome(), p.getPapel()))
                 .orElseThrow(() -> new BadCredentialsException("Acesso encerrado"));

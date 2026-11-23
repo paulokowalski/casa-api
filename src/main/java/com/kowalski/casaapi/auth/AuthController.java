@@ -1,18 +1,11 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.auth;
 
-import com.kowalski.casaapi.api.v1.input.LoginInput;
-import com.kowalski.casaapi.api.v1.response.LoginResponse;
-import com.kowalski.casaapi.api.v1.response.UsuarioResponse;
-import com.kowalski.casaapi.business.auth.AuthService;
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.pessoa.PessoaRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,8 +15,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final UsuarioLogado usuarioLogado;
-    private final PessoaRepository pessoaRepository;
 
     @PostMapping("/login")
     @SecurityRequirements
@@ -40,8 +31,6 @@ public class AuthController {
     @GetMapping("/me")
     @Operation(summary = "Dados do usuário logado", description = "Usado pelo front para validar a sessão salva.")
     public UsuarioResponse me() {
-        return pessoaRepository.findById(usuarioLogado.atual().getPessoaId())
-                .map(UsuarioResponse::de)
-                .orElseThrow(() -> new BadCredentialsException("Sessão inválida"));
+        return authService.usuarioAtual();
     }
 }

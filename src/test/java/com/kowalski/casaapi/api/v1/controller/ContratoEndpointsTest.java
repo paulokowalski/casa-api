@@ -1,8 +1,8 @@
 package com.kowalski.casaapi.api.v1.controller;
 
-import com.kowalski.casaapi.api.v1.response.*;
-import com.kowalski.casaapi.business.auth.AuthService;
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.auth.*;
+import com.kowalski.casaapi.auth.AuthService;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.carro.CarroResponse;
@@ -17,7 +17,6 @@ import com.kowalski.casaapi.renda.*;
 import com.kowalski.casaapi.ventilacao.*;
 import com.kowalski.casaapi.pessoa.Pessoa;
 import com.kowalski.casaapi.servidor.*;
-import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.pessoa.PessoaResponse;
 import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.despesa.*;
@@ -71,7 +70,6 @@ class ContratoEndpointsTest {
     @MockitoBean ContaService contaService;
     @MockitoBean CarroService carroService;
     @MockitoBean AuthService authService;
-    @MockitoBean PessoaRepository pessoaRepository;
     @MockitoBean ServidorService servidorService;
     @MockitoBean InternetService internetService;
     @MockitoBean VentilacaoService ventilacaoService;

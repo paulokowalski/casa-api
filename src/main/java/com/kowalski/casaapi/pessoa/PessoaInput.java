@@ -1,7 +1,6 @@
 package com.kowalski.casaapi.pessoa;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.kowalski.casaapi.pessoa.Papel;
 
 @Schema(description = "Dados da pessoa")
 public record PessoaInput(

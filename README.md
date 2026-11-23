@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.18 — 23/11/2026
+
+Refatoração interna da autenticação: o login passa a ficar em um pacote próprio, sem mudar endpoints nem o comportamento para quem usa o sistema.
+
+- Novo pacote auth com AuthController, AuthService, AdminInicial, LoginInput, LoginResponse e UsuarioResponse, que saem de api/v1 e business/auth
+- UsuarioLogado e UsuarioAutenticado movidos para o pacote pessoa; imports atualizados em Compra, Conta, Despesa, Fatura, Filtro e Renda
+- Acesso a pessoas centralizado no PessoaService com os métodos porEmail, porId, porIds e definirComoAdmin, usados pelo login, pelo conversor de JWT, pelo admin inicial e pela identidade do Crescimento
+- Lógica do GET /v1/auth/me (dados do usuário logado) levada do controller para AuthService.usuarioAtual, mantendo a mesma resposta
+- Removidos imports que não eram usados em PessoaInput e PessoaRepository
+- Testes ajustados à nova organização dos pacotes (AuthServiceTest, UsuarioLogadoTest, testes de contrato, segurança e serviços)
+
 ### 2.0.17 — 23/11/2026
 
 Reorganiza o código da aba Passagens num pacote próprio, sem mudar o comportamento da API, e adiciona testes do cadastro de rotas.

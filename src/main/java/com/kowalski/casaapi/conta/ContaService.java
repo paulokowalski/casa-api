@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.conta;
 
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.pessoa.PessoaService;
