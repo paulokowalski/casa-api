@@ -1,12 +1,6 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorDiscoResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorEstatisticasResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorEstatisticasResponse.Faixa;
-import com.kowalski.casaapi.api.v1.response.ServidorEventoResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorHostDiaResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
+import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse.Faixa;
 import com.kowalski.casaapi.config.monitor.MonitorConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -27,7 +21,7 @@ import java.util.Map;
  * API na subida ({@link #criarTabelas()}), sem migration manual.
  */
 @Repository
-public class MonitorRepository {
+public class ServidorRepository {
 
     private static final String TABELA_AMOSTRA = """
             CREATE TABLE IF NOT EXISTS amostra_servidor (
@@ -277,7 +271,7 @@ public class MonitorRepository {
 
     private final JdbcTemplate jdbc;
 
-    public MonitorRepository(@Qualifier(MonitorConfig.MONITOR) DataSource dataSource) {
+    public ServidorRepository(@Qualifier(MonitorConfig.MONITOR) DataSource dataSource) {
         this.jdbc = new JdbcTemplate(dataSource);
     }
 
@@ -367,11 +361,13 @@ public class MonitorRepository {
     private ServidorHostDiaResponse.Resumo completarHost(ServidorHostDiaResponse.Resumo r, LocalDateTime de, LocalDateTime ate) {
         long[] ev = jdbc.queryForObject("SELECT COUNT(*) AS n, COALESCE(SUM(nivel = 'erro'), 0) AS erros FROM evento_host"
                 + " WHERE quando >= ? AND quando < ?", (rs, i) -> new long[]{rs.getLong("n"), rs.getLong("erros")}, de, ate);
-        List<Object[]> ultima = jdbc.query("SELECT apt_pendentes, reinicio_necessario FROM amostra_host"
+        record UltimaDoHost(Long aptPendentes, Boolean reinicioNecessario) {
+        }
+        UltimaDoHost u = jdbc.query("SELECT apt_pendentes, reinicio_necessario FROM amostra_host"
                         + " WHERE coletado_em >= ? AND coletado_em < ? ORDER BY coletado_em DESC LIMIT 1",
-                (rs, i) -> new Object[]{inteiro(rs, "apt_pendentes"), logicoOuNulo(rs, "reinicio_necessario")}, de, ate);
-        Object[] u = ultima.isEmpty() ? new Object[]{null, null} : ultima.get(0);
-        return comEventos(r, ev == null ? 0 : ev[0], ev == null ? 0 : ev[1], (Long) u[0], (Boolean) u[1]);
+                (rs, i) -> new UltimaDoHost(inteiro(rs, "apt_pendentes"), logicoOuNulo(rs, "reinicio_necessario")), de, ate)
+                .stream().findFirst().orElse(new UltimaDoHost(null, null));
+        return comEventos(r, ev == null ? 0 : ev[0], ev == null ? 0 : ev[1], u.aptPendentes(), u.reinicioNecessario());
     }
 
     private static ServidorHostDiaResponse.Resumo comEventos(ServidorHostDiaResponse.Resumo r, long eventos, long erros,

@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.api.v1.response.ServidorAgoraResponse;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,7 +67,7 @@ class LeitorSistemaTest {
         return new LeitorSistema(new MonitorProperties(true, 365, proc.toString(), sys.toString(),
                 raiz.resolve("hostname").toString(),
                 List.of("Raiz=" + raiz, "Inexistente=/caminho/que/nao/existe", "Desmontado=" + raiz.resolve("proc")),
-                null, null, raiz.resolve("smart.json").toString(), null, null));
+                null, null, raiz.resolve("smart.json").toString(), null, null), java.time.Clock.systemDefaultZone());
     }
 
     @Test
@@ -179,7 +178,7 @@ class LeitorSistemaTest {
                 List.of(new LeitorSistema.CpuTempos(5_050, 4_250, 250), new LeitorSistema.CpuTempos(5_050, 4_300, 250)),
                 Map.of("enP4p65s0", new LeitorSistema.Trafego(5_500, 10_000)), antes.discoLidos(), antes.discoEscritos());
 
-        ServidorAgoraResponse r = MonitorService.montarAgora(leitor.identificacao(), antes, depois, leitor.instantaneo(), List.of());
+        ServidorAgoraResponse r = ServidorService.montarAgora(LocalDateTime.now(), leitor.identificacao(), antes, depois, leitor.instantaneo(), List.of());
 
         assertThat(r.host()).isEqualTo("orangepi5plus");
         assertThat(r.cpu().usoPct()).isEqualTo(50.0);

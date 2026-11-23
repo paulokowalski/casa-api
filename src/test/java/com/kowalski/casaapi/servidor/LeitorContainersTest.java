@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.api.v1.response.ServidorContainerResponse;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import org.junit.jupiter.api.Test;
 
@@ -137,7 +136,7 @@ class LeitorContainersTest {
                 rodando("b", "muito", 50_000, 100_000, 0, 0),
                 new LeitorContainers.Container("c", "abc-parado", "img", "exited", "Exited (1) 2 hours ago", null, null)));
 
-        var lista = MonitorService.containersAgora(antes, depois);
+        var lista = ServidorService.containersAgora(java.time.LocalDateTime.now(), antes, depois);
 
         assertThat(lista).extracting(ServidorContainerResponse::nome).containsExactly("muito", "pouco", "abc-parado");
         assertThat(lista.get(0).cpuPct()).isEqualTo(50.0);

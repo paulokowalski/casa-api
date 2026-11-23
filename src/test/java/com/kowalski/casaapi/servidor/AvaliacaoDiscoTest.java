@@ -1,8 +1,7 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.api.v1.response.ServidorSaudeDiscoResponse;
-import com.kowalski.casaapi.business.monitor.AvaliacaoDisco.Nivel;
-import com.kowalski.casaapi.business.monitor.AvaliacaoDisco.Situacao;
+import com.kowalski.casaapi.servidor.AvaliacaoDisco.Nivel;
+import com.kowalski.casaapi.servidor.AvaliacaoDisco.Situacao;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

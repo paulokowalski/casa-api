@@ -7,10 +7,10 @@ import com.kowalski.casaapi.business.auth.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.kowalski.casaapi.geracao.GeracaoController;
 import com.kowalski.casaapi.pessoa.PessoaController;
-import com.kowalski.casaapi.api.v1.controller.ServidorController;
+import com.kowalski.casaapi.servidor.ServidorController;
 import com.kowalski.casaapi.ventilacao.VentilacaoController;
 import com.kowalski.casaapi.ventilacao.VentilacaoService;
-import com.kowalski.casaapi.business.monitor.MonitorService;
+import com.kowalski.casaapi.servidor.ServidorService;
 import com.kowalski.casaapi.comum.ApiExceptionHandler;
 import com.kowalski.casaapi.comum.RelogioConfig;
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
@@ -73,7 +73,7 @@ class SecurityConfigTest {
     @MockitoBean CompraService compraService;
     @MockitoBean PessoaService pessoaService;
     @MockitoBean GeracaoService geracaoService;
-    @MockitoBean MonitorService monitorService;
+    @MockitoBean ServidorService servidorService;
     @MockitoBean VentilacaoService ventilacaoService;
     @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
     @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
@@ -176,7 +176,7 @@ class SecurityConfigTest {
             mvc.perform(get(rota).header("X-API-KEY", "chave-integracao")).andExpect(status().isForbidden());
             mvc.perform(get(rota).header("Authorization", bearer(3L))).andExpect(status().isOk());
         }
-        verify(monitorService).agora();
+        verify(servidorService).agora();
     }
 
     @Test

@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.15 — 23/11/2026
+
+Reorganiza o código do monitoramento do servidor em um pacote próprio. Os endpoints, as respostas e as tabelas continuam iguais.
+
+- Funcionalidade Servidor reunida no pacote com.kowalski.casaapi.servidor (controller, serviço, repositório, leitores e respostas), que antes ficavam espalhados por api/v1 e business/monitor
+- MonitorService renomeado para ServidorService e MonitorRepository para ServidorRepository; os endpoints /v1/servidor (agora, host, eventos, dia, dias) seguem iguais
+- Data e hora do monitoramento do servidor agora vêm do relógio central da aplicação (Clock) em vez de LocalDateTime.now()/Instant.now(): coleta, limpeza das amostras antigas, leitura ao vivo, datas padrão dos filtros e validade do status do host
+- Consulta do último resumo do host no ServidorRepository passou a usar um record no lugar de Object[], sem mudar o resultado
+- Monitoramento da internet ajustado para usar as classes do novo pacote servidor; funções auxiliares de leitura do JSON do LeitorHost agora são públicas
+- Testes do monitoramento movidos para o novo pacote e testes de contrato e segurança atualizados para o ServidorService
+
 ### 2.0.14 — 23/11/2026
 
 Reorganiza o código da ventilação do servidor em um pacote próprio e passa a usar o relógio central da aplicação para datas e horários, sem mudar os endpoints.

@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import com.kowalski.casaapi.config.monitor.MonitorProperties.DiscoMonitorado;
@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -51,8 +52,10 @@ public class LeitorSistema {
     private final Path arquivoHostname;
     private final List<DiscoMonitorado> discos;
     private final Path arquivoSmart;
+    private final Clock relogio;
 
-    public LeitorSistema(MonitorProperties props) {
+    public LeitorSistema(MonitorProperties props, Clock relogio) {
+        this.relogio = relogio;
         this.proc = Path.of(props.procPath());
         this.sys = Path.of(props.sysPath());
         this.arquivoHostname = Path.of(props.hostnameArquivo());
@@ -510,7 +513,7 @@ public class LeitorSistema {
      * sistema) não aparece com os números do sistema.
      */
     private List<EspacoDisco> lerDiscos() {
-        ArquivoSmart arquivo = lerArquivoSmart(arquivoSmart, OffsetDateTime.now());
+        ArquivoSmart arquivo = lerArquivoSmart(arquivoSmart, OffsetDateTime.now(relogio));
         List<DiscoSmart> smart = arquivo.discos();
         List<EspacoDisco> lista = new ArrayList<>();
         Set<String> medidos = new HashSet<>();

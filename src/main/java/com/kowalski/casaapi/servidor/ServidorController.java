@@ -1,9 +1,5 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.api.v1.response.ServidorAgoraResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
-import com.kowalski.casaapi.business.monitor.MonitorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -16,10 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import com.kowalski.casaapi.api.v1.response.ServidorEventoResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,7 +25,8 @@ public class ServidorController {
 
     private static final int DIAS_PADRAO = 30;
 
-    private final MonitorService monitorService;
+    private final ServidorService servidorService;
+    private final Clock relogio;
 
     @GetMapping("/agora")
     @Operation(summary = "Leitura ao vivo",
@@ -37,7 +34,7 @@ public class ServidorController {
     @ApiResponse(responseCode = "200", description = "Leitura atual")
     @ApiResponse(responseCode = "503", description = "Não foi possível ler o sistema")
     public ServidorAgoraResponse agora() {
-        return monitorService.agora();
+        return servidorService.agora();
     }
 
     @GetMapping("/host")
@@ -48,7 +45,7 @@ public class ServidorController {
     @ApiResponse(responseCode = "200", description = "Status atual")
     @ApiResponse(responseCode = "503", description = "Arquivo do host ausente ou desligado")
     public Map<String, Object> host() {
-        return monitorService.host();
+        return servidorService.host();
     }
 
     @GetMapping("/eventos")
@@ -62,8 +59,8 @@ public class ServidorController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @Parameter(description = "Último dia; padrão: hoje", example = "2026-11-15")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
-        LocalDate fim = ate != null ? ate : LocalDate.now();
-        return monitorService.eventos(de != null ? de : fim.minusDays(6), fim);
+        LocalDate fim = ate != null ? ate : LocalDate.now(relogio);
+        return servidorService.eventos(de != null ? de : fim.minusDays(6), fim);
     }
 
     @GetMapping("/dia")
@@ -73,7 +70,7 @@ public class ServidorController {
     @ApiResponse(responseCode = "503", description = "Banco do monitoramento indisponível")
     public ServidorDiaResponse dia(@Parameter(description = "Dia (aaaa-mm-dd); padrão: hoje", example = "2026-11-15")
                                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-        return monitorService.dia(data != null ? data : LocalDate.now());
+        return servidorService.dia(data != null ? data : LocalDate.now(relogio));
     }
 
     @GetMapping("/dias")
@@ -86,7 +83,7 @@ public class ServidorController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @Parameter(description = "Último dia; padrão: hoje", example = "2026-11-15")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
-        LocalDate fim = ate != null ? ate : LocalDate.now();
-        return monitorService.dias(de != null ? de : fim.minusDays(DIAS_PADRAO - 1L), fim);
+        LocalDate fim = ate != null ? ate : LocalDate.now(relogio);
+        return servidorService.dias(de != null ? de : fim.minusDays(DIAS_PADRAO - 1L), fim);
     }
 }

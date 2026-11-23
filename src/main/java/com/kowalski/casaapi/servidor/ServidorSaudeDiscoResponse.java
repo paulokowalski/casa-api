@@ -1,7 +1,5 @@
-package com.kowalski.casaapi.api.v1.response;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.business.monitor.AvaliacaoDisco;
-import com.kowalski.casaapi.business.monitor.SaudeSmart;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;

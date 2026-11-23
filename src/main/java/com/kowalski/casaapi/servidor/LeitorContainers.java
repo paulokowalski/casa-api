@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import org.springframework.core.ParameterizedTypeReference;

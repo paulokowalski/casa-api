@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.monitor;
 
+import com.kowalski.casaapi.servidor.LeitorHost;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

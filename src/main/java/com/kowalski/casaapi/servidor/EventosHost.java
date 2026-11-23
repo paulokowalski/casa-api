@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,12 +19,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.kowalski.casaapi.business.monitor.LeitorHost.em;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.inteiro;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.lista;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.local;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.logico;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.texto;
+import static com.kowalski.casaapi.servidor.LeitorHost.em;
+import static com.kowalski.casaapi.servidor.LeitorHost.inteiro;
+import static com.kowalski.casaapi.servidor.LeitorHost.lista;
+import static com.kowalski.casaapi.servidor.LeitorHost.local;
+import static com.kowalski.casaapi.servidor.LeitorHost.logico;
+import static com.kowalski.casaapi.servidor.LeitorHost.texto;
 
 /**
  * Transforma leituras do status do host em eventos para o histórico ({@code evento_host}).

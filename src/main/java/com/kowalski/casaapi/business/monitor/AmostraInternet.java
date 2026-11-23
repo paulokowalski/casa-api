@@ -1,14 +1,15 @@
 package com.kowalski.casaapi.business.monitor;
 
+import com.kowalski.casaapi.servidor.LeitorHost;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-import static com.kowalski.casaapi.business.monitor.LeitorHost.decimal;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.em;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.inteiro;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.lista;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.logico;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.texto;
+import static com.kowalski.casaapi.servidor.LeitorHost.decimal;
+import static com.kowalski.casaapi.servidor.LeitorHost.em;
+import static com.kowalski.casaapi.servidor.LeitorHost.inteiro;
+import static com.kowalski.casaapi.servidor.LeitorHost.lista;
+import static com.kowalski.casaapi.servidor.LeitorHost.logico;
+import static com.kowalski.casaapi.servidor.LeitorHost.texto;
 
 /** Uma linha de {@code amostra_internet}: a internet da casa num minuto (do internet.json). */
 public record AmostraInternet(LocalDateTime coletadoEm, Boolean online,

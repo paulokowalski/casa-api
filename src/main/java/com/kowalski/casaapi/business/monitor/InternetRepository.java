@@ -1,7 +1,8 @@
 package com.kowalski.casaapi.business.monitor;
 
+import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse;
 import com.kowalski.casaapi.api.v1.response.InternetResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorEstatisticasResponse.Faixa;
+import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse.Faixa;
 import com.kowalski.casaapi.config.monitor.MonitorConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;

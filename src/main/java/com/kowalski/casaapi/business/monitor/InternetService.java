@@ -1,5 +1,8 @@
 package com.kowalski.casaapi.business.monitor;
 
+import com.kowalski.casaapi.servidor.ServidorRepository;
+import com.kowalski.casaapi.servidor.LeitorHost;
+import com.kowalski.casaapi.servidor.EventosHost;
 import com.kowalski.casaapi.api.v1.response.InternetResponse;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
@@ -19,13 +22,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import static com.kowalski.casaapi.business.monitor.LeitorHost.decimal;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.em;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.inteiro;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.lista;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.local;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.logico;
-import static com.kowalski.casaapi.business.monitor.LeitorHost.texto;
+import static com.kowalski.casaapi.servidor.LeitorHost.decimal;
+import static com.kowalski.casaapi.servidor.LeitorHost.em;
+import static com.kowalski.casaapi.servidor.LeitorHost.inteiro;
+import static com.kowalski.casaapi.servidor.LeitorHost.lista;
+import static com.kowalski.casaapi.servidor.LeitorHost.local;
+import static com.kowalski.casaapi.servidor.LeitorHost.logico;
+import static com.kowalski.casaapi.servidor.LeitorHost.texto;
 
 /**
  * Internet da casa: a cada minuto grava em {@code amostra_internet} o que o timer casa-monitor-internet mediu
@@ -47,7 +50,7 @@ public class InternetService {
 
     private final LeitorInternet leitor;
     private final InternetRepository repository;
-    private final MonitorRepository monitorRepository;
+    private final ServidorRepository monitorRepository;
     private final MonitorProperties props;
 
     private volatile boolean tabelasProntas;
@@ -61,7 +64,7 @@ public class InternetService {
     private LocalDateTime perdaDesde;
     private double perdaMax;
 
-    public InternetService(LeitorInternet leitor, InternetRepository repository, MonitorRepository monitorRepository,
+    public InternetService(LeitorInternet leitor, InternetRepository repository, ServidorRepository monitorRepository,
                            MonitorProperties props) {
         this.leitor = leitor;
         this.repository = repository;

@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class MonitorHostTest {
         escrever(proc.resolve("uptime"), "10.0 10.0\n");
 
         var leitor = new LeitorSistema(new MonitorProperties(true, 365, proc.toString(), sys.toString(),
-                raiz.resolve("hostname").toString(), List.of(), null, null, null, null, null));
+                raiz.resolve("hostname").toString(), List.of(), null, null, null, null, null), java.time.Clock.systemDefaultZone());
         var inst = leitor.instantaneo();
 
         assertThat(inst.pressao()).isEqualTo(new LeitorSistema.Pressao(1.5, 0.25, 0.10, 3.0, 2.0));

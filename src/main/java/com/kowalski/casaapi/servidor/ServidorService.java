@@ -1,11 +1,5 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.servidor;
 
-import com.kowalski.casaapi.api.v1.response.ServidorAgoraResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorContainerResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorDiscoResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorSaudeDiscoResponse;
-import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -35,7 +30,7 @@ import java.util.function.Supplier;
  */
 @Slf4j
 @Service
-public class MonitorService {
+public class ServidorService {
 
     static final int MAX_DIAS_CONSULTA = 366;
     private static final long MEIO_SEGUNDO = 500;
@@ -45,23 +40,25 @@ public class MonitorService {
     private final LeitorSistema leitor;
     private final LeitorContainers leitorContainers;
     private final LeitorHost leitorHost;
-    private final MonitorRepository repository;
+    private final ServidorRepository repository;
     private final EventosHost.Estado estadoHost = new EventosHost.Estado();
     private static final int MAX_EVENTOS_DIA = 500;
     private final MonitorProperties props;
+    private final Clock relogio;
 
     private volatile LeitorSistema.Contadores anterior;
     private volatile LeitorContainers.Leitura anteriorContainers;
     private volatile boolean tabelasProntas;
     private volatile LocalDateTime ultimaGravacaoDiscos;
 
-    public MonitorService(LeitorSistema leitor, LeitorContainers leitorContainers, LeitorHost leitorHost,
-                          MonitorRepository repository, MonitorProperties props) {
+    public ServidorService(LeitorSistema leitor, LeitorContainers leitorContainers, LeitorHost leitorHost,
+                          ServidorRepository repository, MonitorProperties props, Clock relogio) {
         this.leitor = leitor;
         this.leitorContainers = leitorContainers;
         this.leitorHost = leitorHost;
         this.repository = repository;
         this.props = props;
+        this.relogio = relogio;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -89,7 +86,7 @@ public class MonitorService {
     @Scheduled(cron = "${monitor.coleta-cron:0 * * * * *}")
     public void coletar() {
         if (!props.habilitado()) return;
-        LocalDateTime agora = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        LocalDateTime agora = LocalDateTime.now(relogio).truncatedTo(ChronoUnit.MINUTES);
         coletarServidor(agora);
         coletarContainers(agora);
         coletarHost(agora);
@@ -103,7 +100,7 @@ public class MonitorService {
             List<EventosHost.Evento> eventos = new ArrayList<>();
             if (boot != null) eventos.add(EventosHost.boot(boot));
             Map<String, Object> host = leitorHost.habilitado() ? leitorHost.ler() : null;
-            if (host != null && !LeitorHost.desatualizado(host, java.time.Instant.now())) {
+            if (host != null && !LeitorHost.desatualizado(host, relogio.instant())) {
                 repository.inserirHost(AmostraHost.de(agora, host));
                 eventos.addAll(EventosHost.calcular(agora, host, estadoHost));
             }
@@ -125,7 +122,7 @@ public class MonitorService {
     }
 
     /** Eventos de um período, do mais recente para o mais antigo. */
-    public List<com.kowalski.casaapi.api.v1.response.ServidorEventoResponse> eventos(LocalDate de, LocalDate ate) {
+    public List<com.kowalski.casaapi.servidor.ServidorEventoResponse> eventos(LocalDate de, LocalDate ate) {
         Assert.isTrue(!de.isAfter(ate), "A data inicial deve ser anterior ou igual à final");
         Assert.isTrue(ChronoUnit.DAYS.between(de, ate) < MAX_DIAS_CONSULTA,
                 "Consulte no máximo " + MAX_DIAS_CONSULTA + " dias por vez");
@@ -168,11 +165,11 @@ public class MonitorService {
     public void limparAntigas() {
         if (!props.habilitado() || !prepararTabelas()) return;
         try {
-            int apagadas = repository.apagarAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
+            int apagadas = repository.apagarAntesDe(LocalDate.now(relogio).minusDays(props.retencaoDias()).atStartOfDay());
             if (apagadas > 0) log.info("Monitoramento: {} amostras com mais de {} dias apagadas", apagadas, props.retencaoDias());
-            repository.apagarHostAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
+            repository.apagarHostAntesDe(LocalDate.now(relogio).minusDays(props.retencaoDias()).atStartOfDay());
             int containers = repository.apagarContainersAntesDe(
-                    LocalDate.now().minusDays(props.retencaoContainersDias()).atStartOfDay());
+                    LocalDate.now(relogio).minusDays(props.retencaoContainersDias()).atStartOfDay());
             if (containers > 0) {
                 log.info("Monitoramento: {} amostras de containers com mais de {} dias apagadas", containers,
                         props.retencaoContainersDias());
@@ -196,8 +193,8 @@ public class MonitorService {
             LeitorSistema.Instantaneo inst = leitor.instantaneo();
             LeitorSistema.Identificacao id = leitor.identificacao();
             List<ServidorContainerResponse> containers = containersDepois == null ? List.of()
-                    : containersAgora(containersAntes, containersDepois);
-            return montarAgora(id, antes, atual, inst, containers);
+                    : containersAgora(LocalDateTime.now(relogio), containersAntes, containersDepois);
+            return montarAgora(LocalDateTime.now(relogio), id, antes, atual, inst, containers);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new MonitorIndisponivelException("Leitura do servidor interrompida", e);
@@ -233,8 +230,9 @@ public class MonitorService {
     }
 
     /** Rodando primeiro, depois os que mais usam CPU. */
-    static List<ServidorContainerResponse> containersAgora(LeitorContainers.Leitura antes, LeitorContainers.Leitura depois) {
-        return AmostraContainer.de(LocalDateTime.now(), antes, depois).stream()
+    static List<ServidorContainerResponse> containersAgora(LocalDateTime agora, LeitorContainers.Leitura antes,
+                                                           LeitorContainers.Leitura depois) {
+        return AmostraContainer.de(agora, antes, depois).stream()
                 .map(a -> new ServidorContainerResponse(a.nome(), a.imagem(), a.estado(), a.status(), a.saude(),
                         arredondar(a.cpuPct()), a.memUsada(), a.memLimite(), arredondar(a.memPct()),
                         arredondar(a.redeRxBps()), arredondar(a.redeTxBps()),
@@ -269,7 +267,7 @@ public class MonitorService {
         return tabelasProntas;
     }
 
-    static ServidorAgoraResponse montarAgora(LeitorSistema.Identificacao id, LeitorSistema.Contadores antes,
+    static ServidorAgoraResponse montarAgora(LocalDateTime agora, LeitorSistema.Identificacao id, LeitorSistema.Contadores antes,
                                               LeitorSistema.Contadores atual, LeitorSistema.Instantaneo inst,
                                               List<ServidorContainerResponse> containers) {
         double seg = atual.segundosDesde(antes);
@@ -290,7 +288,7 @@ public class MonitorService {
         });
 
         return new ServidorAgoraResponse(
-                LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS), id.host(), id.modelo(), id.kernel(), inst.uptimeSegundos(),
+                agora.truncatedTo(ChronoUnit.SECONDS), id.host(), id.modelo(), id.kernel(), inst.uptimeSegundos(),
                 new ServidorAgoraResponse.Cpu(arredondar(atual.cpu().usoPct(antes.cpu())),
                         arredondar(atual.cpu().iowaitPct(antes.cpu())), nucleos),
                 new ServidorAgoraResponse.Carga(inst.load1(), inst.load5(), inst.load15(), inst.processos()),

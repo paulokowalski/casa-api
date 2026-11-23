@@ -14,7 +14,7 @@ import com.kowalski.casaapi.geracao.*;
 import com.kowalski.casaapi.renda.*;
 import com.kowalski.casaapi.ventilacao.*;
 import com.kowalski.casaapi.pessoa.Pessoa;
-import com.kowalski.casaapi.business.monitor.MonitorService;
+import com.kowalski.casaapi.servidor.*;
 import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.pessoa.PessoaResponse;
 import com.kowalski.casaapi.pessoa.PessoaService;
@@ -70,7 +70,7 @@ class ContratoEndpointsTest {
     @MockitoBean CarroService carroService;
     @MockitoBean AuthService authService;
     @MockitoBean PessoaRepository pessoaRepository;
-    @MockitoBean MonitorService monitorService;
+    @MockitoBean ServidorService servidorService;
     @MockitoBean com.kowalski.casaapi.business.monitor.InternetService internetService;
     @MockitoBean VentilacaoService ventilacaoService;
     @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
@@ -417,7 +417,7 @@ class ContratoEndpointsTest {
 
         @Test
         void agora() throws Exception {
-            when(monitorService.agora()).thenReturn(new ServidorAgoraResponse(null, "casa", null, null, 60,
+            when(servidorService.agora()).thenReturn(new ServidorAgoraResponse(null, "casa", null, null, 60,
                     new ServidorAgoraResponse.Cpu(12.5, 0.1, List.of()), new ServidorAgoraResponse.Carga(1, 1, 1, 100),
                     new ServidorAgoraResponse.Memoria(100, 50, 50, 0, 0, 0), List.of(), null, List.of(), List.of(),
                     new ServidorAgoraResponse.DiscoIo(0, 0),
@@ -438,7 +438,7 @@ class ContratoEndpointsTest {
 
         @Test
         void diaUsaHojeComoPadrao() throws Exception {
-            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of(), List.of()));
+            when(servidorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of(), List.of()));
 
             mvc.perform(get("/v1/servidor/dia")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value(LocalDate.now().toString()))
@@ -451,20 +451,20 @@ class ContratoEndpointsTest {
 
         @Test
         void diasUsaOsUltimos30DiasComoPadrao() throws Exception {
-            when(monitorService.dias(any(), any())).thenReturn(List.of(new ServidorResumoDiaResponse(LocalDate.of(2026, 11, 15), resumo)));
+            when(servidorService.dias(any(), any())).thenReturn(List.of(new ServidorResumoDiaResponse(LocalDate.of(2026, 11, 15), resumo)));
 
             mvc.perform(get("/v1/servidor/dias")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].data").value("2026-11-15"))
                     .andExpect(jsonPath("$[0].resumo.amostras").value(1440));
-            verify(monitorService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+            verify(servidorService).dias(LocalDate.now().minusDays(29), LocalDate.now());
 
             mvc.perform(get("/v1/servidor/dias").param("de", "2026-11-01").param("ate", "2026-11-10"));
-            verify(monitorService).dias(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+            verify(servidorService).dias(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
         }
 
         @Test
         void bancoForaDoArDa503ComMensagem() throws Exception {
-            when(monitorService.dia(any())).thenThrow(new MonitorIndisponivelException("O banco do monitoramento (MariaDB) está indisponível", null));
+            when(servidorService.dia(any())).thenThrow(new MonitorIndisponivelException("O banco do monitoramento (MariaDB) está indisponível", null));
 
             mvc.perform(get("/v1/servidor/dia"))
                     .andExpect(status().isServiceUnavailable())
@@ -551,14 +551,14 @@ class ContratoEndpointsTest {
 
         @Test
         void hostDevolveOMapaDoServico() throws Exception {
-            when(monitorService.host()).thenReturn(Map.of("desatualizado", false));
+            when(servidorService.host()).thenReturn(Map.of("desatualizado", false));
             mvc.perform(get("/v1/servidor/host")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.desatualizado").value(false));
         }
 
         @Test
         void eventosUsaOsUltimos7DiasComoPadrao() throws Exception {
-            when(monitorService.eventos(any(), any())).thenReturn(List.of(
+            when(servidorService.eventos(any(), any())).thenReturn(List.of(
                     new ServidorEventoResponse(java.time.LocalDateTime.of(2026, 11, 15, 3, 41), "backup", "sucesso", "ok")));
 
             mvc.perform(get("/v1/servidor/eventos")).andExpect(status().isOk())
@@ -566,10 +566,10 @@ class ContratoEndpointsTest {
                     .andExpect(jsonPath("$[0].tipo").value("backup"))
                     .andExpect(jsonPath("$[0].nivel").value("sucesso"))
                     .andExpect(jsonPath("$[0].mensagem").value("ok"));
-            verify(monitorService).eventos(LocalDate.now().minusDays(6), LocalDate.now());
+            verify(servidorService).eventos(LocalDate.now().minusDays(6), LocalDate.now());
 
             mvc.perform(get("/v1/servidor/eventos").param("de", "2026-11-01").param("ate", "2026-11-10"));
-            verify(monitorService).eventos(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+            verify(servidorService).eventos(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
         }
     }
 

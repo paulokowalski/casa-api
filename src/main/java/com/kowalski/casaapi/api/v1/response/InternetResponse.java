@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.api.v1.response;
 
+import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDate;
