@@ -1,23 +1,14 @@
-package com.kowalski.casaapi.business.service.impl;
+package com.kowalski.casaapi.conta;
 
 import com.kowalski.casaapi.comum.RelogioConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.Instant;
 
-import com.kowalski.casaapi.api.v1.input.ContaInput;
-import com.kowalski.casaapi.api.v1.input.LancamentoInput;
-import com.kowalski.casaapi.api.v1.response.ContaResponse;
-import com.kowalski.casaapi.api.v1.response.LancamentoResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.enumerator.TipoConta;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.model.Conta;
-import com.kowalski.casaapi.business.model.ContaLancamento;
 import com.kowalski.casaapi.pessoa.Pessoa;
-import com.kowalski.casaapi.business.repository.ContaLancamentoRepository;
-import com.kowalski.casaapi.business.repository.ContaRepository;
-import com.kowalski.casaapi.pessoa.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
@@ -38,16 +29,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.*;
 
-class ContaServiceImplTest {
+class ContaServiceTest {
 
     private static final Clock RELOGIO = Clock.fixed(Instant.parse("2026-11-23T15:00:00Z"), RelogioConfig.FUSO_DA_CASA);
 
     private final ContaRepository contaRepository = mock(ContaRepository.class);
     private final ContaLancamentoRepository lancamentoRepository = mock(ContaLancamentoRepository.class);
-    private final PessoaRepository pessoaRepository = mock(PessoaRepository.class);
+    private final PessoaService pessoaService = mock(PessoaService.class);
     private final CategoriaService categoriaService = mock(CategoriaService.class);
-    private final ContaServiceImpl service = new ContaServiceImpl(
-            contaRepository, lancamentoRepository, pessoaRepository, categoriaService, new UsuarioLogado(), RELOGIO);
+    private final ContaService service = new ContaService(
+            contaRepository, lancamentoRepository, pessoaService, categoriaService, new UsuarioLogado(), RELOGIO);
 
     private final Pessoa ana = Login.pessoa(Login.ANA_ID, "ANA");
     private final Pessoa bruno = Login.pessoa(Login.BRUNO_ID, "BRUNO");
@@ -55,8 +46,8 @@ class ContaServiceImplTest {
     @BeforeEach
     void setUp() {
         Login.comoAna();
-        when(pessoaRepository.findById(Login.ANA_ID)).thenReturn(Optional.of(ana));
-        when(pessoaRepository.findById(Login.BRUNO_ID)).thenReturn(Optional.of(bruno));
+        when(pessoaService.referencia(Login.ANA_ID)).thenReturn(ana);
+        when(pessoaService.referencia(Login.BRUNO_ID)).thenReturn(bruno);
         when(contaRepository.save(any())).thenAnswer(i -> {
             Conta c = i.getArgument(0);
             if (c.getId() == null) c.setId(UUID.randomUUID());

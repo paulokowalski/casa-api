@@ -1,7 +1,7 @@
-package com.kowalski.casaapi.api.v1.response;
+package com.kowalski.casaapi.conta;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.kowalski.casaapi.business.enumerator.TipoConta;
+import static com.kowalski.casaapi.comum.Competencias.formatar;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,4 +24,24 @@ public record LancamentoResponse(
         @Schema(description = "Data do pagamento") LocalDate dataPagamento,
         @Schema(description = "A conta é em débito automático", example = "false") boolean debitoAutomatico,
         @Schema(description = "A conta tem valor variável", example = "false") boolean valorVariavel) {
+
+    public static LancamentoResponse de(ContaLancamento l) {
+        Conta c = l.getConta();
+        return new LancamentoResponse(
+                l.getId(),
+                c.getId(),
+                c.getDescricao(),
+                c.getCategoria() != null ? c.getCategoria().getNome() : null,
+                c.getTipo(),
+                formatar(l.getCompetencia()),
+                l.getVencimento(),
+                l.getNumeroParcela(),
+                c.getTotalParcelas(),
+                l.getValor(),
+                l.isValorEstimado(),
+                l.isPaga(),
+                l.getDataPagamento(),
+                c.isDebitoAutomatico(),
+                c.isValorVariavel());
+    }
 }

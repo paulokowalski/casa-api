@@ -1,10 +1,12 @@
-package com.kowalski.casaapi.api.v1.input;
+package com.kowalski.casaapi.conta;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.kowalski.casaapi.business.enumerator.TipoConta;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import static com.kowalski.casaapi.comum.Competencias.parseOuNulo;
+import static com.kowalski.casaapi.comum.Competencias.parse;
 
 @Schema(description = "Dados para cadastrar ou editar uma conta")
 public record ContaInput(
@@ -21,4 +23,10 @@ public record ContaInput(
         @Schema(description = "PARCELADA: juros ao mês em %, opcional (usado para calcular a economia ao antecipar parcelas)", example = "1.99") BigDecimal jurosMes,
         @Schema(description = "O valor muda todo mês (ex.: luz); o valor informado é só a estimativa", example = "false") Boolean valorVariavel,
         @Schema(description = "Pago em débito automático: lançamentos vencidos são baixados sozinhos", example = "false") Boolean debitoAutomatico) {
+
+    public DadosDaConta paraDados() {
+        return new DadosDaConta(descricao, tipo, valor, diaVencimento, parse(competenciaInicio, "competenciaInicio"),
+                tipo == TipoConta.RECORRENTE ? parseOuNulo(competenciaFim, "competenciaFim") : null,
+                parcelaInicial, totalParcelas, jurosMes, Boolean.TRUE.equals(valorVariavel), Boolean.TRUE.equals(debitoAutomatico));
+    }
 }

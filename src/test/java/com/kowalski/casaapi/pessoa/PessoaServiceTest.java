@@ -135,6 +135,16 @@ class PessoaServiceTest {
     }
 
     @Test
+    void referenciaDevolveAPessoaOuDa404ComOId() {
+        Pessoa ana = cadastrada(Login.ANA_ID, "ANA");
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThat(service.referencia(Login.ANA_ID)).isSameAs(ana);
+        assertThatThrownBy(() -> service.referencia(99L))
+                .isInstanceOf(RecursoNaoEncontradoException.class).hasMessage("Pessoa 99 não encontrada");
+    }
+
+    @Test
     void excluiOutraPessoa() {
         Pessoa ana = cadastrada(Login.ANA_ID, "ANA");
 

@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.business.repository;
+package com.kowalski.casaapi.conta;
 
-import com.kowalski.casaapi.business.model.Conta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -1,11 +1,13 @@
-package com.kowalski.casaapi.business.model;
+package com.kowalski.casaapi.conta;
 
 import jakarta.persistence.*;
+import org.springframework.util.Assert;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -45,4 +47,29 @@ public class ContaLancamento {
 
     @Column(name = "baixa_manual", nullable = false)
     private boolean baixaManual;
+
+    public void registrarValorReal(BigDecimal valorReal) {
+        Assert.isTrue(valorReal.signum() > 0, "O valor deve ser maior que zero");
+        this.valor = valorReal;
+        this.valorEstimado = false;
+    }
+
+    public void marcarPaga(boolean pagaAgora, LocalDate dataInformada, LocalDate hoje) {
+        this.paga = pagaAgora;
+        this.baixaManual = true;
+        this.dataPagamento = pagaAgora ? Objects.requireNonNullElse(dataInformada, hoje) : null;
+    }
+
+    public void corrigirDataDePagamento(LocalDate data) {
+        if (paga) this.dataPagamento = data;
+    }
+
+    public boolean baixaAutomaticaPendenteEm(LocalDate hoje) {
+        return conta.isDebitoAutomatico() && !paga && !baixaManual && !vencimento.isAfter(hoje);
+    }
+
+    public void baixarNoVencimento() {
+        this.paga = true;
+        this.dataPagamento = vencimento;
+    }
 }

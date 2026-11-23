@@ -7,6 +7,7 @@ import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.carro.CarroResponse;
 import com.kowalski.casaapi.carro.CarroService;
+import com.kowalski.casaapi.conta.*;
 import com.kowalski.casaapi.fatura.*;
 import com.kowalski.casaapi.geracao.*;
 import com.kowalski.casaapi.renda.*;

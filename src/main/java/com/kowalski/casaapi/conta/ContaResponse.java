@@ -1,10 +1,12 @@
-package com.kowalski.casaapi.api.v1.response;
+package com.kowalski.casaapi.conta;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.kowalski.casaapi.business.enumerator.TipoConta;
+import java.time.LocalDate;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import static com.kowalski.casaapi.comum.Competencias.formatar;
 
 @Schema(description = "Conta com a situação calculada para o mês atual")
 public record ContaResponse(
@@ -27,4 +29,28 @@ public record ContaResponse(
         @Schema(description = "PARCELADA: número da parcela no mês atual", example = "4") Integer parcelaAtual,
         @Schema(description = "PARCELADA: parcelas que faltam depois da atual", example = "8") Integer parcelasRestantes,
         @Schema(description = "PARCELADA: valor × parcelas restantes", example = "1039.20") BigDecimal saldoRestante) {
+
+    public static ContaResponse de(Conta c, LocalDate mesAtual) {
+        SituacaoDasParcelas parcelas = c.situacaoEm(mesAtual);
+        return new ContaResponse(
+                c.getId(),
+                c.getPessoa().getId(),
+                c.getCategoria() != null ? c.getCategoria().getId() : null,
+                c.getCategoria() != null ? c.getCategoria().getNome() : null,
+                c.getDescricao(),
+                c.getTipo(),
+                c.getValor(),
+                c.getDiaVencimento(),
+                formatar(c.getCompetenciaInicio()),
+                formatar(c.getCompetenciaFim()),
+                c.getParcelaInicial(),
+                c.getTotalParcelas(),
+                c.getJurosMes(),
+                c.isValorVariavel(),
+                c.isDebitoAutomatico(),
+                c.ativaEm(mesAtual),
+                parcelas.parcelaAtual(),
+                parcelas.restantes(),
+                parcelas.saldo());
+    }
 }

@@ -1,11 +1,6 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.conta;
 
-import com.kowalski.casaapi.api.v1.input.ContaInput;
-import com.kowalski.casaapi.api.v1.input.LancamentoInput;
-import com.kowalski.casaapi.api.v1.response.ContaResponse;
-import com.kowalski.casaapi.api.v1.response.LancamentoResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.service.ContaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.business.repository;
+package com.kowalski.casaapi.conta;
 
-import com.kowalski.casaapi.business.model.ContaLancamento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

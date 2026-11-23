@@ -422,6 +422,18 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.11 — 23/11/2026
+
+Reorganiza internamente o módulo de Contas, sem mudar os endpoints nem o comportamento para quem usa o sistema.
+
+- Código de Contas reunido no pacote próprio `conta` (controller, entrada, resposta, entidades, repositórios e serviço), como já foi feito com pessoa, categoria, carro, geração, fatura e renda
+- Regras de cadastro e edição da conta (descrição, tipo, valor, dia do vencimento, juros, parcelas e período) levadas para a entidade `Conta`, com o novo registro `DadosDaConta`
+- Cálculo de parcela atual, parcelas restantes e saldo restante separado no novo registro `SituacaoDasParcelas`
+- Baixa manual, correção da data de pagamento, registro do valor real e baixa automática no débito automático levados para `ContaLancamento`
+- Interface `ContaService` e implementação `ContaServiceImpl` unidas em uma só classe `ContaService`
+- Novo método `PessoaService.referencia` para buscar a dona da conta, devolvendo 404 com o id quando não existe
+- Novos testes unitários da entidade `Conta` e do `PessoaService.referencia`; teste do serviço renomeado para `ContaServiceTest`
+
 ### 2.0.10 — 23/11/2026
 
 Reorganização interna das funcionalidades de fatura e renda, sem mudança de comportamento para quem usa o sistema.

@@ -60,6 +60,11 @@ public class PessoaService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public Pessoa referencia(Long id) {
+        return pessoaRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa " + id + " não encontrada"));
+    }
+
     private Pessoa buscar(Long id) {
         return pessoaRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa não encontrada"));
     }
