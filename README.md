@@ -4,7 +4,7 @@ Backend da casa: compras no cartão e parcelas, contas fixas e lançamentos mens
 pessoas/acessos e monitoramento (geração solar, histórico FIPE e saúde do servidor). Consumido pelo front
 [`casa`](../casa) e por integrações (Node-RED).
 
-- **Stack:** Java 17 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · MariaDB (só o histórico do monitoramento) · springdoc-openapi (Swagger) · Lombok · Maven
+- **Stack:** Java 25 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · MariaDB (só o histórico do monitoramento) · springdoc-openapi (Swagger) · Lombok · Maven
 - **Base da API:** `http://<host>:8080/casa-api` (o nginx do front também repassa `/casa-api/` para cá)
 - **Documentação interativa:** [`/casa-api/swagger-ui.html`](http://localhost:8080/casa-api/swagger-ui.html) · OpenAPI JSON em `/casa-api/v3/api-docs`
 
@@ -421,6 +421,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 2.0.4 — 23/11/2026
+
+A API passa a rodar no Java 25 e atende cada requisição em uma thread virtual, o que melhora o uso de recursos enquanto espera banco, disco e host.
+
+- Java atualizado de 17 para 25 (java.version no pom.xml)
+- Imagem Docker atualizada para maven:3.9-eclipse-temurin-25 no build e eclipse-temurin:25-jre-noble na execução; o deploy precisa reconstruir a imagem
+- Threads virtuais ativadas (spring.threads.virtual.enabled: true no application.yaml), uma por requisição
+- Lombok declarado em annotationProcessorPaths do maven-compiler-plugin, já que a partir do JDK 23 o processador de anotações não roda sozinho
+- Build local e testes passam a exigir JDK 25
 
 ### 2.0.3 — 23/11/2026
 
