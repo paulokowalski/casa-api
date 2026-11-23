@@ -5,7 +5,7 @@ import com.kowalski.casaapi.business.dao.DespesaDao;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
-import com.kowalski.casaapi.util.Competencias;
+import com.kowalski.casaapi.comum.Competencias;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

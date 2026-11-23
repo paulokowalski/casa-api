@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
-import static com.kowalski.casaapi.util.Competencias.de;
+import static com.kowalski.casaapi.comum.Competencias.de;
 
 @RestController
 @RequiredArgsConstructor

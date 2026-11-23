@@ -422,6 +422,19 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.5 — 23/11/2026
+
+Refatoração interna: datas calculadas sempre no fuso de São Paulo, erros de validação com a mensagem do campo e classes comuns reunidas em um só pacote, sem mudar nenhuma rota da API.
+
+- Novo relógio único da aplicação (RelogioConfig, fuso America/Sao_Paulo), que substitui o relógio próprio do Crescimento. Contas, compras, faturas, geração de energia e passagens agora usam esse relógio para "hoje" e para o mês atual.
+- Corrigido o mês atual e a data de "hoje" (pagamento de fatura e de lançamento, débito automático, data de cadastro), que podiam sair errados perto da meia-noite quando o servidor roda em UTC.
+- A data de cadastro da conta passou a ser definida pelo serviço ao criar a conta. O @PrePersist da entidade Conta foi removido.
+- Erros de validação de corpo e de parâmetros (@Valid, @Min, @NotBlank…) agora respondem 400 com a mensagem do campo. Foi adicionada a dependência spring-boot-starter-validation.
+- ApiExceptionHandler, ErroResponse, Competencias e as exceções RecursoNaoEncontradoException e MonitorIndisponivelException foram movidos para o pacote comum.
+- Configurações da chave de integração (ApiKeyProperties, prefixo api) e de CORS (CorsProperties) convertidas em records com injeção por construtor. As propriedades api.key e app.cors.allowed-origins continuam as mesmas.
+- @Transactional do Jakarta trocado pelo do Spring em CompraServiceImpl e GeracaoServiceImpl.
+- Testes atualizados para usar relógio fixo. Novos testes para as mensagens de validação, para o mês atual no fuso da casa e para a data de cadastro da conta.
+
 ### 2.0.4 — 23/11/2026
 
 A API passa a rodar no Java 25 e atende cada requisição em uma thread virtual, o que melhora o uso de recursos enquanto espera banco, disco e host.

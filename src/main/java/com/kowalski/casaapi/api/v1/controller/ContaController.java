@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-import static com.kowalski.casaapi.util.Competencias.parse;
-import static com.kowalski.casaapi.util.Competencias.parseOuNulo;
+import static com.kowalski.casaapi.comum.Competencias.parse;
+import static com.kowalski.casaapi.comum.Competencias.parseOuNulo;
 
 @RestController
 @RequiredArgsConstructor

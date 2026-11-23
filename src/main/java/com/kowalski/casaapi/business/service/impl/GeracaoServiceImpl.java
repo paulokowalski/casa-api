@@ -10,9 +10,10 @@ import com.kowalski.casaapi.business.model.GeracaoDiaria;
 import com.kowalski.casaapi.business.repository.GeracaoRepository;
 import com.kowalski.casaapi.business.service.GeracaoDiariaService;
 import com.kowalski.casaapi.business.service.GeracaoService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import java.time.Clock;
 import java.time.*;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ public class GeracaoServiceImpl implements GeracaoService {
 
     private final GeracaoRepository geracaoRepository;
     private final GeracaoDiariaService geracaoDiariaService;
+    private final Clock relogio;
 
     @Override
     public GeracaoDiariaResponse buscarGeracao(LocalDate data) {
@@ -34,7 +36,7 @@ public class GeracaoServiceImpl implements GeracaoService {
 
     @Override
     public GeracaoMensalResponse buscarGeracaoMensal(int ano, int mes) {
-        var geracoes = geracaoDiariaService.buscarPorAnoMes(ano, mes).stream().map(ger -> new GeracaoResponse(ger.getGeracao(), LocalDateTime.of(ger.getData(), LocalTime.now()))).toList();
+        var geracoes = geracaoDiariaService.buscarPorAnoMes(ano, mes).stream().map(ger -> new GeracaoResponse(ger.getGeracao(), LocalDateTime.of(ger.getData(), LocalTime.now(relogio)))).toList();
         return new GeracaoMensalResponse(geracoes, Year.of(ano), Month.of(mes));
     }
 
@@ -59,7 +61,7 @@ public class GeracaoServiceImpl implements GeracaoService {
     @Override
     @Transactional
     public void salvar(GeradoDTO dto) {
-        var geracao = Geracao.builder().data(LocalDateTime.now()).geracao(dto.getGerado()).potencia(dto.getPotencia()).build();
+        var geracao = Geracao.builder().data(LocalDateTime.now(relogio)).geracao(dto.getGerado()).potencia(dto.getPotencia()).build();
         geracaoRepository.save(geracao);
         salvarGeracaoDiaria(geracao);
     }

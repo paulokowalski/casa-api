@@ -2,7 +2,7 @@ package com.kowalski.casaapi.business.service.impl;
 
 import com.kowalski.casaapi.api.v1.input.RendaInput;
 import com.kowalski.casaapi.api.v1.response.RendaResponse;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.RendaMensal;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.business.repository.RendaMensalRepository;
@@ -14,7 +14,7 @@ import org.springframework.util.Assert;
 
 import java.time.LocalDate;
 
-import static com.kowalski.casaapi.util.Competencias.formatar;
+import static com.kowalski.casaapi.comum.Competencias.formatar;
 
 @Service
 @RequiredArgsConstructor

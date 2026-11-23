@@ -1,10 +1,14 @@
 package com.kowalski.casaapi.business.service.impl;
 
+import com.kowalski.casaapi.comum.RelogioConfig;
+import java.time.Clock;
+import java.time.Instant;
+
 import com.kowalski.casaapi.api.v1.input.FaturaInput;
 import com.kowalski.casaapi.api.v1.input.RendaInput;
 import com.kowalski.casaapi.api.v1.response.FaturaResponse;
 import com.kowalski.casaapi.api.v1.response.RendaResponse;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.FaturaPaga;
 import com.kowalski.casaapi.business.model.RendaMensal;
 import com.kowalski.casaapi.business.repository.FaturaPagaRepository;
@@ -24,12 +28,14 @@ import static org.mockito.Mockito.*;
 
 class FaturaERendaServiceImplTest {
 
+    private static final Clock RELOGIO = Clock.fixed(Instant.parse("2026-11-23T15:00:00Z"), RelogioConfig.FUSO_DA_CASA);
+
     private static final LocalDate NOV = LocalDate.of(2026, 11, 1);
 
     private final PessoaRepository pessoaRepository = mock(PessoaRepository.class);
     private final FaturaPagaRepository faturaRepository = mock(FaturaPagaRepository.class);
     private final RendaMensalRepository rendaRepository = mock(RendaMensalRepository.class);
-    private final FaturaServiceImpl fatura = new FaturaServiceImpl(faturaRepository, pessoaRepository);
+    private final FaturaServiceImpl fatura = new FaturaServiceImpl(faturaRepository, pessoaRepository, RELOGIO);
     private final RendaServiceImpl renda = new RendaServiceImpl(rendaRepository, pessoaRepository);
 
     @BeforeEach
@@ -46,11 +52,11 @@ class FaturaERendaServiceImplTest {
     @Test
     void marcarComoPagaSemDataUsaHoje() {
         var id = new FaturaPaga.Id(1L, NOV);
-        when(faturaRepository.findById(id)).thenReturn(Optional.of(new FaturaPaga(id, LocalDate.now())));
+        when(faturaRepository.findById(id)).thenReturn(Optional.of(new FaturaPaga(id, LocalDate.now(RELOGIO))));
 
         FaturaResponse r = fatura.salvar(1L, NOV, new FaturaInput(true, null));
 
-        verify(faturaRepository).save(argThat(f -> f.getDataPagamento().equals(LocalDate.now())));
+        verify(faturaRepository).save(argThat(f -> f.getDataPagamento().equals(LocalDate.now(RELOGIO))));
         assertThat(r.paga()).isTrue();
     }
 

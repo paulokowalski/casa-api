@@ -1,9 +1,11 @@
-package com.kowalski.casaapi.api.v1.handler;
+package com.kowalski.casaapi.comum;
 
-import com.kowalski.casaapi.api.v1.response.ErroResponse;
-import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.ErroResponse;
+import com.kowalski.casaapi.comum.MonitorIndisponivelException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -13,9 +15,11 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -36,6 +40,22 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResponse> corpoInvalido(HttpMessageNotReadableException e) {
         return erro(HttpStatus.BAD_REQUEST, "Dados inválidos na requisição");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErroResponse> campoInvalido(MethodArgumentNotValidException e) {
+        return erro(HttpStatus.BAD_REQUEST, e.getBindingResult().getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .findFirst()
+                .orElse("Dados inválidos na requisição"));
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErroResponse> parametroInvalido(HandlerMethodValidationException e) {
+        return erro(HttpStatus.BAD_REQUEST, e.getAllErrors().stream()
+                .map(MessageSourceResolvable::getDefaultMessage)
+                .findFirst()
+                .orElse("Dados inválidos na requisição"));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)

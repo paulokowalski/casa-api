@@ -2,7 +2,7 @@ package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.response.DespesaAnualResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.service.DespesaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

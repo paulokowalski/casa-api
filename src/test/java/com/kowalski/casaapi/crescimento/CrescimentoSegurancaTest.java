@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.crescimento;
 
-import com.kowalski.casaapi.api.v1.handler.ApiExceptionHandler;
+import com.kowalski.casaapi.comum.ApiExceptionHandler;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.config.ApiKeyAuthFilter;
@@ -9,6 +9,7 @@ import com.kowalski.casaapi.config.security.ErroSegurancaJson;
 import com.kowalski.casaapi.config.security.JwtConfig;
 import com.kowalski.casaapi.config.security.PessoaJwtConverter;
 import com.kowalski.casaapi.crescimento.api.CrescimentoExceptionHandler;
+import com.kowalski.casaapi.comum.RelogioConfig;
 import com.kowalski.casaapi.crescimento.comum.CrescimentoConfig;
 import com.kowalski.casaapi.crescimento.comum.SemPermissaoException;
 import com.kowalski.casaapi.crescimento.crianca.CriancaController;
@@ -33,7 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {CriancaController.class, FotoController.class})
-@Import({SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class, UsuarioLogado.class,
+@Import({RelogioConfig.class, SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class, UsuarioLogado.class,
         ApiExceptionHandler.class, CrescimentoExceptionHandler.class, ErroSegurancaJson.class, CrescimentoConfig.class})
 @TestPropertySource(properties = {"auth.jwt.secret=segredo-de-teste-com-mais-de-32-caracteres", "api.key=chave-integracao"})
 class CrescimentoSegurancaTest {

@@ -4,7 +4,7 @@ import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.service.CategoriasService;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
@@ -12,14 +12,15 @@ import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
 import com.kowalski.casaapi.business.repository.CompraRepository;
 import com.kowalski.casaapi.business.service.TipoLancamentoService;
 import com.kowalski.casaapi.business.service.CompraService;
-import com.kowalski.casaapi.util.Competencias;
-import jakarta.transaction.Transactional;
+import com.kowalski.casaapi.comum.Competencias;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -41,6 +42,7 @@ public class CompraServiceImpl implements CompraService {
     private final CategoriasService categoriasService;
     private final CompraParcelaRepository compraParcelaRepository;
     private final UsuarioLogado usuarioLogado;
+    private final Clock relogio;
 
     @Override
     public List<CompraRegistroResponse> buscarTodos(String pessoa, String cartao) {
@@ -151,7 +153,7 @@ public class CompraServiceImpl implements CompraService {
                 .nomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase())
                 .dataCompra(compraInput.dataCompra())
                 .numeroParcelas(compraInput.numeroParcelas())
-                .dataCadastro(LocalDateTime.now())
+                .dataCadastro(LocalDateTime.now(relogio))
                 .parcelas(new ArrayList<>())
                 .build();
     }

@@ -3,8 +3,8 @@ package com.kowalski.casaapi.api.v1.controller;
 import com.kowalski.casaapi.api.v1.response.*;
 import com.kowalski.casaapi.business.auth.AuthService;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest
 @AutoConfigureMockMvc(addFilters = false)
-@Import({UsuarioLogado.class, com.kowalski.casaapi.crescimento.comum.CrescimentoConfig.class})
+@Import({UsuarioLogado.class, com.kowalski.casaapi.comum.RelogioConfig.class, com.kowalski.casaapi.crescimento.comum.CrescimentoConfig.class})
 class ContratoEndpointsTest {
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;

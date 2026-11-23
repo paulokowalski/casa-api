@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.business.service.impl;
 
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.Categorias;
 import com.kowalski.casaapi.business.repository.CategoriaRepository;
 import com.kowalski.casaapi.business.service.CategoriasService;

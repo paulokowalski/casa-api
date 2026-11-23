@@ -10,7 +10,8 @@ import com.kowalski.casaapi.api.v1.controller.PessoaController;
 import com.kowalski.casaapi.api.v1.controller.ServidorController;
 import com.kowalski.casaapi.api.v1.controller.VentilacaoController;
 import com.kowalski.casaapi.business.monitor.MonitorService;
-import com.kowalski.casaapi.api.v1.handler.ApiExceptionHandler;
+import com.kowalski.casaapi.comum.ApiExceptionHandler;
+import com.kowalski.casaapi.comum.RelogioConfig;
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.enumerator.Papel;
@@ -53,7 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         ServidorController.class, VentilacaoController.class,
         com.kowalski.casaapi.api.v1.controller.PassagensController.class,
         com.kowalski.casaapi.crescimento.exame.ExameController.class})
-@Import({SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class,
+@Import({RelogioConfig.class, SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class,
         UsuarioLogado.class, ApiExceptionHandler.class, ErroSegurancaJson.class, AuthService.class, AdminInicial.class})
 @TestPropertySource(properties = {
         "auth.jwt.secret=segredo-de-teste-com-mais-de-32-caracteres",

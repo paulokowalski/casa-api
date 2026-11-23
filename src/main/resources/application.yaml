@@ -4,7 +4,6 @@ server:
         context-path: /casa-api
 
 spring:
-    # uma thread virtual por requisição: a API passa a maior parte do tempo esperando banco, disco e o host
     threads:
         virtual:
             enabled: true
