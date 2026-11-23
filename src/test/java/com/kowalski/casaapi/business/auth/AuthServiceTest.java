@@ -1,9 +1,9 @@
 package com.kowalski.casaapi.business.auth;
 
 import com.kowalski.casaapi.api.v1.response.LoginResponse;
-import com.kowalski.casaapi.business.enumerator.Papel;
-import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.Papel;
+import com.kowalski.casaapi.pessoa.Pessoa;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.config.security.AuthProperties;
 import com.kowalski.casaapi.config.security.JwtConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,12 +91,6 @@ class AuthServiceTest {
 
         relogio.avancar(AuthService.BLOQUEIO.plusSeconds(1));
         assertThat(service.login("ana@exemplo.com", "senha-certa").token()).isNotBlank();
-    }
-
-    @Test
-    void senhaCurtaERecusada() {
-        assertThatThrownBy(() -> service.hash("1234567")).isInstanceOf(IllegalArgumentException.class);
-        assertThat(encoder.matches("12345678", service.hash("12345678"))).isTrue();
     }
 
     @Test

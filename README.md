@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.6 — 23/11/2026
+
+Reorganiza o cadastro de pessoas num módulo próprio, sem mudar o comportamento nem o contrato da API.
+
+- Pessoas reunidas no pacote `pessoa` (entidade, papel, repositório, serviço, controller e input), que antes ficavam espalhados pelas camadas `api`/`business`.
+- Endpoints `/v1/pessoas` agora devolvem o novo DTO `PessoaResponse` em vez da entidade, com os mesmos campos (id, nome, email, papel, ativo, temAcesso) e ainda sem a senha.
+- Regras da pessoa levadas para a entidade: `definirSenha` (mínimo de 8 caracteres, guarda só o hash), `alterarDados` (nome e e-mail obrigatórios, sem espaços nas pontas) e `tornarAdmin`.
+- `PessoaService` passou de interface + implementação a uma classe única, que recebe o id e devolve 404 quando a pessoa não existe; o método `hash` saiu do `AuthService`.
+- Admin inicial (`AUTH_ADMIN_EMAIL`) configurado pelas novas regras da entidade, sem mudança de comportamento.
+- Testes novos `PessoaTest` e `PessoaServiceTest`, e teste e2e que confirma que trocar o e-mail para o de outra pessoa dá 400 e não altera nada.
+
 ### 2.0.5 — 23/11/2026
 
 Refatoração interna: datas calculadas sempre no fuso de São Paulo, erros de validação com a mensagem do campo e classes comuns reunidas em um só pacote, sem mudar nenhuma rota da API.

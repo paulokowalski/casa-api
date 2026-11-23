@@ -1,8 +1,8 @@
 package com.kowalski.casaapi.config.crescimento;
 
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.Pessoa;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.crescimento.identidade.DiretorioUsuarios;
 import com.kowalski.casaapi.crescimento.identidade.UsuarioAtual;
 import lombok.RequiredArgsConstructor;

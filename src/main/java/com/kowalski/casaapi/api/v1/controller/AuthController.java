@@ -5,7 +5,7 @@ import com.kowalski.casaapi.api.v1.response.LoginResponse;
 import com.kowalski.casaapi.api.v1.response.UsuarioResponse;
 import com.kowalski.casaapi.business.auth.AuthService;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;

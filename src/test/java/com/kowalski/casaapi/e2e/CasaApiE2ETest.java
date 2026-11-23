@@ -155,7 +155,38 @@ class CasaApiE2ETest {
         assertThat(invalida.getStatusCode().value()).isEqualTo(400);
     }
 
+    @Test
+    void trocarOEmailParaODeOutraPessoaDa400ENaoMudaNada() {
+        String token = token();
+        String sufixo = String.valueOf(System.nanoTime());
+        String emailDaAna = "ana-" + sufixo + "@e2e.local";
+        Number ana = (Number) criarPessoa(token, "Ana E2E", emailDaAna).get("id");
+        Number bruno = (Number) criarPessoa(token, "Bruno E2E", "bruno-" + sufixo + "@e2e.local").get("id");
+
+        var r = http.put().uri("/v1/pessoas/" + bruno).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("nome", "Bruno E2E", "email", " " + emailDaAna.toUpperCase() + " "))
+                .retrieve().toEntity(MAPA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(400);
+        assertThat(r.getBody()).containsEntry("mensagem", "Já existe uma pessoa com este e-mail.");
+        var pessoas = http.get().uri("/v1/pessoas").header("Authorization", token).retrieve().body(LISTA);
+        assertThat(pessoas).filteredOn(p -> ((Number) p.get("id")).longValue() == bruno.longValue())
+                .singleElement().satisfies(p -> assertThat(p.get("email")).isEqualTo("bruno-" + sufixo + "@e2e.local"));
+
+        for (Number id : List.of(ana, bruno)) {
+            assertThat(http.delete().uri("/v1/pessoas/" + id).header("Authorization", token).retrieve()
+                    .toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+        }
+    }
+
     // ---- apoio ----
+
+    private Map<String, Object> criarPessoa(String token, String nome, String email) {
+        var r = http.post().uri("/v1/pessoas").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("nome", nome, "email", email)).retrieve().toEntity(MAPA);
+        assertThat(r.getStatusCode().value()).as("cadastro de " + nome).isEqualTo(201);
+        return r.getBody();
+    }
 
     private String token() {
         var r = http.post().uri("/v1/auth/login").contentType(MediaType.APPLICATION_JSON)

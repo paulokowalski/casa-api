@@ -5,9 +5,11 @@ import com.kowalski.casaapi.business.auth.AuthService;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
-import com.kowalski.casaapi.business.model.Pessoa;
+import com.kowalski.casaapi.pessoa.Pessoa;
 import com.kowalski.casaapi.business.monitor.MonitorService;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaResponse;
+import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.business.service.*;
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
@@ -28,7 +30,6 @@ import java.time.Month;
 import java.time.Year;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -467,17 +468,17 @@ class ContratoEndpointsTest {
 
         @Test
         void buscarInexistenteDa404ComMensagem() throws Exception {
+            doThrow(new RecursoNaoEncontradoException("Pessoa não encontrada")).when(pessoaService).excluir(99L);
+
             mvc.perform(delete("/v1/pessoas/99")).andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.mensagem").value("Pessoa não encontrada"));
-            verify(pessoaService, never()).deletar(any());
         }
 
         @Test
         void criarAtualizarExcluir() throws Exception {
-            Pessoa ana = Login.pessoa(1L, "ANA");
-            when(pessoaService.buscarPorId(1L)).thenReturn(Optional.of(ana));
+            PessoaResponse ana = PessoaResponse.de(Login.pessoa(1L, "ANA"));
             when(pessoaService.criar(any())).thenReturn(ana);
-            when(pessoaService.atualizar(eq(ana), any())).thenReturn(ana);
+            when(pessoaService.atualizar(eq(1L), any())).thenReturn(ana);
             String corpo = "{\"nome\":\"Ana\",\"email\":\"ana@x.com\"}";
 
             mvc.perform(post("/v1/pessoas").contentType(JSON).content(corpo)).andExpect(status().isCreated())
@@ -485,7 +486,7 @@ class ContratoEndpointsTest {
                     .andExpect(jsonPath("$.senhaHash").doesNotExist());
             mvc.perform(put("/v1/pessoas/1").contentType(JSON).content(corpo)).andExpect(status().isOk());
             mvc.perform(delete("/v1/pessoas/1")).andExpect(status().isNoContent());
-            verify(pessoaService).deletar(ana);
+            verify(pessoaService).excluir(1L);
         }
     }
 
@@ -523,7 +524,7 @@ class ContratoEndpointsTest {
         void listarDevolveOsCamposSemASenha() throws Exception {
             Pessoa ana = Login.pessoa(1L, "ANA");
             ana.setSenhaHash("hash");
-            when(pessoaService.listar()).thenReturn(List.of(ana));
+            when(pessoaService.listar()).thenReturn(List.of(PessoaResponse.de(ana)));
 
             mvc.perform(get("/v1/pessoas")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(1))

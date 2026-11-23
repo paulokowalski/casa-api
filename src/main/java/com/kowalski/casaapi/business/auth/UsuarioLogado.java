@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.business.auth;
 
-import com.kowalski.casaapi.business.enumerator.Papel;
+import com.kowalski.casaapi.pessoa.Papel;
 import com.kowalski.casaapi.config.security.UsuarioAutenticado;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;

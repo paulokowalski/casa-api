@@ -2,8 +2,8 @@ package com.kowalski.casaapi.business.auth;
 
 import com.kowalski.casaapi.api.v1.response.LoginResponse;
 import com.kowalski.casaapi.api.v1.response.UsuarioResponse;
-import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.Pessoa;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.config.security.AuthProperties;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -15,7 +15,6 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.Assert;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -29,7 +28,6 @@ public class AuthService {
 
     static final int MAX_TENTATIVAS = 5;
     static final Duration BLOQUEIO = Duration.ofMinutes(15);
-    static final int TAMANHO_MINIMO_SENHA = 8;
     private static final String CREDENCIAIS_INVALIDAS = "E-mail ou senha incorretos.";
 
     private final PessoaRepository pessoaRepository;
@@ -89,12 +87,6 @@ public class AuthService {
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
 
         return new LoginResponse(token, expira, UsuarioResponse.de(pessoa));
-    }
-
-    public String hash(String novaSenha) {
-        Assert.isTrue(novaSenha != null && novaSenha.length() >= TAMANHO_MINIMO_SENHA,
-                "A senha precisa ter pelo menos " + TAMANHO_MINIMO_SENHA + " caracteres.");
-        return passwordEncoder.encode(novaSenha);
     }
 
     private void registrarErro(String chave, Instant agora) {

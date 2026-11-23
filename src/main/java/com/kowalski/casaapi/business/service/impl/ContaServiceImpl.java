@@ -11,7 +11,7 @@ import com.kowalski.casaapi.business.model.Conta;
 import com.kowalski.casaapi.business.model.ContaLancamento;
 import com.kowalski.casaapi.business.repository.ContaLancamentoRepository;
 import com.kowalski.casaapi.business.repository.ContaRepository;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.business.service.CategoriasService;
 import com.kowalski.casaapi.business.service.ContaService;
 import lombok.RequiredArgsConstructor;

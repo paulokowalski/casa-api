@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.config.security;
 
-import com.kowalski.casaapi.business.enumerator.Papel;
+import com.kowalski.casaapi.pessoa.Papel;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 

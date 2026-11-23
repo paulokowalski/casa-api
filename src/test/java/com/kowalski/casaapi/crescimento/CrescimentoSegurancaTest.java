@@ -2,7 +2,7 @@ package com.kowalski.casaapi.crescimento;
 
 import com.kowalski.casaapi.comum.ApiExceptionHandler;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.config.ApiKeyAuthFilter;
 import com.kowalski.casaapi.config.SecurityConfig;
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;

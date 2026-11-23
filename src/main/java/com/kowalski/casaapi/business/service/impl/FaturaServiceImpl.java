@@ -5,7 +5,7 @@ import com.kowalski.casaapi.api.v1.response.FaturaResponse;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.FaturaPaga;
 import com.kowalski.casaapi.business.repository.FaturaPagaRepository;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.business.service.FaturaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

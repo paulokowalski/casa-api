@@ -4,7 +4,7 @@ import com.kowalski.casaapi.api.v1.input.RendaInput;
 import com.kowalski.casaapi.api.v1.response.RendaResponse;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.RendaMensal;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.PessoaRepository;
 import com.kowalski.casaapi.business.repository.RendaMensalRepository;
 import com.kowalski.casaapi.business.service.RendaService;
 import lombok.RequiredArgsConstructor;

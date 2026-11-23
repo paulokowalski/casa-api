@@ -1,8 +1,8 @@
 package com.kowalski.casaapi.api.v1.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.kowalski.casaapi.business.enumerator.Papel;
-import com.kowalski.casaapi.business.model.Pessoa;
+import com.kowalski.casaapi.pessoa.Papel;
+import com.kowalski.casaapi.pessoa.Pessoa;
 
 @Schema(description = "Usuário")
 public record UsuarioResponse(

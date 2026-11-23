@@ -1,9 +1,5 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.pessoa;
 
-import com.kowalski.casaapi.api.v1.input.PessoaInput;
-import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.service.PessoaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,13 +19,9 @@ public class PessoaController {
 
     private final PessoaService pessoaService;
 
-    private Pessoa buscar(Long id) {
-        return pessoaService.buscarPorId(id).orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa não encontrada"));
-    }
-
     @GetMapping
     @Operation(summary = "Listar pessoas", description = "Ordenadas por nome. A senha nunca é devolvida.")
-    public List<Pessoa> listar() {
+    public List<PessoaResponse> listar() {
         return pessoaService.listar();
     }
 
@@ -39,7 +31,7 @@ public class PessoaController {
             description = "Nome e e-mail são obrigatórios e o e-mail não pode repetir. "
                     + "Com `senha` (mínimo 8 caracteres), a pessoa passa a poder entrar.")
     @ApiResponse(responseCode = "201", description = "Pessoa cadastrada")
-    public Pessoa criar(@RequestBody PessoaInput input) {
+    public PessoaResponse criar(@RequestBody PessoaInput input) {
         return pessoaService.criar(input);
     }
 
@@ -49,9 +41,9 @@ public class PessoaController {
                     + "O admin não pode tirar o próprio papel de admin nem se desativar.")
     @ApiResponse(responseCode = "200", description = "Pessoa alterada")
     @ApiResponse(responseCode = "404", description = "Pessoa não encontrada")
-    public Pessoa atualizar(@Parameter(description = "Id da pessoa", example = "1") @PathVariable Long id,
-                            @RequestBody PessoaInput input) {
-        return pessoaService.atualizar(buscar(id), input);
+    public PessoaResponse atualizar(@Parameter(description = "Id da pessoa", example = "1") @PathVariable Long id,
+                                    @RequestBody PessoaInput input) {
+        return pessoaService.atualizar(id, input);
     }
 
     @DeleteMapping("/{id}")
@@ -60,6 +52,6 @@ public class PessoaController {
     @ApiResponse(responseCode = "204", description = "Pessoa excluída")
     @ApiResponse(responseCode = "404", description = "Pessoa não encontrada")
     public void excluir(@Parameter(description = "Id da pessoa", example = "1") @PathVariable Long id) {
-        pessoaService.deletar(buscar(id));
+        pessoaService.excluir(id);
     }
 }
