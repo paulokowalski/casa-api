@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.passagens;
+package com.kowalski.casaapi.passagens;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,17 +1,8 @@
-package com.kowalski.casaapi.business.passagens;
+package com.kowalski.casaapi.passagens;
 
-import com.kowalski.casaapi.api.v1.input.RotaPassagemInput;
-import com.kowalski.casaapi.api.v1.input.RotaPassagemInput.Data;
-import com.kowalski.casaapi.api.v1.input.RotaPassagemInput.Janela;
-import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
-import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.databind.json.JsonMapper;
+import com.kowalski.casaapi.passagens.RotaPassagemInput.Data;
+import com.kowalski.casaapi.passagens.RotaPassagemInput.Janela;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,69 +11,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-/**
- * Cadastro das rotas do robô de passagens (tabela passagens.rota). O robô confere a tabela a cada 30 s e
- * busca na hora as combinações de trecho e datas que ainda não têm preço.
- */
-@Service
-@RequiredArgsConstructor
-public class RotasPassagemService {
+public final class ConfiguracaoDaRota {
 
     private static final Pattern IATA = Pattern.compile("[A-Z]{3}");
     static final int MAX_AEROPORTOS = 5;
     static final int MAX_DATAS = 20;
     static final int MAX_DIAS_JANELA = 366;
 
-    private final NamedParameterJdbcTemplate jdbc;
-    private final Clock relogio;
-
-    @Transactional
-    public Map<String, Object> criar(RotaPassagemInput in) {
-        Map<String, Object> cfg = validar(in, LocalDate.now(relogio));
-        String nome = (String) cfg.get("nome");
-        if (existe(nome, null)) throw new IllegalArgumentException("Já existe uma rota chamada \"" + nome + "\"");
-        Long id = jdbc.queryForObject("""
-                INSERT INTO passagens.rota (nome, ordem, ativa, config, atualizado_em)
-                VALUES (:nome, (SELECT COALESCE(MAX(ordem), -1) + 1 FROM passagens.rota), :ativa, CAST(:config AS jsonb), now())
-                RETURNING id""", parametros(cfg), Long.class);
-        return buscar(id);
+    private ConfiguracaoDaRota() {
     }
 
-    /** Edita a rota. Se o nome mudar, o histórico de preços e os alertas vão junto. */
-    @Transactional
-    public Map<String, Object> atualizar(long id, RotaPassagemInput in) {
-        String antigo = nome(id);
-        Map<String, Object> cfg = validar(in, LocalDate.now(relogio));
-        String nome = (String) cfg.get("nome");
-        if (existe(nome, id)) throw new IllegalArgumentException("Já existe uma rota chamada \"" + nome + "\"");
-        MapSqlParameterSource p = parametros(cfg).addValue("id", id).addValue("antigo", antigo);
-        jdbc.update("""
-                UPDATE passagens.rota SET nome = :nome, ativa = :ativa, config = CAST(:config AS jsonb), atualizado_em = now()
-                WHERE id = :id""", p);
-        if (!antigo.equals(nome)) {
-            jdbc.update("UPDATE passagens.preco SET rota = :nome WHERE rota = :antigo", p);
-            jdbc.update("UPDATE passagens.alerta SET rota = :nome, chave = :nome || substr(chave, length(:antigo) + 1) "
-                    + "WHERE rota = :antigo", p);
-        }
-        return buscar(id);
-    }
-
-    /** Remove a rota (o robô para de buscar). Com {@code historico}, apaga também os preços e alertas dela. */
-    @Transactional
-    public void remover(long id, boolean historico) {
-        String nome = nome(id);
-        MapSqlParameterSource p = new MapSqlParameterSource("id", id).addValue("nome", nome);
-        jdbc.update("DELETE FROM passagens.rota WHERE id = :id", p);
-        if (historico) {
-            jdbc.update("DELETE FROM passagens.preco WHERE rota = :nome", p);
-            jdbc.update("DELETE FROM passagens.alerta WHERE rota = :nome", p);
-        }
-    }
-
-    // ---- validação ----
 
     /** Valida e devolve a configuração no formato gravado (o mesmo que a tela lê). */
-    static Map<String, Object> validar(RotaPassagemInput in, LocalDate hoje) {
+    public static Map<String, Object> validar(RotaPassagemInput in, LocalDate hoje) {
         if (in == null) throw new IllegalArgumentException("Envie os dados da rota");
         String nome = in.nome() == null ? "" : in.nome().trim().replaceAll("\\s+", " ");
         if (nome.isEmpty() || nome.length() > 80) throw new IllegalArgumentException("Informe um nome de até 80 letras");
@@ -199,32 +140,5 @@ public class RotasPassagemService {
         if (v == null) return null;
         if (v < min || v > max) throw new IllegalArgumentException(campo + " deve ficar entre " + min + " e " + max);
         return v;
-    }
-
-    // ---- banco ----
-
-    private MapSqlParameterSource parametros(Map<String, Object> cfg) {
-        return new MapSqlParameterSource("nome", cfg.get("nome"))
-                .addValue("ativa", cfg.get("ativa"))
-                .addValue("config", JsonMapper.shared().writeValueAsString(cfg));
-    }
-
-    private boolean existe(String nome, Long ignorarId) {
-        Integer n = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM passagens.rota WHERE lower(nome) = lower(:nome) AND (:id IS NULL OR id <> :id)",
-                new MapSqlParameterSource("nome", nome).addValue("id", ignorarId, java.sql.Types.BIGINT), Integer.class);
-        return n != null && n > 0;
-    }
-
-    private String nome(long id) {
-        List<String> r = jdbc.queryForList("SELECT nome FROM passagens.rota WHERE id = :id",
-                new MapSqlParameterSource("id", id), String.class);
-        if (r.isEmpty()) throw new RecursoNaoEncontradoException("Rota " + id + " não encontrada");
-        return r.get(0);
-    }
-
-    private Map<String, Object> buscar(Long id) {
-        return jdbc.query("SELECT (config || jsonb_build_object('id', id))::text FROM passagens.rota WHERE id = :id",
-                new MapSqlParameterSource("id", id), (rs, i) -> PassagensService.json(rs.getString(1))).get(0);
     }
 }

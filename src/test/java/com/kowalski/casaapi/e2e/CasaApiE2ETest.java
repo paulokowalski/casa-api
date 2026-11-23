@@ -251,7 +251,43 @@ class CasaApiE2ETest {
                 .contains(Map.of("codigo", "00000000-0000-0000-0000-0000000000c1", "descricao", "E2E CARTAO"));
     }
 
+    @Test
+    void rotaDePassagemCriadaRenomeadaComOHistoricoERemovida() {
+        String token = token();
+        var nova = http.post().uri("/v1/passagens/rotas").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(rota("E2E ROTA")).retrieve().toEntity(MAPA);
+        assertThat(nova.getStatusCode().value()).isEqualTo(201);
+        assertThat(nova.getBody()).containsEntry("nome", "E2E ROTA").containsEntry("origem", List.of("FOR"));
+        Number id = (Number) nova.getBody().get("id");
+
+        var repetida = http.post().uri("/v1/passagens/rotas").header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(rota("e2e rota")).retrieve().toEntity(MAPA);
+        assertThat(repetida.getStatusCode().value()).isEqualTo(400);
+
+        var renomeada = http.put().uri("/v1/passagens/rotas/" + id).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(rota("E2E ROTA NOVA")).retrieve().toEntity(MAPA);
+        assertThat(renomeada.getStatusCode().value()).isEqualTo(200);
+        var painel = http.get().uri("/v1/passagens?dias=0").header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat(painel.getStatusCode().value()).isEqualTo(200);
+        assertThat((List<Map<String, Object>>) painel.getBody().get("rotas")).extracting(r -> r.get("nome")).contains("E2E ROTA NOVA");
+        assertThat((List<Map<String, Object>>) painel.getBody().get("alertas")).extracting(r -> r.get("rota"))
+                .contains("E2E ROTA NOVA").doesNotContain("E2E ROTA");
+
+        assertThat(http.delete().uri("/v1/passagens/rotas/" + id + "?historico=true").header("Authorization", token)
+                .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+        var depois = http.get().uri("/v1/passagens?dias=0").header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat((List<Map<String, Object>>) depois.getBody().get("rotas")).extracting(r -> r.get("nome")).doesNotContain("E2E ROTA NOVA");
+        assertThat((List<Map<String, Object>>) depois.getBody().get("alertas")).extracting(r -> r.get("rota")).doesNotContain("E2E ROTA NOVA");
+        assertThat(http.delete().uri("/v1/passagens/rotas/" + id).header("Authorization", token)
+                .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(404);
+    }
+
     // ---- apoio ----
+
+    private static Map<String, Object> rota(String nome) {
+        return Map.of("nome", nome, "origem", List.of("FOR"), "destino", List.of("GRU"),
+                "datas", List.of(Map.of("ida", "2099-01-10")), "precoAlvo", 1000);
+    }
 
     private List<Map<String, Object>> filtro(String token, String url) {
         var r = http.get().uri(url).header("Authorization", token).retrieve().toEntity(LISTA);

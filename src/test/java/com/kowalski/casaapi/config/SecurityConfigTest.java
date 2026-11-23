@@ -53,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = {CompraController.class, PessoaController.class, GeracaoController.class, AuthController.class,
         ServidorController.class, VentilacaoController.class,
-        com.kowalski.casaapi.api.v1.controller.PassagensController.class,
+        com.kowalski.casaapi.passagens.PassagensController.class,
         com.kowalski.casaapi.crescimento.exame.ExameController.class})
 @Import({RelogioConfig.class, SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class,
         UsuarioLogado.class, ApiExceptionHandler.class, ErroSegurancaJson.class, AuthService.class, AdminInicial.class})
@@ -75,8 +75,8 @@ class SecurityConfigTest {
     @MockitoBean GeracaoService geracaoService;
     @MockitoBean ServidorService servidorService;
     @MockitoBean VentilacaoService ventilacaoService;
-    @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
-    @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
+    @MockitoBean com.kowalski.casaapi.passagens.PassagensService passagensService;
+    @MockitoBean com.kowalski.casaapi.passagens.RotasPassagemService rotasPassagemService;
     @MockitoBean com.kowalski.casaapi.crescimento.exame.ExameService exameService;
 
     @BeforeEach

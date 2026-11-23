@@ -1,80 +1,52 @@
-package com.kowalski.casaapi.business.passagens;
+package com.kowalski.casaapi.passagens;
 
-import com.kowalski.casaapi.api.v1.response.PassagensResponse;
-import com.kowalski.casaapi.api.v1.response.PassagensResponse.Alerta;
-import com.kowalski.casaapi.api.v1.response.PassagensResponse.Ponto;
-import com.kowalski.casaapi.api.v1.response.PassagensResponse.Serie;
-import com.kowalski.casaapi.comum.MonitorIndisponivelException;
+import com.kowalski.casaapi.passagens.PassagensResponse.Alerta;
+import com.kowalski.casaapi.passagens.PassagensResponse.Ponto;
+import com.kowalski.casaapi.passagens.PassagensResponse.Serie;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.Clock;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-/**
- * Aba Passagens: lê o schema {@code passagens} do Postgres, preenchido pelo robô de passagens
- * (/opt/projetos/robo-passagens) depois de cada rodada. A API só lê.
- */
-@Service
+@Repository
 @RequiredArgsConstructor
-public class PassagensService {
-
-    /** Acima disto o gráfico mostra o menor preço de cada dia, em vez de um ponto por busca. */
-    static final int DIAS_POR_BUSCA = 31;
-    /** Folga além de duas rodadas do robô antes de considerar que ele parou. */
-    static final Duration FOLGA = Duration.ofMinutes(30);
+public class PassagensRepository {
 
     private static final String TRECHO = "rota, origem, destino, ida, volta";
-    /** Mesmo trecho e datas (volta nula = só ida). */
     private static final String MESMO_TRECHO = "a.rota = s.rota AND a.origem = s.origem AND a.destino = s.destino "
             + "AND a.ida = s.ida AND a.volta IS NOT DISTINCT FROM s.volta";
 
     private final NamedParameterJdbcTemplate jdbc;
-    private final Clock relogio;
 
-    private record Robo(OffsetDateTime sincronizadoEm, double intervaloHoras, String moeda) { }
-
-    /** @param dias período dos pontos do gráfico; 0 = todo o histórico */
-    public PassagensResponse listar(int dias) {
-        try {
-            return montar(Math.max(0, dias));
-        } catch (DataAccessException e) {
-            throw new MonitorIndisponivelException("Histórico de passagens indisponível (Postgres)", e);
-        }
+    public record Robo(OffsetDateTime sincronizadoEm, double intervaloHoras, String moeda) {
     }
 
-    private PassagensResponse montar(int dias) {
-        List<Robo> estado = jdbc.query(
+    public Optional<Robo> robo() {
+        return jdbc.query(
                 "SELECT sincronizado_em, intervalo_horas, moeda FROM passagens.robo WHERE id = 1", Map.of(),
-                (rs, i) -> new Robo(rs.getObject(1, OffsetDateTime.class), rs.getDouble(2), rs.getString(3)));
-        if (estado.isEmpty()) {
-            throw new MonitorIndisponivelException("O robô de passagens ainda não enviou dados", null);
-        }
-        Robo robo = estado.get(0);
-        OffsetDateTime sincronizado = robo.sincronizadoEm();
-        double intervalo = robo.intervaloHoras();
-        String moeda = robo.moeda();
+                (rs, i) -> new Robo(rs.getObject(1, OffsetDateTime.class), rs.getDouble(2), rs.getString(3)))
+                .stream().findFirst();
+    }
 
-        List<Map<String, Object>> rotas = jdbc.query(
+    public List<Map<String, Object>> rotas() {
+        return jdbc.query(
                 "SELECT (config || jsonb_build_object('id', id))::text FROM passagens.rota ORDER BY ordem, id", Map.of(),
                 (rs, i) -> json(rs.getString(1)));
+    }
 
-        boolean porBusca = dias > 0 && dias <= DIAS_POR_BUSCA;
-        Map<String, List<Ponto>> pontos = pontos(dias, porBusca);
-        List<Serie> series = jdbc.query("""
+    public List<Serie> series(Map<String, List<Ponto>> pontos) {
+        return jdbc.query("""
                 WITH s AS (
                     SELECT %1$s, COUNT(*) AS buscas, MIN(preco) AS minimo, MAX(preco) AS maximo,
                            ROUND(AVG(preco))::int AS media
@@ -96,21 +68,19 @@ public class PassagensService {
                 new Ponto(rs.getObject("m_em", OffsetDateTime.class), rs.getInt("minimo"), rs.getString("m_cias"),
                         inteiro(rs, "m_escalas")),
                 rs.getInt("maximo"), rs.getInt("media"), rs.getLong("buscas")));
+    }
 
-        List<Alerta> alertas = jdbc.query("""
+    public List<Alerta> alertas() {
+        return jdbc.query("""
                 SELECT rota, origem, destino, ida, volta, preco, em FROM passagens.alerta
                 ORDER BY em DESC LIMIT 100""", Map.of(), (rs, i) -> new Alerta(
                 rs.getString("rota"), rs.getString("origem"), rs.getString("destino"),
                 rs.getObject("ida", LocalDate.class), rs.getObject("volta", LocalDate.class), rs.getInt("preco"),
                 rs.getObject("em", OffsetDateTime.class)));
-
-        return new PassagensResponse(sincronizado, intervalo, moeda,
-                desatualizado(sincronizado, intervalo, Instant.now(relogio)), dias, porBusca ? "busca" : "dia",
-                rotas, series, alertas);
     }
 
     /** Pontos do gráfico por trecho: cada busca, ou o menor preço de cada dia (fuso de São Paulo). */
-    private Map<String, List<Ponto>> pontos(int dias, boolean porBusca) {
+    public Map<String, List<Ponto>> pontos(int dias, boolean porBusca) {
         String filtro = "ida >= CURRENT_DATE" + (dias > 0 ? " AND consultado_em >= now() - make_interval(days => :dias)" : "");
         String sql = porBusca
                 ? "SELECT %s, consultado_em AS em, preco, cias, escalas FROM passagens.preco WHERE %s ORDER BY consultado_em"
@@ -129,13 +99,6 @@ public class PassagensService {
                     inteiro(rs, "escalas")));
         });
         return r;
-    }
-
-    static boolean desatualizado(OffsetDateTime sincronizado, double intervaloHoras, Instant agora) {
-        if (sincronizado == null) return true;
-        double horas = intervaloHoras > 0 ? intervaloHoras : 6;
-        Duration validade = Duration.ofMinutes(Math.round(horas * 2 * 60)).plus(FOLGA);
-        return sincronizado.toInstant().isBefore(agora.minus(validade));
     }
 
     private static String chave(ResultSet rs) throws SQLException {

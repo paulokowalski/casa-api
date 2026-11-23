@@ -1,9 +1,5 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.passagens;
 
-import com.kowalski.casaapi.api.v1.input.RotaPassagemInput;
-import com.kowalski.casaapi.api.v1.response.PassagensResponse;
-import com.kowalski.casaapi.business.passagens.PassagensService;
-import com.kowalski.casaapi.business.passagens.RotasPassagemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

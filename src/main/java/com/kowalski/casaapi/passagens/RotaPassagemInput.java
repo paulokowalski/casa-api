@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.api.v1.input;
+package com.kowalski.casaapi.passagens;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -22,3 +22,6 @@ INSERT INTO public.compra_parcela (compra_id, nr_parcela, vl_parcela, dt_parcela
     ('00000000-0000-0000-0000-0000000000b1', 2, 100.00, '2031-03-15'),
     ('00000000-0000-0000-0000-0000000000b1', 3, 100.00, '2031-04-15'),
     ('00000000-0000-0000-0000-0000000000b2', 1, 50.00, '2031-02-10');
+
+INSERT INTO passagens.alerta (chave, rota, origem, destino, ida, volta, preco, em) VALUES
+    ('E2E ROTA|FOR|GRU|2099-01-10|', 'E2E ROTA', 'FOR', 'GRU', '2099-01-10', NULL, 900, now());

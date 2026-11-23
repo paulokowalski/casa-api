@@ -12,6 +12,7 @@ import com.kowalski.casaapi.conta.*;
 import com.kowalski.casaapi.fatura.*;
 import com.kowalski.casaapi.geracao.*;
 import com.kowalski.casaapi.internet.*;
+import com.kowalski.casaapi.passagens.*;
 import com.kowalski.casaapi.renda.*;
 import com.kowalski.casaapi.ventilacao.*;
 import com.kowalski.casaapi.pessoa.Pessoa;
@@ -74,8 +75,8 @@ class ContratoEndpointsTest {
     @MockitoBean ServidorService servidorService;
     @MockitoBean InternetService internetService;
     @MockitoBean VentilacaoService ventilacaoService;
-    @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
-    @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
+    @MockitoBean PassagensService passagensService;
+    @MockitoBean RotasPassagemService rotasPassagemService;
     // módulo crescimento: controllers carregados pelo @WebMvcTest
     @MockitoBean com.kowalski.casaapi.crescimento.familia.FamiliaService familiaService;
     @MockitoBean com.kowalski.casaapi.crescimento.crianca.CriancaService criancaService;

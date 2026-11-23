@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.17 — 23/11/2026
+
+Reorganiza o código da aba Passagens num pacote próprio, sem mudar o comportamento da API, e adiciona testes do cadastro de rotas.
+
+- Pacote único com.kowalski.casaapi.passagens: o controller, os serviços, a entrada (RotaPassagemInput) e a resposta (PassagensResponse) das Passagens saíram de api.v1 e business e foram para esse pacote.
+- Acesso ao banco separado nas classes PassagensRepository (robô, rotas, séries, pontos e alertas) e RotaPassagemRepository (criar, editar, renomear o histórico e remover rotas do schema passagens).
+- Validação da rota extraída para a classe ConfiguracaoDaRota, sem mudança nas regras (aeroportos IATA, datas, janela e passageiros).
+- PassagensService e RotasPassagemService passam a só aplicar as regras: aviso de robô desatualizado, nome de rota repetido, histórico que acompanha a rota ao renomear e remoção com ou sem histórico.
+- Os endpoints GET /v1/passagens e /v1/passagens/rotas (POST, PUT e DELETE) continuam com o mesmo contrato. Nenhuma migração de banco nem configuração nova.
+- Novos testes unitários do RotasPassagemService com o repositório simulado e teste e2e que cria, renomeia (levando junto os alertas) e remove uma rota, com um alerta de exemplo em e2e/dados.sql.
+
 ### 2.0.16 — 23/11/2026
 
 Refatoração interna do monitoramento da internet, que passa a ficar no próprio pacote; para quem usa o sistema, nada muda.
