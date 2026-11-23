@@ -397,6 +397,11 @@ regras de segurança e formato dos erros. O leitor do monitoramento é testado c
 falsos em pasta temporária, e o dos containers com respostas no formato da API do Docker. Esses testes não acessam
 o banco.
 
+**Migrations** (`MigrationsTest`, só lê arquivos): todo script de `src/main/resources/db` precisa poder ser reaplicado
+(`IF [NOT] EXISTS` ou um bloco `DO $$`), estar na tabela de migrations deste README, e o `estrutura.sql` dos testes e2e
+precisa ter o resultado de todos eles (tabelas e colunas criadas, e as apagadas fora). Ao criar uma migration, acrescente
+o DDL ao `estrutura.sql` (ou gere de novo com `pg_dump --schema-only` depois de aplicar).
+
 **Testes de ponta a ponta** (`CasaApiE2ETest`): `bash e2e/rodar.sh` sobe numa rede Docker isolada um PostgreSQL 18
 com a estrutura do banco (`src/test/resources/e2e/estrutura.sql`, gerada com `pg_dump --schema-only`, mais os dados
 mínimos de `dados.sql`) e um MariaDB vazio, sobe a API inteira e a testa por HTTP, apagando tudo no fim. Precisa de
@@ -416,6 +421,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 2.0.1 — 23/11/2026
+
+Adiciona um teste automático que confere as migrations de banco antes do commit. Nada muda no comportamento da API.
+
+- Novo teste MigrationsTest: confere se cada script em src/main/resources/db pode ser reaplicado sem erro, ou seja, se usa IF [NOT] EXISTS ou um bloco DO $$
+- Verificação de que a tabela de migrations do README lista todos os scripts de db/migration e das outras pastas de db
+- Verificação de que o banco dos testes e2e (src/test/resources/e2e/estrutura.sql) tem o resultado de todas as migrations: as tabelas e colunas criadas existem e as apagadas não existem
+- Leitura do estrutura.sql nos dois formatos: o do pg_dump e o DDL CREATE TABLE IF NOT EXISTS acrescentado à mão. Inclui um teste próprio para esse recorte
+- O teste só lê arquivos do repositório e não acessa nenhum banco. Não há migration nem configuração para aplicar no servidor
 
 ### 2.0.0 — 23/11/2026
 
