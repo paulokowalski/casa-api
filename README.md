@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.3 — 23/11/2026
+
+Mais testes de contrato para os endpoints de contas, pessoas, servidor, internet, ventilação e passagens; o comportamento da API não muda.
+
+- Testes de contrato para PUT /v1/contas/{id}, com e sem o parâmetro aPartirDe, e para PATCH /v1/contas/lancamentos/{id}
+- Teste que garante que GET /v1/pessoas devolve os campos da pessoa sem expor o hash da senha
+- Testes para GET /v1/servidor/host e GET /v1/servidor/eventos, incluindo o período padrão de 7 dias e o filtro de/ate
+- Testes para os endpoints /v1/servidor/internet (agora, dia, dias e velocidade), incluindo os padrões de data e o erro 400 com data inválida
+- Teste do período padrão de 30 dias em GET /v1/servidor/ventilacao/dias
+- Testes para GET /v1/passagens (padrão de 30 dias) e para criar, editar e remover rotas em /v1/passagens/rotas, com e sem histórico
+
 ### 2.0.2 — 23/11/2026
 
 Esta versão deixa o build da imagem Docker da API mais rápido e mais enxuto, sem mudar o comportamento do sistema.
