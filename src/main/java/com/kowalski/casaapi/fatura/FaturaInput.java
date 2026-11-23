@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.api.v1.input;
+package com.kowalski.casaapi.fatura;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;

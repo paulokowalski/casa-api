@@ -53,6 +53,13 @@ public class PessoaService {
         pessoaRepository.delete(pessoa);
     }
 
+    @Transactional(readOnly = true)
+    public void garantirQueExiste(Long id) {
+        if (!pessoaRepository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Pessoa " + id + " não encontrada");
+        }
+    }
+
     private Pessoa buscar(Long id) {
         return pessoaRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa não encontrada"));
     }

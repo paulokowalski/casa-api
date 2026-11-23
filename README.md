@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.10 — 23/11/2026
+
+Reorganização interna das funcionalidades de fatura e renda, sem mudança de comportamento para quem usa o sistema.
+
+- Fatura reorganizada no pacote próprio `fatura` (controller, entrada, resposta, entidade FaturaPaga, repositório e serviço juntos); os endpoints não mudaram.
+- Renda reorganizada no pacote próprio `renda` (controller, entrada, resposta, entidade RendaMensal, repositório e serviço juntos); os endpoints não mudaram.
+- Removidas as interfaces FaturaService/RendaService e as implementações *ServiceImpl; agora cada funcionalidade tem um único serviço concreto.
+- Novo método `garantirQueExiste` no PessoaService, usado por fatura e renda para retornar 404 quando a pessoa não existe.
+- Montagem das respostas passada para FaturaResponse (`paga`/`naoPaga`) e RendaResponse (`de`/`semValor`), e regra de remoção da renda para RendaInput (`removeOValorDoMes`).
+- Testes separados em FaturaServiceTest e RendaServiceTest (no lugar de FaturaERendaServiceImplTest), com novo teste para `garantirQueExiste` no PessoaServiceTest.
+
 ### 2.0.9 — 23/11/2026
 
 A geração solar foi reorganizada em um módulo próprio, com consultas mais simples. Os endpoints e o formato das respostas continuam os mesmos.

@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.business.repository;
+package com.kowalski.casaapi.fatura;
 
-import com.kowalski.casaapi.business.model.FaturaPaga;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

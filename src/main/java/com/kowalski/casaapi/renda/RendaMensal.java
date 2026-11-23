@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.model;
+package com.kowalski.casaapi.renda;
 
 import jakarta.persistence.*;
 import lombok.*;

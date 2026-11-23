@@ -1,9 +1,7 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.fatura;
 
-import com.kowalski.casaapi.api.v1.input.FaturaInput;
-import com.kowalski.casaapi.api.v1.response.FaturaResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.service.FaturaService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

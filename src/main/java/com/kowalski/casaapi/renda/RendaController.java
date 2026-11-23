@@ -1,9 +1,7 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.renda;
 
-import com.kowalski.casaapi.api.v1.input.RendaInput;
-import com.kowalski.casaapi.api.v1.response.RendaResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.service.RendaService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

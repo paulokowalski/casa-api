@@ -126,6 +126,15 @@ class PessoaServiceTest {
     }
 
     @Test
+    void garantirQueExisteDa404ComOId() {
+        when(repository.existsById(1L)).thenReturn(true);
+
+        service.garantirQueExiste(1L);
+        assertThatThrownBy(() -> service.garantirQueExiste(99L))
+                .isInstanceOf(RecursoNaoEncontradoException.class).hasMessage("Pessoa 99 não encontrada");
+    }
+
+    @Test
     void excluiOutraPessoa() {
         Pessoa ana = cadastrada(Login.ANA_ID, "ANA");
 
