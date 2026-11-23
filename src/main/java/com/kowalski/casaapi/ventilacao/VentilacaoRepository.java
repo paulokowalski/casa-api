@@ -1,8 +1,7 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.ventilacao;
 
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse;
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse.Leitura;
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse.Limite;
+import com.kowalski.casaapi.ventilacao.VentilacaoResponse.Leitura;
+import com.kowalski.casaapi.ventilacao.VentilacaoResponse.Limite;
 import com.kowalski.casaapi.config.monitor.MonitorConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,6 +13,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Ventilação do servidor no MariaDB {@code casa_monitor}: uma linha por minuto com o que o Home Assistant enviou
@@ -85,12 +85,13 @@ public class VentilacaoRepository {
                 liga(l.limiteNvme()), desliga(l.limiteNvme()));
     }
 
-    /** Última leitura gravada: [minuto, recebidoEm, leitura]; nulo se a tabela está vazia. */
-    public Object[] ultima() {
-        List<Object[]> r = jdbc.query("SELECT * FROM amostra_ventilacao ORDER BY coletado_em DESC LIMIT 1",
-                (rs, i) -> new Object[]{rs.getObject("coletado_em", LocalDateTime.class),
-                        rs.getObject("recebido_em", LocalDateTime.class), leitura(rs)});
-        return r.isEmpty() ? null : r.get(0);
+    public Optional<Ultima> ultima() {
+        return jdbc.query("SELECT * FROM amostra_ventilacao ORDER BY coletado_em DESC LIMIT 1",
+                (rs, i) -> new Ultima(rs.getObject("coletado_em", LocalDateTime.class),
+                        rs.getObject("recebido_em", LocalDateTime.class), leitura(rs))).stream().findFirst();
+    }
+
+    public record Ultima(LocalDateTime minuto, LocalDateTime recebidoEm, Leitura leitura) {
     }
 
     /** Primeiro minuto do trecho atual com a tomada em {@code estado} (até {@code ate}). */

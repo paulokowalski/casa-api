@@ -1,7 +1,6 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.ventilacao;
 
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse;
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse.Leitura;
+import com.kowalski.casaapi.ventilacao.VentilacaoResponse.Leitura;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

@@ -1,7 +1,5 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.ventilacao;
 
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse;
-import com.kowalski.casaapi.business.monitor.VentilacaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -31,6 +30,7 @@ public class VentilacaoController {
     private static final int DIAS_PADRAO = 30;
 
     private final VentilacaoService ventilacaoService;
+    private final Clock relogio;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -60,7 +60,7 @@ public class VentilacaoController {
     @ApiResponse(responseCode = "503", description = "Banco do monitoramento indisponível")
     public VentilacaoResponse.Dia dia(@Parameter(description = "Dia (aaaa-mm-dd); padrão: hoje", example = "2026-11-21")
                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-        return ventilacaoService.dia(data != null ? data : LocalDate.now());
+        return ventilacaoService.dia(data != null ? data : LocalDate.now(relogio));
     }
 
     @GetMapping("/dias")
@@ -72,7 +72,7 @@ public class VentilacaoController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @Parameter(description = "Último dia; padrão: hoje") @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
-        LocalDate fim = ate != null ? ate : LocalDate.now();
+        LocalDate fim = ate != null ? ate : LocalDate.now(relogio);
         return ventilacaoService.dias(de != null ? de : fim.minusDays(DIAS_PADRAO - 1L), fim);
     }
 }

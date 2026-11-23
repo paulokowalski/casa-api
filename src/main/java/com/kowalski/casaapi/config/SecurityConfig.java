@@ -1,7 +1,7 @@
 package com.kowalski.casaapi.config;
 
 import com.kowalski.casaapi.config.security.ErroSegurancaJson;
-import com.kowalski.casaapi.api.v1.controller.VentilacaoController;
+import com.kowalski.casaapi.ventilacao.VentilacaoController;
 import com.kowalski.casaapi.crescimento.foto.FotoController;
 import com.kowalski.casaapi.config.security.PessoaJwtConverter;
 import lombok.RequiredArgsConstructor;

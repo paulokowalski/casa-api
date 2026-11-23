@@ -1,8 +1,7 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.ventilacao;
 
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse;
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse.Leitura;
-import com.kowalski.casaapi.api.v1.response.VentilacaoResponse.Limite;
+import com.kowalski.casaapi.ventilacao.VentilacaoResponse.Leitura;
+import com.kowalski.casaapi.ventilacao.VentilacaoResponse.Limite;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,11 +39,13 @@ public class VentilacaoService {
 
     private final VentilacaoRepository repository;
     private final MonitorProperties props;
+    private final Clock relogio;
     private volatile boolean tabelaPronta;
 
-    public VentilacaoService(VentilacaoRepository repository, MonitorProperties props) {
+    public VentilacaoService(VentilacaoRepository repository, MonitorProperties props, Clock relogio) {
         this.repository = repository;
         this.props = props;
+        this.relogio = relogio;
     }
 
     public void registrar(Leitura recebida) {
@@ -53,7 +55,7 @@ public class VentilacaoService {
         Leitura l = new Leitura(recebida.tomada(), recebida.precisa(), recebida.automatica(),
                 temperatura(recebida.soc()), temperatura(recebida.hds()), temperatura(recebida.nvme()),
                 limite(recebida.limiteSoc()), limite(recebida.limiteHds()), limite(recebida.limiteNvme()));
-        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime agora = LocalDateTime.now(relogio);
         historico(() -> {
             repository.gravar(agora.truncatedTo(ChronoUnit.MINUTES), agora.truncatedTo(ChronoUnit.SECONDS), l);
             return null;
@@ -62,16 +64,14 @@ public class VentilacaoService {
 
     public VentilacaoResponse.Agora agora() {
         return historico(() -> {
-            Object[] u = repository.ultima();
-            if (u == null) {
-                throw new MonitorIndisponivelException("Nenhuma leitura da ventilação ainda (o Home Assistant envia a cada minuto)", null);
-            }
-            LocalDateTime minuto = (LocalDateTime) u[0];
-            LocalDateTime recebido = (LocalDateTime) u[1];
-            Leitura l = (Leitura) u[2];
-            LocalDate hoje = LocalDate.now();
+            VentilacaoRepository.Ultima u = repository.ultima().orElseThrow(() ->
+                    new MonitorIndisponivelException("Nenhuma leitura da ventilação ainda (o Home Assistant envia a cada minuto)", null));
+            LocalDateTime minuto = u.minuto();
+            LocalDateTime recebido = u.recebidoEm();
+            Leitura l = u.leitura();
+            LocalDate hoje = LocalDate.now(relogio);
             List<VentilacaoResponse.ResumoDia> dia = repository.porDia(hoje.atStartOfDay(), hoje.plusDays(1).atStartOfDay());
-            boolean desatualizado = Duration.between(recebido, LocalDateTime.now()).compareTo(DESATUALIZADO) > 0;
+            boolean desatualizado = Duration.between(recebido, LocalDateTime.now(relogio)).compareTo(DESATUALIZADO) > 0;
             return new VentilacaoResponse.Agora(recebido, desatualizado, l, repository.desde(l.tomada(), minuto),
                     dia.isEmpty() ? 0 : dia.get(0).minutosLigada(), dia.isEmpty() ? 0 : dia.get(0).minutosComDados());
         });
@@ -100,7 +100,7 @@ public class VentilacaoService {
     public void limparAntigas() {
         if (!props.habilitado() || !prepararTabela()) return;
         try {
-            repository.apagarAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
+            repository.apagarAntesDe(LocalDate.now(relogio).minusDays(props.retencaoDias()).atStartOfDay());
         } catch (DataAccessException e) {
             log.warn("Monitoramento: falha ao apagar leituras antigas da ventilação: {}", e.getMessage());
         }

@@ -422,6 +422,15 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.14 — 23/11/2026
+
+Reorganiza o código da ventilação do servidor em um pacote próprio e passa a usar o relógio central da aplicação para datas e horários, sem mudar os endpoints.
+
+- Funcionalidade ventilação reunida no pacote com.kowalski.casaapi.ventilacao (VentilacaoController, VentilacaoService, VentilacaoRepository e VentilacaoResponse), saindo de api.v1 e business.monitor
+- VentilacaoController e VentilacaoService passam a usar o Clock injetado (RelogioConfig, fuso da casa) em vez de LocalDate.now()/LocalDateTime.now() para o dia padrão, os registros, o aviso de leitura desatualizada e a limpeza de leituras antigas
+- Consulta da última leitura em VentilacaoRepository passa a devolver Optional com o record Ultima em vez de Object[] nulo
+- Testes VentilacaoTest, ContratoEndpointsTest e SecurityConfigTest ajustados ao novo pacote
+
 ### 2.0.13 — 23/11/2026
 
 Reorganizadas as funcionalidades de despesas e filtros em pacotes próprios, sem mudar os endpoints, e incluídos testes de ponta a ponta para elas.
