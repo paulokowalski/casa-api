@@ -1,7 +1,7 @@
 package com.kowalski.casaapi.api.v1.controller;
 
 import com.kowalski.casaapi.api.v1.input.PessoaInput;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.service.PessoaService;
 import io.swagger.v3.oas.annotations.Operation;

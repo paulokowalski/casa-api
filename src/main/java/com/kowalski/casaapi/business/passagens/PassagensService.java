@@ -4,7 +4,7 @@ import com.kowalski.casaapi.api.v1.response.PassagensResponse;
 import com.kowalski.casaapi.api.v1.response.PassagensResponse.Alerta;
 import com.kowalski.casaapi.api.v1.response.PassagensResponse.Ponto;
 import com.kowalski.casaapi.api.v1.response.PassagensResponse.Serie;
-import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
+import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Clock;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -42,6 +43,7 @@ public class PassagensService {
             + "AND a.ida = s.ida AND a.volta IS NOT DISTINCT FROM s.volta";
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final Clock relogio;
 
     private record Robo(OffsetDateTime sincronizadoEm, double intervaloHoras, String moeda) { }
 
@@ -103,7 +105,7 @@ public class PassagensService {
                 rs.getObject("em", OffsetDateTime.class)));
 
         return new PassagensResponse(sincronizado, intervalo, moeda,
-                desatualizado(sincronizado, intervalo, Instant.now()), dias, porBusca ? "busca" : "dia",
+                desatualizado(sincronizado, intervalo, Instant.now(relogio)), dias, porBusca ? "busca" : "dia",
                 rotas, series, alertas);
     }
 

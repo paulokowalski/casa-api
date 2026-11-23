@@ -4,7 +4,7 @@ Backend da casa: compras no cartão e parcelas, contas fixas e lançamentos mens
 pessoas/acessos e monitoramento (geração solar, histórico FIPE e saúde do servidor). Consumido pelo front
 [`casa`](../casa) e por integrações (Node-RED).
 
-- **Stack:** Java 17 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · MariaDB (só o histórico do monitoramento) · springdoc-openapi (Swagger) · Lombok · Maven
+- **Stack:** Java 25 · Spring Boot 4.1 (Web MVC, Data JPA, Security + OAuth2 Resource Server) · PostgreSQL · MariaDB (só o histórico do monitoramento) · springdoc-openapi (Swagger) · Lombok · Maven
 - **Base da API:** `http://<host>:8080/casa-api` (o nginx do front também repassa `/casa-api/` para cá)
 - **Documentação interativa:** [`/casa-api/swagger-ui.html`](http://localhost:8080/casa-api/swagger-ui.html) · OpenAPI JSON em `/casa-api/v3/api-docs`
 
@@ -421,6 +421,40 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 2.0.5 — 23/11/2026
+
+Refatoração interna: datas calculadas sempre no fuso de São Paulo, erros de validação com a mensagem do campo e classes comuns reunidas em um só pacote, sem mudar nenhuma rota da API.
+
+- Novo relógio único da aplicação (RelogioConfig, fuso America/Sao_Paulo), que substitui o relógio próprio do Crescimento. Contas, compras, faturas, geração de energia e passagens agora usam esse relógio para "hoje" e para o mês atual.
+- Corrigido o mês atual e a data de "hoje" (pagamento de fatura e de lançamento, débito automático, data de cadastro), que podiam sair errados perto da meia-noite quando o servidor roda em UTC.
+- A data de cadastro da conta passou a ser definida pelo serviço ao criar a conta. O @PrePersist da entidade Conta foi removido.
+- Erros de validação de corpo e de parâmetros (@Valid, @Min, @NotBlank…) agora respondem 400 com a mensagem do campo. Foi adicionada a dependência spring-boot-starter-validation.
+- ApiExceptionHandler, ErroResponse, Competencias e as exceções RecursoNaoEncontradoException e MonitorIndisponivelException foram movidos para o pacote comum.
+- Configurações da chave de integração (ApiKeyProperties, prefixo api) e de CORS (CorsProperties) convertidas em records com injeção por construtor. As propriedades api.key e app.cors.allowed-origins continuam as mesmas.
+- @Transactional do Jakarta trocado pelo do Spring em CompraServiceImpl e GeracaoServiceImpl.
+- Testes atualizados para usar relógio fixo. Novos testes para as mensagens de validação, para o mês atual no fuso da casa e para a data de cadastro da conta.
+
+### 2.0.4 — 23/11/2026
+
+A API passa a rodar no Java 25 e atende cada requisição em uma thread virtual, o que melhora o uso de recursos enquanto espera banco, disco e host.
+
+- Java atualizado de 17 para 25 (java.version no pom.xml)
+- Imagem Docker atualizada para maven:3.9-eclipse-temurin-25 no build e eclipse-temurin:25-jre-noble na execução; o deploy precisa reconstruir a imagem
+- Threads virtuais ativadas (spring.threads.virtual.enabled: true no application.yaml), uma por requisição
+- Lombok declarado em annotationProcessorPaths do maven-compiler-plugin, já que a partir do JDK 23 o processador de anotações não roda sozinho
+- Build local e testes passam a exigir JDK 25
+
+### 2.0.3 — 23/11/2026
+
+Mais testes de contrato para os endpoints de contas, pessoas, servidor, internet, ventilação e passagens; o comportamento da API não muda.
+
+- Testes de contrato para PUT /v1/contas/{id}, com e sem o parâmetro aPartirDe, e para PATCH /v1/contas/lancamentos/{id}
+- Teste que garante que GET /v1/pessoas devolve os campos da pessoa sem expor o hash da senha
+- Testes para GET /v1/servidor/host e GET /v1/servidor/eventos, incluindo o período padrão de 7 dias e o filtro de/ate
+- Testes para os endpoints /v1/servidor/internet (agora, dia, dias e velocidade), incluindo os padrões de data e o erro 400 com data inválida
+- Teste do período padrão de 30 dias em GET /v1/servidor/ventilacao/dias
+- Testes para GET /v1/passagens (padrão de 30 dias) e para criar, editar e remover rotas em /v1/passagens/rotas, com e sem histórico
 
 ### 2.0.2 — 23/11/2026
 

@@ -4,7 +4,7 @@ import com.kowalski.casaapi.api.v1.dto.GeradoDTO;
 import com.kowalski.casaapi.api.v1.response.GeracaoDiariaResponse;
 import com.kowalski.casaapi.api.v1.response.GeracaoMensalResponse;
 import com.kowalski.casaapi.api.v1.response.GeracaoMesAnoResponse;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.service.GeracaoService;
 import com.kowalski.casaapi.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;

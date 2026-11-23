@@ -1,7 +1,9 @@
-package com.kowalski.casaapi.util;
+package com.kowalski.casaapi.comum;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +32,13 @@ class CompetenciasTest {
         assertThat(Competencias.vencimento(LocalDate.of(2026, 2, 1), 31)).isEqualTo(LocalDate.of(2026, 2, 28));
         assertThat(Competencias.vencimento(LocalDate.of(2028, 2, 1), 30)).isEqualTo(LocalDate.of(2028, 2, 29));
         assertThat(Competencias.vencimento(LocalDate.of(2026, 3, 1), 10)).isEqualTo(LocalDate.of(2026, 3, 10));
+    }
+
+    @Test
+    void competenciaAtualUsaOFusoDaCasa() {
+        Clock primeiroMinutoDeDezembroEmUtc = Clock.fixed(Instant.parse("2026-12-01T00:30:00Z"), RelogioConfig.FUSO_DA_CASA);
+
+        assertThat(Competencias.atual(primeiroMinutoDeDezembroEmUtc)).isEqualTo(LocalDate.of(2026, 11, 1));
     }
 
     @Test

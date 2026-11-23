@@ -1,5 +1,9 @@
 package com.kowalski.casaapi.business.service.impl;
 
+import com.kowalski.casaapi.comum.RelogioConfig;
+import java.time.Clock;
+import java.time.Instant;
+
 import com.kowalski.casaapi.api.v1.dto.GeradoDTO;
 import com.kowalski.casaapi.api.v1.response.GeracaoMesAnoResponse;
 import com.kowalski.casaapi.api.v1.response.GeracaoMensalResponse;
@@ -22,10 +26,12 @@ import static org.mockito.Mockito.*;
 
 class GeracaoServiceImplTest {
 
+    private static final Clock RELOGIO = Clock.fixed(Instant.parse("2026-11-23T15:00:00Z"), RelogioConfig.FUSO_DA_CASA);
+
     private final GeracaoRepository geracaoRepository = mock(GeracaoRepository.class);
     private final GeracaoDiariaRepository diariaRepository = mock(GeracaoDiariaRepository.class);
     private final GeracaoDiariaServiceImpl diaria = new GeracaoDiariaServiceImpl(diariaRepository);
-    private final GeracaoServiceImpl service = new GeracaoServiceImpl(geracaoRepository, diaria);
+    private final GeracaoServiceImpl service = new GeracaoServiceImpl(geracaoRepository, diaria, RELOGIO);
 
     private static GeracaoDiaria dia(int ano, int mes, int d, double valor) {
         return GeracaoDiaria.builder().data(LocalDate.of(ano, mes, d)).geracao(valor).build();
@@ -58,8 +64,8 @@ class GeracaoServiceImplTest {
     @Test
     void salvarGuardaALeituraEAtualizaOTotalDoDia() {
         GeracaoDiaria existente = dia(2025, 1, 1, 1.0);
-        existente.setData(LocalDate.now());
-        when(diariaRepository.findByData(LocalDate.now())).thenReturn(Optional.of(existente));
+        existente.setData(LocalDate.now(RELOGIO));
+        when(diariaRepository.findByData(LocalDate.now(RELOGIO))).thenReturn(Optional.of(existente));
         GeradoDTO dto = new GeradoDTO();
         dto.setGerado(7.5);
         dto.setPotencia(1200.0);
@@ -80,6 +86,6 @@ class GeracaoServiceImplTest {
 
         service.salvar(dto);
 
-        verify(diariaRepository).save(argThat(d -> d.getId() == null && d.getData().equals(LocalDate.now())));
+        verify(diariaRepository).save(argThat(d -> d.getId() == null && d.getData().equals(LocalDate.now(RELOGIO))));
     }
 }

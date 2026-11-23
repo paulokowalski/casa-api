@@ -6,7 +6,7 @@ import com.kowalski.casaapi.api.v1.response.ContaResponse;
 import com.kowalski.casaapi.api.v1.response.LancamentoResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.enumerator.TipoConta;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.Conta;
 import com.kowalski.casaapi.business.model.ContaLancamento;
 import com.kowalski.casaapi.business.repository.ContaLancamentoRepository;
@@ -19,11 +19,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.kowalski.casaapi.util.Competencias.*;
+import static com.kowalski.casaapi.comum.Competencias.*;
 
 @Service
 @RequiredArgsConstructor
@@ -36,13 +38,14 @@ public class ContaServiceImpl implements ContaService {
     private final PessoaRepository pessoaRepository;
     private final CategoriasService categoriasService;
     private final UsuarioLogado usuarioLogado;
+    private final Clock relogio;
 
 
     @Override
     @Transactional(readOnly = true)
     public List<ContaResponse> listar(Long pessoaId) {
         Assert.notNull(pessoaId, "A pessoa é obrigatória");
-        LocalDate mesAtual = atual();
+        LocalDate mesAtual = atual(relogio);
         return contaRepository.findByPessoaIdOrderByDescricaoAsc(pessoaId).stream()
                 .map(c -> paraResponse(c, mesAtual))
                 .toList();
@@ -53,7 +56,8 @@ public class ContaServiceImpl implements ContaService {
     public ContaResponse criar(ContaInput input) {
         Conta conta = new Conta();
         aplicar(conta, input);
-        return paraResponse(contaRepository.save(conta), atual());
+        conta.setDataCadastro(LocalDateTime.now(relogio));
+        return paraResponse(contaRepository.save(conta), atual(relogio));
     }
 
     @Override
@@ -63,10 +67,10 @@ public class ContaServiceImpl implements ContaService {
         aplicar(conta, input);
         contaRepository.save(conta);
 
-        LocalDate desde = aPartirDe != null ? aPartirDe : atual();
+        LocalDate desde = aPartirDe != null ? aPartirDe : atual(relogio);
         lancamentoRepository.removerNaoPagosAPartirDe(id, desde);
         lancamentoRepository.removerNaoPagosForaDoPeriodo(id, conta.getCompetenciaInicio(), fimOuSemFim(conta));
-        return paraResponse(conta, atual());
+        return paraResponse(conta, atual(relogio));
     }
 
     @Override
@@ -113,7 +117,7 @@ public class ContaServiceImpl implements ContaService {
         }
         lancamentos.addAll(lancamentoRepository.saveAll(novos));
 
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(relogio);
         lancamentos.stream()
                 .filter(l -> l.getConta().isDebitoAutomatico() && !l.isPaga() && !l.isBaixaManual()
                         && !l.getVencimento().isAfter(hoje))
@@ -151,7 +155,7 @@ public class ContaServiceImpl implements ContaService {
             lancamento.setPaga(input.paga());
             lancamento.setBaixaManual(true);
             lancamento.setDataPagamento(input.paga()
-                    ? Objects.requireNonNullElse(input.dataPagamento(), LocalDate.now())
+                    ? Objects.requireNonNullElse(input.dataPagamento(), LocalDate.now(relogio))
                     : null);
         } else if (input.dataPagamento() != null && lancamento.isPaga()) {
             lancamento.setDataPagamento(input.dataPagamento());

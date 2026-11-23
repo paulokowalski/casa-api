@@ -1,17 +1,13 @@
 package com.kowalski.casaapi.config.cors;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Component
-@Getter @Setter
 @ConfigurationProperties(prefix = "app.cors")
-public class CorsProperties {
+public record CorsProperties(List<String> allowedOrigins) {
 
-    private List<String> allowedOrigins;
-
+    public CorsProperties {
+        allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
+    }
 }

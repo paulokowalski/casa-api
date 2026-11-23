@@ -64,9 +64,4 @@ public class Conta {
 
     @Column(name = "dt_cadastro", nullable = false)
     private LocalDateTime dataCadastro;
-
-    @PrePersist
-    void aoCriar() {
-        if (dataCadastro == null) dataCadastro = LocalDateTime.now();
-    }
 }

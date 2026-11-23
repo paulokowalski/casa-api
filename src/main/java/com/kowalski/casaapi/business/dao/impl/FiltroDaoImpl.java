@@ -3,7 +3,7 @@ package com.kowalski.casaapi.business.dao.impl;
 import com.kowalski.casaapi.api.v1.response.FiltroResponse;
 import com.kowalski.casaapi.business.dao.FiltroDao;
 import com.kowalski.casaapi.business.enumerator.Meses;
-import com.kowalski.casaapi.util.Competencias;
+import com.kowalski.casaapi.comum.Competencias;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;

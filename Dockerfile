@@ -1,12 +1,12 @@
-# mesma imagem dos testes do commit e do e2e (maven:3.9-eclipse-temurin-17)
-FROM maven:3.9-eclipse-temurin-17 AS build
+# mesma imagem dos testes do commit e do e2e (maven:3.9-eclipse-temurin-25)
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY src ./src
 # cache do Maven entre builds (BuildKit): as dependências não são baixadas de novo a cada deploy
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp clean package -DskipTests
 
-FROM eclipse-temurin:17-jre-noble
+FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
 
 ARG JAR_FILE=/build/target/*.jar

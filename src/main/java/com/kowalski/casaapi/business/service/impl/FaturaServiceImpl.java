@@ -2,7 +2,7 @@ package com.kowalski.casaapi.business.service.impl;
 
 import com.kowalski.casaapi.api.v1.input.FaturaInput;
 import com.kowalski.casaapi.api.v1.response.FaturaResponse;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.FaturaPaga;
 import com.kowalski.casaapi.business.repository.FaturaPagaRepository;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
@@ -12,10 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Objects;
 
-import static com.kowalski.casaapi.util.Competencias.formatar;
+import static com.kowalski.casaapi.comum.Competencias.formatar;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class FaturaServiceImpl implements FaturaService {
 
     private final FaturaPagaRepository faturaRepository;
     private final PessoaRepository pessoaRepository;
+    private final Clock relogio;
 
     @Override
     @Transactional(readOnly = true)
@@ -43,7 +45,7 @@ public class FaturaServiceImpl implements FaturaService {
         }
         var id = new FaturaPaga.Id(pessoaId, competencia);
         if (input.paga()) {
-            faturaRepository.save(new FaturaPaga(id, Objects.requireNonNullElse(input.dataPagamento(), LocalDate.now())));
+            faturaRepository.save(new FaturaPaga(id, Objects.requireNonNullElse(input.dataPagamento(), LocalDate.now(relogio))));
         } else {
             faturaRepository.deleteById(id);
         }

@@ -5,7 +5,6 @@ import com.kowalski.casaapi.api.v1.response.UsuarioResponse;
 import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
 import com.kowalski.casaapi.config.security.AuthProperties;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,14 +43,8 @@ public class AuthService {
     private record Tentativas(int erros, Instant bloqueadoAte) {
     }
 
-    @Autowired
     public AuthService(PessoaRepository pessoaRepository, PasswordEncoder passwordEncoder,
-                       JwtEncoder jwtEncoder, AuthProperties props) {
-        this(pessoaRepository, passwordEncoder, jwtEncoder, props, Clock.systemUTC());
-    }
-
-    AuthService(PessoaRepository pessoaRepository, PasswordEncoder passwordEncoder,
-                JwtEncoder jwtEncoder, AuthProperties props, Clock clock) {
+                       JwtEncoder jwtEncoder, AuthProperties props, Clock clock) {
         this.pessoaRepository = pessoaRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;

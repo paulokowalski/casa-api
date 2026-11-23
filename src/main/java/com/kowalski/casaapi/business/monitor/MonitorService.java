@@ -6,7 +6,7 @@ import com.kowalski.casaapi.api.v1.response.ServidorDiaResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorDiscoResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorSaudeDiscoResponse;
 import com.kowalski.casaapi.api.v1.response.ServidorResumoDiaResponse;
-import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
+import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;

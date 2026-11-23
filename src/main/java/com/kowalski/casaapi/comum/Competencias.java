@@ -1,7 +1,8 @@
-package com.kowalski.casaapi.util;
+package com.kowalski.casaapi.comum;
 
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -48,8 +49,8 @@ public final class Competencias {
         return de(ano, "1");
     }
 
-    public static LocalDate atual() {
-        return LocalDate.now().withDayOfMonth(1);
+    public static LocalDate atual(Clock relogio) {
+        return LocalDate.now(relogio).withDayOfMonth(1);
     }
 
     public static String formatar(LocalDate competencia) {

@@ -3,8 +3,8 @@ package com.kowalski.casaapi.api.v1.controller;
 import com.kowalski.casaapi.api.v1.response.*;
 import com.kowalski.casaapi.business.auth.AuthService;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.exception.MonitorIndisponivelException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.business.model.Pessoa;
 import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.business.repository.PessoaRepository;
@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest
 @AutoConfigureMockMvc(addFilters = false)
-@Import({UsuarioLogado.class, com.kowalski.casaapi.crescimento.comum.CrescimentoConfig.class})
+@Import({UsuarioLogado.class, com.kowalski.casaapi.comum.RelogioConfig.class, com.kowalski.casaapi.crescimento.comum.CrescimentoConfig.class})
 class ContratoEndpointsTest {
 
     private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
@@ -486,6 +486,155 @@ class ContratoEndpointsTest {
             mvc.perform(put("/v1/pessoas/1").contentType(JSON).content(corpo)).andExpect(status().isOk());
             mvc.perform(delete("/v1/pessoas/1")).andExpect(status().isNoContent());
             verify(pessoaService).deletar(ana);
+        }
+    }
+
+    @Nested
+    class ContasEdicao {
+
+        @Test
+        void editarRepassaOMesDeInicio() throws Exception {
+            UUID id = UUID.randomUUID();
+            mvc.perform(put("/v1/contas/" + id).param("aPartirDe", "2026-12").contentType(JSON).content("{\"descricao\":\"x\"}"))
+                    .andExpect(status().isOk());
+            verify(contaService).editar(eq(id), any(), eq(LocalDate.of(2026, 12, 1)));
+        }
+
+        @Test
+        void editarSemMesDeInicioPassaNulo() throws Exception {
+            UUID id = UUID.randomUUID();
+            mvc.perform(put("/v1/contas/" + id).contentType(JSON).content("{\"descricao\":\"x\"}")).andExpect(status().isOk());
+            verify(contaService).editar(eq(id), any(), isNull());
+        }
+
+        @Test
+        void atualizarLancamento() throws Exception {
+            UUID id = UUID.randomUUID();
+            mvc.perform(patch("/v1/contas/lancamentos/" + id).contentType(JSON).content("{\"paga\":true}"))
+                    .andExpect(status().isOk());
+            verify(contaService).atualizarLancamento(eq(id), any());
+        }
+    }
+
+    @Nested
+    class PessoasLista {
+
+        @Test
+        void listarDevolveOsCamposSemASenha() throws Exception {
+            Pessoa ana = Login.pessoa(1L, "ANA");
+            ana.setSenhaHash("hash");
+            when(pessoaService.listar()).thenReturn(List.of(ana));
+
+            mvc.perform(get("/v1/pessoas")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(1))
+                    .andExpect(jsonPath("$[0].nome").value("ANA"))
+                    .andExpect(jsonPath("$[0].email").value("ana@exemplo.com"))
+                    .andExpect(jsonPath("$[0].papel").value("USUARIO"))
+                    .andExpect(jsonPath("$[0].ativo").value(true))
+                    .andExpect(jsonPath("$[0].temAcesso").value(true))
+                    .andExpect(jsonPath("$[0].senhaHash").doesNotExist());
+        }
+    }
+
+    @Nested
+    class ServidorHostEEventos {
+
+        @Test
+        void hostDevolveOMapaDoServico() throws Exception {
+            when(monitorService.host()).thenReturn(Map.of("desatualizado", false));
+            mvc.perform(get("/v1/servidor/host")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.desatualizado").value(false));
+        }
+
+        @Test
+        void eventosUsaOsUltimos7DiasComoPadrao() throws Exception {
+            when(monitorService.eventos(any(), any())).thenReturn(List.of(
+                    new ServidorEventoResponse(java.time.LocalDateTime.of(2026, 11, 15, 3, 41), "backup", "sucesso", "ok")));
+
+            mvc.perform(get("/v1/servidor/eventos")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].quando").value("2026-11-15T03:41:00"))
+                    .andExpect(jsonPath("$[0].tipo").value("backup"))
+                    .andExpect(jsonPath("$[0].nivel").value("sucesso"))
+                    .andExpect(jsonPath("$[0].mensagem").value("ok"));
+            verify(monitorService).eventos(LocalDate.now().minusDays(6), LocalDate.now());
+
+            mvc.perform(get("/v1/servidor/eventos").param("de", "2026-11-01").param("ate", "2026-11-10"));
+            verify(monitorService).eventos(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+        }
+    }
+
+    @Nested
+    class Internet {
+
+        @Test
+        void agoraDevolveOMapaDoServico() throws Exception {
+            when(internetService.agora()).thenReturn(Map.of("desatualizado", true));
+            mvc.perform(get("/v1/servidor/internet")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.desatualizado").value(true));
+        }
+
+        @Test
+        void diaUsaHojeComoPadrao() throws Exception {
+            mvc.perform(get("/v1/servidor/internet/dia")).andExpect(status().isOk());
+            verify(internetService).dia(LocalDate.now());
+            mvc.perform(get("/v1/servidor/internet/dia").param("data", "2026-11-01")).andExpect(status().isOk());
+            verify(internetService).dia(LocalDate.of(2026, 11, 1));
+        }
+
+        @Test
+        void diasEVelocidadeUsamOsUltimos30Dias() throws Exception {
+            mvc.perform(get("/v1/servidor/internet/dias")).andExpect(status().isOk());
+            verify(internetService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+            mvc.perform(get("/v1/servidor/internet/velocidade")).andExpect(status().isOk());
+            verify(internetService).velocidade(LocalDate.now().minusDays(29), LocalDate.now());
+
+            mvc.perform(get("/v1/servidor/internet/velocidade").param("de", "2026-11-01").param("ate", "2026-11-10"));
+            verify(internetService).velocidade(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+        }
+
+        @Test
+        void dataInvalidaDa400() throws Exception {
+            mvc.perform(get("/v1/servidor/internet/dia").param("data", "01/11/2026")).andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    class Ventilacao {
+
+        @Test
+        void diasUsaOsUltimos30Dias() throws Exception {
+            mvc.perform(get("/v1/servidor/ventilacao/dias")).andExpect(status().isOk());
+            verify(ventilacaoService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+        }
+    }
+
+    @Nested
+    class Passagens {
+
+        private static final String ROTA = "{\"nome\":\"FOR-GRU\",\"origem\":[\"FOR\"],\"destino\":[\"GRU\"]}";
+
+        @Test
+        void listarUsa30DiasComoPadrao() throws Exception {
+            mvc.perform(get("/v1/passagens")).andExpect(status().isOk());
+            verify(passagensService).listar(30);
+            mvc.perform(get("/v1/passagens").param("dias", "0")).andExpect(status().isOk());
+            verify(passagensService).listar(0);
+        }
+
+        @Test
+        void criarEditarERemoverRota() throws Exception {
+            when(rotasPassagemService.criar(any())).thenReturn(Map.of("id", 7));
+            mvc.perform(post("/v1/passagens/rotas").contentType(JSON).content(ROTA))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(7));
+            verify(rotasPassagemService).criar(argThat(r -> "FOR-GRU".equals(r.nome()) && r.origem().equals(List.of("FOR"))));
+
+            mvc.perform(put("/v1/passagens/rotas/7").contentType(JSON).content(ROTA)).andExpect(status().isOk());
+            verify(rotasPassagemService).atualizar(eq(7L), any());
+
+            mvc.perform(delete("/v1/passagens/rotas/7")).andExpect(status().isNoContent());
+            verify(rotasPassagemService).remover(7L, false);
+            mvc.perform(delete("/v1/passagens/rotas/7").param("historico", "true")).andExpect(status().isNoContent());
+            verify(rotasPassagemService).remover(7L, true);
         }
     }
 

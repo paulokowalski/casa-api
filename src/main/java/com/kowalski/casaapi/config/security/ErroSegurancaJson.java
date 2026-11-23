@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.config.security;
 
-import com.kowalski.casaapi.api.v1.response.ErroResponse;
+import com.kowalski.casaapi.comum.ErroResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;

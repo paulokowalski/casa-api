@@ -4,6 +4,9 @@ server:
         context-path: /casa-api
 
 spring:
+    threads:
+        virtual:
+            enabled: true
     config:
         import: optional:file:./config/dev-secrets.yaml
     datasource:

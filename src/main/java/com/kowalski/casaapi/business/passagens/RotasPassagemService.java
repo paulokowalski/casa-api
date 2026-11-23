@@ -3,7 +3,7 @@ package com.kowalski.casaapi.business.passagens;
 import com.kowalski.casaapi.api.v1.input.RotaPassagemInput;
 import com.kowalski.casaapi.api.v1.input.RotaPassagemInput.Data;
 import com.kowalski.casaapi.api.v1.input.RotaPassagemInput.Janela;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -33,10 +34,11 @@ public class RotasPassagemService {
     static final int MAX_DIAS_JANELA = 366;
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final Clock relogio;
 
     @Transactional
     public Map<String, Object> criar(RotaPassagemInput in) {
-        Map<String, Object> cfg = validar(in, LocalDate.now());
+        Map<String, Object> cfg = validar(in, LocalDate.now(relogio));
         String nome = (String) cfg.get("nome");
         if (existe(nome, null)) throw new IllegalArgumentException("Já existe uma rota chamada \"" + nome + "\"");
         Long id = jdbc.queryForObject("""
@@ -50,7 +52,7 @@ public class RotasPassagemService {
     @Transactional
     public Map<String, Object> atualizar(long id, RotaPassagemInput in) {
         String antigo = nome(id);
-        Map<String, Object> cfg = validar(in, LocalDate.now());
+        Map<String, Object> cfg = validar(in, LocalDate.now(relogio));
         String nome = (String) cfg.get("nome");
         if (existe(nome, id)) throw new IllegalArgumentException("Já existe uma rota chamada \"" + nome + "\"");
         MapSqlParameterSource p = parametros(cfg).addValue("id", id).addValue("antigo", antigo);

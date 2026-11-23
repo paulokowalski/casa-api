@@ -1,9 +1,13 @@
 package com.kowalski.casaapi.business.service.impl;
 
+import com.kowalski.casaapi.comum.RelogioConfig;
+import java.time.Clock;
+import java.time.Instant;
+
 import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.Categorias;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
@@ -34,12 +38,14 @@ import static org.mockito.Mockito.*;
 
 class CompraServiceImplTest {
 
+    private static final Clock RELOGIO = Clock.fixed(Instant.parse("2026-11-23T15:00:00Z"), RelogioConfig.FUSO_DA_CASA);
+
     private final CompraRepository compraRepository = mock(CompraRepository.class);
     private final TipoLancamentoService tipoService = mock(TipoLancamentoService.class);
     private final CategoriasService categoriasService = mock(CategoriasService.class);
     private final CompraParcelaRepository parcelaRepository = mock(CompraParcelaRepository.class);
     private final CompraServiceImpl service = new CompraServiceImpl(
-            compraRepository, tipoService, categoriasService, parcelaRepository, new UsuarioLogado());
+            compraRepository, tipoService, categoriasService, parcelaRepository, new UsuarioLogado(), RELOGIO);
 
     private final UUID tipoId = UUID.randomUUID();
     private final UUID categoriaId = UUID.randomUUID();
@@ -110,7 +116,7 @@ class CompraServiceImplTest {
         Login.comoAna();
         assertThatThrownBy(() -> service.salvar(input("Ana", "10", 0))).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.salvar(input(" ", "10", 1))).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.salvar(new CompraInput(" ", BigDecimal.TEN, LocalDate.now(), 1, "Ana", tipoId, categoriaId)))
+        assertThatThrownBy(() -> service.salvar(new CompraInput(" ", BigDecimal.TEN, LocalDate.now(RELOGIO), 1, "Ana", tipoId, categoriaId)))
                 .isInstanceOf(IllegalArgumentException.class);
         verify(compraRepository, never()).save(any());
     }
@@ -275,6 +281,6 @@ class CompraServiceImplTest {
     }
 
     private static CompraRegistroResponse registro(String pessoa) {
-        return new CompraRegistroResponse(UUID.randomUUID(), "TV", BigDecimal.TEN, LocalDate.now(), 1, pessoa, "NUBANK", LocalDateTime.now());
+        return new CompraRegistroResponse(UUID.randomUUID(), "TV", BigDecimal.TEN, LocalDate.now(RELOGIO), 1, pessoa, "NUBANK", LocalDateTime.now(RELOGIO));
     }
 }

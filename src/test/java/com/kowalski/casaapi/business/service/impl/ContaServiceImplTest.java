@@ -1,12 +1,17 @@
 package com.kowalski.casaapi.business.service.impl;
 
+import com.kowalski.casaapi.comum.RelogioConfig;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.Instant;
+
 import com.kowalski.casaapi.api.v1.input.ContaInput;
 import com.kowalski.casaapi.api.v1.input.LancamentoInput;
 import com.kowalski.casaapi.api.v1.response.ContaResponse;
 import com.kowalski.casaapi.api.v1.response.LancamentoResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.business.enumerator.TipoConta;
-import com.kowalski.casaapi.business.exception.RecursoNaoEncontradoException;
+import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.business.model.Conta;
 import com.kowalski.casaapi.business.model.ContaLancamento;
 import com.kowalski.casaapi.business.model.Pessoa;
@@ -35,12 +40,14 @@ import static org.mockito.Mockito.*;
 
 class ContaServiceImplTest {
 
+    private static final Clock RELOGIO = Clock.fixed(Instant.parse("2026-11-23T15:00:00Z"), RelogioConfig.FUSO_DA_CASA);
+
     private final ContaRepository contaRepository = mock(ContaRepository.class);
     private final ContaLancamentoRepository lancamentoRepository = mock(ContaLancamentoRepository.class);
     private final PessoaRepository pessoaRepository = mock(PessoaRepository.class);
     private final CategoriasService categoriasService = mock(CategoriasService.class);
     private final ContaServiceImpl service = new ContaServiceImpl(
-            contaRepository, lancamentoRepository, pessoaRepository, categoriasService, new UsuarioLogado());
+            contaRepository, lancamentoRepository, pessoaRepository, categoriasService, new UsuarioLogado(), RELOGIO);
 
     private final Pessoa ana = Login.pessoa(Login.ANA_ID, "ANA");
     private final Pessoa bruno = Login.pessoa(Login.BRUNO_ID, "BRUNO");
@@ -87,6 +94,13 @@ class ContaServiceImplTest {
         return c;
     }
 
+
+    @Test
+    void contaNovaGuardaADataDeCadastroDoRelogio() {
+        service.criar(input(Login.ANA_ID, TipoConta.RECORRENTE, "2026-05", null, null, null, false, false));
+
+        verify(contaRepository).save(argThat(c -> c.getDataCadastro().equals(LocalDateTime.now(RELOGIO))));
+    }
 
     @Test
     void parceladaCalculaOUltimoMesPelasParcelasQueFaltam() {
@@ -266,7 +280,7 @@ class ContaServiceImplTest {
         LancamentoResponse r = service.atualizarLancamento(l.getId(), new LancamentoInput(true, new BigDecimal("55.00"), null));
 
         assertThat(r.paga()).isTrue();
-        assertThat(r.dataPagamento()).isEqualTo(LocalDate.now());
+        assertThat(r.dataPagamento()).isEqualTo(LocalDate.now(RELOGIO));
         assertThat(r.valor()).isEqualByComparingTo("55.00");
         assertThat(r.valorEstimado()).isFalse();
         assertThat(l.isBaixaManual()).isTrue();
