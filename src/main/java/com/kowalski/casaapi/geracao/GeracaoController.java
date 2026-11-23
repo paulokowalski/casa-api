@@ -1,11 +1,6 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.geracao;
 
-import com.kowalski.casaapi.api.v1.dto.GeradoDTO;
-import com.kowalski.casaapi.api.v1.response.GeracaoDiariaResponse;
-import com.kowalski.casaapi.api.v1.response.GeracaoMensalResponse;
-import com.kowalski.casaapi.api.v1.response.GeracaoMesAnoResponse;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.service.GeracaoService;
 import com.kowalski.casaapi.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,7 +34,7 @@ public class GeracaoController {
     @ApiResponse(responseCode = "404", description = "Sem dados de geração")
     public GeracaoDiariaResponse doDia(@Parameter(description = "Dia (aaaa-mm-dd)", example = "2026-11-15")
                                        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-        return encontrado(geracaoService.buscarGeracao(data));
+        return encontrado(geracaoService.doDia(data));
     }
 
     @GetMapping("/{ano}/{mes}")
@@ -48,7 +43,7 @@ public class GeracaoController {
     @ApiResponse(responseCode = "404", description = "Sem dados de geração")
     public GeracaoMensalResponse doMes(@Parameter(description = "Ano", example = "2026") @PathVariable int ano,
                                        @Parameter(description = "Mês (1 a 12)", example = "11") @PathVariable int mes) {
-        return encontrado(geracaoService.buscarGeracaoMensal(ano, mes));
+        return encontrado(geracaoService.doMes(ano, mes));
     }
 
     @GetMapping("/{ano}")
@@ -56,7 +51,7 @@ public class GeracaoController {
     @ApiResponse(responseCode = "200", description = "Geração por mês")
     @ApiResponse(responseCode = "404", description = "Sem dados de geração")
     public List<GeracaoMesAnoResponse> doAno(@Parameter(description = "Ano", example = "2026") @PathVariable int ano) {
-        return encontrado(geracaoService.buscarGeracaoAnual(ano));
+        return encontrado(geracaoService.doAno(ano));
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -65,6 +60,6 @@ public class GeracaoController {
             security = {@SecurityRequirement(name = OpenApiConfig.API_KEY), @SecurityRequirement(name = OpenApiConfig.JWT)})
     @ApiResponse(responseCode = "200", description = "Leitura registrada")
     public void salvar(@RequestBody GeradoDTO dto) {
-        geracaoService.salvar(dto);
+        geracaoService.registrar(dto);
     }
 }

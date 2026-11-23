@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.9 — 23/11/2026
+
+A geração solar foi reorganizada em um módulo próprio, com consultas mais simples. Os endpoints e o formato das respostas continuam os mesmos.
+
+- Refatorada a funcionalidade de geração solar: controller, entidades, repositórios, serviço e respostas agora ficam juntos no pacote geracao, e as interfaces de serviço separadas foram removidas
+- Consultas de geração diária, mensal e anual trocadas de SQL nativo com EXTRACT/DATE por consultas JPA por intervalo de datas; tabelas geracao e geracao_diaria sem mudança e sem migração necessária
+- Total anual em GET /v1/geracao/{ano} agora volta em ordem de mês (antes a ordem não era garantida)
+- Registro de leitura (POST /v1/geracao) atualiza ou cria o total do dia dentro da mesma transação; consultas marcadas como somente leitura
+- GeradoDTO convertido em record, com os mesmos campos gerado e potencia
+- Testes de serviço, contrato, segurança e e2e ajustados ao novo pacote (GeracaoServiceTest substitui GeracaoServiceImplTest)
+
 ### 2.0.8 — 23/11/2026
 
 A funcionalidade de carros (histórico FIPE) foi reorganizada no novo pacote próprio. Para quem usa a API, nada muda: o endpoint e o formato da resposta continuam iguais.

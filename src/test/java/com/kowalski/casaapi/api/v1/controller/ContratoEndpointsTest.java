@@ -7,6 +7,7 @@ import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.carro.CarroResponse;
 import com.kowalski.casaapi.carro.CarroService;
+import com.kowalski.casaapi.geracao.*;
 import com.kowalski.casaapi.pessoa.Pessoa;
 import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.pessoa.PessoaRepository;
@@ -366,7 +367,7 @@ class ContratoEndpointsTest {
 
         @Test
         void doMesPassaAnoEMesNaOrdem() throws Exception {
-            when(geracaoService.buscarGeracaoMensal(2025, 3)).thenReturn(new GeracaoMensalResponse(List.of(), Year.of(2025), Month.MARCH));
+            when(geracaoService.doMes(2025, 3)).thenReturn(new GeracaoMensalResponse(List.of(), Year.of(2025), Month.MARCH));
 
             mvc.perform(get("/v1/geracao-solar/2025/3"))
                     .andExpect(status().isOk())
@@ -376,7 +377,7 @@ class ContratoEndpointsTest {
 
         @Test
         void doAno() throws Exception {
-            when(geracaoService.buscarGeracaoAnual(2025)).thenReturn(List.of(new GeracaoMesAnoResponse(Month.JANUARY, Year.of(2025), 3.5)));
+            when(geracaoService.doAno(2025)).thenReturn(List.of(new GeracaoMesAnoResponse(Month.JANUARY, Year.of(2025), 3.5)));
 
             mvc.perform(get("/v1/geracao-solar/2025"))
                     .andExpect(status().isOk())
@@ -387,7 +388,7 @@ class ContratoEndpointsTest {
 
         @Test
         void doDia() throws Exception {
-            when(geracaoService.buscarGeracao(LocalDate.of(2025, 1, 2))).thenReturn(new GeracaoDiariaResponse(List.of(), null));
+            when(geracaoService.doDia(LocalDate.of(2025, 1, 2))).thenReturn(new GeracaoDiariaResponse(List.of(), null));
 
             mvc.perform(get("/v1/geracao-solar").param("data", "2025-01-02")).andExpect(status().isOk());
             mvc.perform(get("/v1/geracao-solar").param("data", "02/01/2025")).andExpect(status().isBadRequest());
@@ -397,7 +398,7 @@ class ContratoEndpointsTest {
         void integracaoEnviaLeituraERecebe200() throws Exception {
             mvc.perform(post("/v1/geracao-solar").contentType(JSON).content("{\"gerado\":1.5,\"potencia\":300}"))
                     .andExpect(status().isOk());
-            verify(geracaoService).salvar(argThat(d -> d.getGerado() == 1.5 && d.getPotencia() == 300.0));
+            verify(geracaoService).registrar(new GeradoDTO(1.5, 300.0));
         }
     }
 

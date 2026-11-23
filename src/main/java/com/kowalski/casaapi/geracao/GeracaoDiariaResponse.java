@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.api.v1.response;
+package com.kowalski.casaapi.geracao;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;

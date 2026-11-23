@@ -190,6 +190,34 @@ class CasaApiE2ETest {
                 .containsKey("id");
     }
 
+    @Test
+    void leiturasDoInversorViramODiaOMesEOAno() {
+        for (var leitura : List.of(Map.of("gerado", 2.5, "potencia", 900.0), Map.of("gerado", 3.0, "potencia", 1500.0))) {
+            var r = http.post().uri("/v1/geracao-solar").header("X-API-KEY", chave())
+                    .contentType(MediaType.APPLICATION_JSON).body(leitura).retrieve().toBodilessEntity();
+            assertThat(r.getStatusCode().value()).isEqualTo(200);
+        }
+        String token = token();
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
+
+        var dia = http.get().uri("/v1/geracao-solar?data=" + hoje).header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat(dia.getStatusCode().value()).isEqualTo(200);
+        assertThat(dia.getBody()).containsEntry("geracao", 3.0);
+        assertThat((List<?>) dia.getBody().get("valores")).hasSizeGreaterThanOrEqualTo(2);
+
+        var mes = http.get().uri("/v1/geracao-solar/" + hoje.getYear() + "/" + hoje.getMonthValue())
+                .header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat(mes.getStatusCode().value()).isEqualTo(200);
+        assertThat((List<Map<String, Object>>) mes.getBody().get("valores")).extracting(v -> v.get("valor")).containsExactly(3.0);
+
+        var ano = http.get().uri("/v1/geracao-solar/" + hoje.getYear()).header("Authorization", token).retrieve().toEntity(LISTA);
+        assertThat(ano.getStatusCode().value()).isEqualTo(200);
+        assertThat(ano.getBody()).singleElement().satisfies(m -> {
+            assertThat(m).containsEntry("month", hoje.getMonth().name()).containsEntry("year", String.valueOf(hoje.getYear()));
+            assertThat(m).containsEntry("value", 3.0);
+        });
+    }
+
     // ---- apoio ----
 
     private Map<String, Object> criarPessoa(String token, String nome, String email) {
