@@ -1,9 +1,8 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.internet;
 
-import com.kowalski.casaapi.servidor.ServidorRepository;
+import com.kowalski.casaapi.servidor.ServidorService;
 import com.kowalski.casaapi.servidor.LeitorHost;
 import com.kowalski.casaapi.servidor.EventosHost;
-import com.kowalski.casaapi.api.v1.response.InternetResponse;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -50,7 +50,8 @@ public class InternetService {
 
     private final LeitorInternet leitor;
     private final InternetRepository repository;
-    private final ServidorRepository monitorRepository;
+    private final ServidorService servidorService;
+    private final Clock relogio;
     private final MonitorProperties props;
 
     private volatile boolean tabelasProntas;
@@ -64,18 +65,19 @@ public class InternetService {
     private LocalDateTime perdaDesde;
     private double perdaMax;
 
-    public InternetService(LeitorInternet leitor, InternetRepository repository, ServidorRepository monitorRepository,
-                           MonitorProperties props) {
+    public InternetService(LeitorInternet leitor, InternetRepository repository, ServidorService servidorService,
+                           MonitorProperties props, Clock relogio) {
         this.leitor = leitor;
         this.repository = repository;
-        this.monitorRepository = monitorRepository;
+        this.servidorService = servidorService;
         this.props = props;
+        this.relogio = relogio;
     }
 
     /** O host grava aos 20 s de cada minuto; lê aos 40 s. */
     @Scheduled(cron = "40 * * * * *")
     public void coletar() {
-        coletar(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES), Instant.now());
+        coletar(LocalDateTime.now(relogio).truncatedTo(ChronoUnit.MINUTES), relogio.instant());
     }
 
     synchronized void coletar(LocalDateTime agora, Instant instante) {
@@ -100,7 +102,7 @@ public class InternetService {
                     maisNovo = null;
                 }
             }
-            monitorRepository.inserirEventos(eventos);
+            servidorService.registrarEventos(eventos);
             if (maisNovo != null) ultimoTesteGravado = maisNovo; // só depois de gravar: se falhar, tenta de novo
         } catch (RuntimeException e) {
             log.warn("Monitoramento: falha na coleta da internet das {}: {}", agora.toLocalTime(), e.getMessage());
@@ -173,7 +175,7 @@ public class InternetService {
     public void limparAntigas() {
         if (!props.habilitado() || !prepararTabelas()) return;
         try {
-            repository.apagarAntesDe(LocalDate.now().minusDays(props.retencaoDias()).atStartOfDay());
+            repository.apagarAntesDe(LocalDate.now(relogio).minusDays(props.retencaoDias()).atStartOfDay());
         } catch (DataAccessException e) {
             log.warn("Monitoramento: falha ao apagar amostras antigas da internet: {}", e.getMessage());
         }

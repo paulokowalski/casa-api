@@ -422,6 +422,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.16 — 23/11/2026
+
+Refatoração interna do monitoramento da internet, que passa a ficar no próprio pacote; para quem usa o sistema, nada muda.
+
+- Monitoramento da internet (controller, service, repositório, leitor, amostra e respostas) reunido no pacote com.kowalski.casaapi.internet, seguindo a organização por funcionalidade
+- Endpoints /v1 da internet sem mudança de contrato: mesmas rotas, parâmetros e respostas
+- Data e hora padrão da internet (dia atual, coleta por minuto, limpeza de amostras antigas e aviso de dado desatualizado) passam a vir do relógio único da aplicação (Clock)
+- Eventos da internet agora gravados pelo novo método ServidorService.registrarEventos, sem acessar direto o repositório do servidor
+- Agregados de velocidade no InternetRepository trocados de Object[] por um record tipado (Velocidade)
+- Testes da internet movidos para o novo pacote e ajustados aos novos construtores
+
 ### 2.0.15 — 23/11/2026
 
 Reorganiza o código do monitoramento do servidor em um pacote próprio. Os endpoints, as respostas e as tabelas continuam iguais.

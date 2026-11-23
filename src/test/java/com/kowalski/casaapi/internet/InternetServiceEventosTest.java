@@ -1,8 +1,8 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.internet;
 
-import com.kowalski.casaapi.servidor.ServidorRepository;
+import com.kowalski.casaapi.servidor.ServidorService;
 import com.kowalski.casaapi.servidor.EventosHost;
-import com.kowalski.casaapi.api.v1.response.InternetResponse.TesteVelocidade;
+import com.kowalski.casaapi.internet.InternetResponse.TesteVelocidade;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,9 +26,9 @@ class InternetServiceEventosTest {
 
     final LeitorInternet leitor = mock(LeitorInternet.class);
     final InternetRepository repository = mock(InternetRepository.class);
-    final ServidorRepository monitorRepository = mock(ServidorRepository.class);
+    final ServidorService servidorService = mock(ServidorService.class);
     final MonitorProperties props = mock(MonitorProperties.class);
-    final InternetService service = new InternetService(leitor, repository, monitorRepository, props);
+    final InternetService service = new InternetService(leitor, repository, servidorService, props, java.time.Clock.systemDefaultZone());
     final List<EventosHost.Evento> eventos = new ArrayList<>();
 
     @BeforeEach

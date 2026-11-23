@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.internet;
 
 import com.kowalski.casaapi.servidor.LeitorHost;
 import java.time.LocalDateTime;

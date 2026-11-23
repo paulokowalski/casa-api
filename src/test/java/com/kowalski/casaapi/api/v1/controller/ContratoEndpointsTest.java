@@ -11,6 +11,7 @@ import com.kowalski.casaapi.compra.*;
 import com.kowalski.casaapi.conta.*;
 import com.kowalski.casaapi.fatura.*;
 import com.kowalski.casaapi.geracao.*;
+import com.kowalski.casaapi.internet.*;
 import com.kowalski.casaapi.renda.*;
 import com.kowalski.casaapi.ventilacao.*;
 import com.kowalski.casaapi.pessoa.Pessoa;
@@ -71,7 +72,7 @@ class ContratoEndpointsTest {
     @MockitoBean AuthService authService;
     @MockitoBean PessoaRepository pessoaRepository;
     @MockitoBean ServidorService servidorService;
-    @MockitoBean com.kowalski.casaapi.business.monitor.InternetService internetService;
+    @MockitoBean InternetService internetService;
     @MockitoBean VentilacaoService ventilacaoService;
     @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
     @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;

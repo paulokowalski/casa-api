@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.internet;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -66,12 +66,12 @@ class InternetTest {
         assertThat(tela).containsEntry("desatualizado", true).containsKey("velocidade");
         assertThat(LeitorInternet.desatualizado(Map.of("lidoEm", "2026-11-21T12:24:36-03:00"),
                 Instant.parse("2026-11-21T15:26:00Z"))).isFalse();
-        assertThat(new LeitorInternet(dir.resolve("nao-existe.json"), null).lerParaTela()).isNull();
+        assertThat(new LeitorInternet(dir.resolve("nao-existe.json"), null, java.time.Clock.systemDefaultZone()).lerParaTela()).isNull();
     }
 
     private static LeitorInternet leitor(Path dir) throws Exception {
         Path i = Files.writeString(dir.resolve("internet.json"), INTERNET);
         Path v = Files.writeString(dir.resolve("velocidade.json"), VELOCIDADE);
-        return new LeitorInternet(i, v);
+        return new LeitorInternet(i, v, java.time.Clock.systemDefaultZone());
     }
 }

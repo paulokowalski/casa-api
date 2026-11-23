@@ -1,7 +1,6 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.internet;
 
 import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse;
-import com.kowalski.casaapi.api.v1.response.InternetResponse;
 import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse.Faixa;
 import com.kowalski.casaapi.config.monitor.MonitorConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -149,7 +148,7 @@ public class InternetRepository {
     }
 
     public InternetResponse.Resumo resumo(LocalDateTime de, LocalDateTime ate) {
-        Object[] v = jdbc.queryForObject("SELECT " + AGREGADOS_VELOCIDADE
+        Velocidade v = jdbc.queryForObject("SELECT " + AGREGADOS_VELOCIDADE
                         + " FROM teste_velocidade WHERE ok AND testado_em >= ? AND testado_em < ?",
                 (rs, i) -> velocidade(rs), de, ate);
         return jdbc.queryForObject("SELECT " + AGREGADOS + " FROM amostra_internet WHERE coletado_em >= ? AND coletado_em < ?",
@@ -157,7 +156,7 @@ public class InternetRepository {
     }
 
     public Map<LocalDate, InternetResponse.Resumo> porDia(LocalDateTime de, LocalDateTime ate) {
-        Map<LocalDate, Object[]> velocidades = new LinkedHashMap<>();
+        Map<LocalDate, Velocidade> velocidades = new LinkedHashMap<>();
         jdbc.query("SELECT DATE(testado_em) AS dia, " + AGREGADOS_VELOCIDADE
                         + " FROM teste_velocidade WHERE ok AND testado_em >= ? AND testado_em < ? GROUP BY DATE(testado_em)",
                 rs -> {
@@ -169,7 +168,7 @@ public class InternetRepository {
                         + " GROUP BY DATE(coletado_em) ORDER BY dia DESC",
                 rs -> {
                     LocalDate dia = rs.getObject("dia", LocalDate.class);
-                    r.put(dia, resumo(rs, velocidades.getOrDefault(dia, new Object[]{0L, new Faixa(null, null, null), new Faixa(null, null, null)})));
+                    r.put(dia, resumo(rs, velocidades.getOrDefault(dia, Velocidade.SEM_TESTES)));
                 }, de, ate);
         return r;
     }
@@ -188,19 +187,23 @@ public class InternetRepository {
         return jdbc.update("DELETE FROM amostra_internet WHERE coletado_em < ?", limite);
     }
 
-    private static Object[] velocidade(ResultSet rs) throws SQLException {
-        return new Object[]{rs.getLong("testes"),
-                new Faixa(numero(rs, "d_min"), numero(rs, "d_med"), numero(rs, "d_max")),
-                new Faixa(numero(rs, "u_min"), numero(rs, "u_med"), numero(rs, "u_max"))};
+    private record Velocidade(long testes, Faixa download, Faixa upload) {
+        static final Velocidade SEM_TESTES = new Velocidade(0L, new Faixa(null, null, null), new Faixa(null, null, null));
     }
 
-    private static InternetResponse.Resumo resumo(ResultSet rs, Object[] v) throws SQLException {
+    private static Velocidade velocidade(ResultSet rs) throws SQLException {
+        return new Velocidade(rs.getLong("testes"),
+                new Faixa(numero(rs, "d_min"), numero(rs, "d_med"), numero(rs, "d_max")),
+                new Faixa(numero(rs, "u_min"), numero(rs, "u_med"), numero(rs, "u_max")));
+    }
+
+    private static InternetResponse.Resumo resumo(ResultSet rs, Velocidade v) throws SQLException {
         return new InternetResponse.Resumo(rs.getLong("amostras"), rs.getLong("offline"),
                 new Faixa(numero(rs, "cf_min"), numero(rs, "cf_med"), numero(rs, "cf_max")),
                 numero(rs, "jitter"), numero(rs, "perda"), rs.getLong("min_perda"),
                 numero(rs, "roteador"), numero(rs, "modem"), numero(rs, "google"),
                 numero(rs, "dns_pihole"), rs.getLong("dns_falha"), numero(rs, "dns_cf"), rs.getLong("ips"),
-                (Long) v[0], (Faixa) v[1], (Faixa) v[2]);
+                v.testes(), v.download(), v.upload());
     }
 
     private static Double numero(ResultSet rs, String coluna) throws SQLException {

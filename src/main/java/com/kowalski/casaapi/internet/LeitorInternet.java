@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.monitor;
+package com.kowalski.casaapi.internet;
 
 import com.kowalski.casaapi.servidor.LeitorHost;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
@@ -8,6 +8,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -28,17 +29,20 @@ public class LeitorInternet {
 
     private final Path internet;
     private final Path velocidade;
+    private final Clock relogio;
 
     @Autowired
-    public LeitorInternet(MonitorProperties props) {
+    public LeitorInternet(MonitorProperties props, Clock relogio) {
         Path host = props.hostArquivo() == null ? null : Path.of(props.hostArquivo());
         this.internet = host == null ? null : host.resolveSibling("internet.json");
         this.velocidade = host == null ? null : host.resolveSibling("velocidade.json");
+        this.relogio = relogio;
     }
 
-    LeitorInternet(Path internet, Path velocidade) {
+    LeitorInternet(Path internet, Path velocidade, Clock relogio) {
         this.internet = internet;
         this.velocidade = velocidade;
+        this.relogio = relogio;
     }
 
     public boolean habilitado() {
@@ -58,7 +62,7 @@ public class LeitorInternet {
         Map<String, Object> i = internet();
         if (i == null) return null;
         Map<String, Object> r = new LinkedHashMap<>(i);
-        r.put("desatualizado", desatualizado(i, Instant.now()));
+        r.put("desatualizado", desatualizado(i, relogio.instant()));
         Map<String, Object> v = velocidade();
         r.put("velocidade", v == null ? null : v.get("ultimo"));
         return r;

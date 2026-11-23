@@ -1,7 +1,5 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.internet;
 
-import com.kowalski.casaapi.api.v1.response.InternetResponse;
-import com.kowalski.casaapi.business.monitor.InternetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +26,7 @@ public class InternetController {
     private static final int DIAS_PADRAO = 30;
 
     private final InternetService internetService;
+    private final Clock relogio;
 
     @GetMapping
     @Operation(summary = "Internet agora",
@@ -45,7 +45,7 @@ public class InternetController {
     @ApiResponse(responseCode = "503", description = "Banco do monitoramento indisponível")
     public InternetResponse.Dia dia(@Parameter(description = "Dia (aaaa-mm-dd); padrão: hoje", example = "2026-11-21")
                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-        return internetService.dia(data != null ? data : LocalDate.now());
+        return internetService.dia(data != null ? data : LocalDate.now(relogio));
     }
 
     @GetMapping("/dias")
@@ -57,7 +57,7 @@ public class InternetController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @Parameter(description = "Último dia; padrão: hoje") @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
-        LocalDate fim = ate != null ? ate : LocalDate.now();
+        LocalDate fim = ate != null ? ate : LocalDate.now(relogio);
         return internetService.dias(de != null ? de : fim.minusDays(DIAS_PADRAO - 1L), fim);
     }
 
@@ -70,7 +70,7 @@ public class InternetController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
             @Parameter(description = "Último dia; padrão: hoje") @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
-        LocalDate fim = ate != null ? ate : LocalDate.now();
+        LocalDate fim = ate != null ? ate : LocalDate.now(relogio);
         return internetService.velocidade(de != null ? de : fim.minusDays(DIAS_PADRAO - 1L), fim);
     }
 }

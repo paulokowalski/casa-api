@@ -121,6 +121,10 @@ public class ServidorService {
         return h;
     }
 
+    public int registrarEventos(List<EventosHost.Evento> eventos) {
+        return repository.inserirEventos(eventos);
+    }
+
     /** Eventos de um período, do mais recente para o mais antigo. */
     public List<com.kowalski.casaapi.servidor.ServidorEventoResponse> eventos(LocalDate de, LocalDate ate) {
         Assert.isTrue(!de.isAfter(ate), "A data inicial deve ser anterior ou igual à final");
