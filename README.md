@@ -422,6 +422,18 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.13 — 23/11/2026
+
+Reorganizadas as funcionalidades de despesas e filtros em pacotes próprios, sem mudar os endpoints, e incluídos testes de ponta a ponta para elas.
+
+- Refatorada a funcionalidade de despesas no pacote despesa (DespesaController, DespesaService, DespesaRepository), com consulta JPQL tipada dos totais do mês no lugar do antigo DAO; o endpoint GET /v1/despesas/{ano} não muda.
+- Refatorada a funcionalidade de filtros no pacote filtro (FiltroController, FiltroService, FiltroRepository), com as consultas de categorias, anos, meses, pessoas, cartões e tipos de lançamento reunidas em um só repositório; os endpoints /v1/filtros/* não mudam.
+- Removidas as camadas antigas business/dao, business/service e api/v1 (interfaces e implementações de Despesa e Filtro).
+- MensagemResponse movida para o pacote comum e convertida em record, mantendo o mesmo formato JSON.
+- Serviços de despesas e filtros passaram a rodar em transação somente leitura.
+- Novos testes e2e para GET /v1/despesas/{ano} e para todos os filtros das telas de compras, com dados de teste de compras, parcelas, categoria e tipo de lançamento em dados.sql.
+- Teste unitário DespesaServiceImplTest renomeado para DespesaServiceTest e ajustado ao novo repositório.
+
 ### 2.0.12 — 23/11/2026
 
 Esta versão reorganiza o módulo de compras em um pacote próprio, com as regras na entidade, e corrige as datas das parcelas de compras feitas no fim do mês.

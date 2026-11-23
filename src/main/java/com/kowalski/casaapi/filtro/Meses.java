@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.enumerator;
+package com.kowalski.casaapi.filtro;
 
 public enum Meses {
 

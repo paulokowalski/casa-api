@@ -1,0 +1,73 @@
+package com.kowalski.casaapi.filtro;
+
+import com.kowalski.casaapi.comum.Competencias;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+
+@Repository
+@RequiredArgsConstructor
+public class FiltroRepository {
+
+    private final EntityManager entityManager;
+
+    public List<FiltroResponse> categorias() {
+        return pares(" SELECT id, nome FROM categorias ORDER BY nome ", Map.of());
+    }
+
+    public List<FiltroResponse> anos() {
+        return pares(" select distinct cast(tb01.ano as text), cast(tb01.ano as text) from ( " +
+                " select distinct DATE_PART('YEAR', dt_parcela) ano from compra_parcela cp " +
+                " ) tb01 order by cast(tb01.ano as text) desc ", Map.of());
+    }
+
+    public List<FiltroResponse> meses(String ano) {
+        LocalDate inicio = Competencias.inicioDoAno(ano);
+        return pares(" select distinct cast(tb01.mes as text), cast(tb01.mes as text) from (" +
+                        " select distinct DATE_PART('MONTH', dt_parcela) mes from compra_parcela cp " +
+                        " where dt_parcela >= :inicio and dt_parcela < :fim " +
+                        " ) tb01 order by cast(tb01.mes as text) asc ",
+                Map.of("inicio", inicio, "fim", inicio.plusYears(1))).stream()
+                .map(par -> Integer.parseInt(par.codigo()))
+                .sorted(Comparator.naturalOrder())
+                .map(mes -> new FiltroResponse("%02d".formatted(mes), Meses.values()[mes].toString()))
+                .toList();
+    }
+
+    public List<FiltroResponse> pessoas(String ano, String mes) {
+        LocalDate inicio = Competencias.de(ano, mes);
+        return pares(" select distinct c.nm_pessoa_compra, c.nm_pessoa_compra from compra c " +
+                        " join compra_parcela cp on cp.compra_id = c.id " +
+                        " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim ",
+                Map.of("inicio", inicio, "fim", inicio.plusMonths(1)));
+    }
+
+    public List<FiltroResponse> cartoes(String ano, String mes, String pessoa) {
+        LocalDate inicio = Competencias.de(ano, mes);
+        return pares(" select distinct c.nm_cartao, c.nm_cartao from compra c " +
+                        " join compra_parcela cp on cp.compra_id = c.id " +
+                        " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim " +
+                        "   AND upper(c.nm_pessoa_compra) = upper(:pessoa) ",
+                Map.of("inicio", inicio, "fim", inicio.plusMonths(1), "pessoa", pessoa));
+    }
+
+    public List<FiltroResponse> tiposDeLancamento() {
+        return pares(" select distinct id, nome from tipo_lancamento c ORDER BY c.nome ASC ", Map.of());
+    }
+
+    private List<FiltroResponse> pares(String sql, Map<String, Object> parametros) {
+        var consulta = entityManager.createNativeQuery(sql, Tuple.class);
+        parametros.forEach(consulta::setParameter);
+        @SuppressWarnings("unchecked")
+        List<Tuple> linhas = consulta.getResultList();
+        return linhas.stream()
+                .map(linha -> new FiltroResponse(String.valueOf(linha.get(0)), (String) linha.get(1)))
+                .toList();
+    }
+}

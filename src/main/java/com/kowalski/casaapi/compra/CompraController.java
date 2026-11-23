@@ -1,6 +1,6 @@
 package com.kowalski.casaapi.compra;
 
-import com.kowalski.casaapi.business.MensagemResponse;
+import com.kowalski.casaapi.comum.MensagemResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

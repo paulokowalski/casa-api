@@ -218,7 +218,46 @@ class CasaApiE2ETest {
         });
     }
 
+    @Test
+    void despesasDoAnoSomamAsParcelasDeCadaMes() {
+        var r = http.get().uri("/v1/despesas/2031?pessoa=E2E COMPRADOR").header("Authorization", token()).retrieve().toEntity(MAPA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(200);
+        assertThat(r.getBody()).containsEntry("pessoa", "E2E COMPRADOR").containsEntry("ano", "2031");
+        var porMes = mapa(r.getBody(), "despesasPorMes");
+        var fevereiro = mapa(porMes, "02");
+        assertThat(((Number) fevereiro.get("valorMes")).doubleValue()).isEqualTo(150.0);
+        assertThat(((Number) fevereiro.get("comprasParceladas")).doubleValue()).isEqualTo(100.0);
+        assertThat(((Number) fevereiro.get("gastosNoCartao")).doubleValue()).isEqualTo(50.0);
+        assertThat(((Number) mapa(porMes, "04").get("valorMes")).doubleValue()).isEqualTo(100.0);
+    }
+
+    @Test
+    void filtrosDasTelasDeCompras() {
+        String token = token();
+
+        assertThat(filtro(token, "/v1/filtros/anos")).contains(Map.of("codigo", "2031", "descricao", "2031"));
+        assertThat(filtro(token, "/v1/filtros/meses?ano=2031")).containsExactly(
+                Map.of("codigo", "02", "descricao", "FEVEREIRO"),
+                Map.of("codigo", "03", "descricao", "MARCO"),
+                Map.of("codigo", "04", "descricao", "ABRIL"));
+        assertThat(filtro(token, "/v1/filtros/pessoas?ano=2031&mes=02"))
+                .containsExactly(Map.of("codigo", "E2E COMPRADOR", "descricao", "E2E COMPRADOR"));
+        assertThat(filtro(token, "/v1/filtros/cartoes?ano=2031&mes=02&pessoa=E2E COMPRADOR"))
+                .containsExactly(Map.of("codigo", "E2E CARTAO", "descricao", "E2E CARTAO"));
+        assertThat(filtro(token, "/v1/filtros/categorias"))
+                .contains(Map.of("codigo", "00000000-0000-0000-0000-0000000000a1", "descricao", "E2E CATEGORIA"));
+        assertThat(filtro(token, "/v1/filtros/tipos-lancamento"))
+                .contains(Map.of("codigo", "00000000-0000-0000-0000-0000000000c1", "descricao", "E2E CARTAO"));
+    }
+
     // ---- apoio ----
+
+    private List<Map<String, Object>> filtro(String token, String url) {
+        var r = http.get().uri(url).header("Authorization", token).retrieve().toEntity(LISTA);
+        assertThat(r.getStatusCode().value()).as(url).isEqualTo(200);
+        return r.getBody();
+    }
 
     private Map<String, Object> criarPessoa(String token, String nome, String email) {
         var r = http.post().uri("/v1/pessoas").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
