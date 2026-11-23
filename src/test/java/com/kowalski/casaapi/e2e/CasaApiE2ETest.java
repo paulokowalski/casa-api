@@ -155,7 +155,152 @@ class CasaApiE2ETest {
         assertThat(invalida.getStatusCode().value()).isEqualTo(400);
     }
 
+    @Test
+    void trocarOEmailParaODeOutraPessoaDa400ENaoMudaNada() {
+        String token = token();
+        String sufixo = String.valueOf(System.nanoTime());
+        String emailDaAna = "ana-" + sufixo + "@e2e.local";
+        Number ana = (Number) criarPessoa(token, "Ana E2E", emailDaAna).get("id");
+        Number bruno = (Number) criarPessoa(token, "Bruno E2E", "bruno-" + sufixo + "@e2e.local").get("id");
+
+        var r = http.put().uri("/v1/pessoas/" + bruno).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("nome", "Bruno E2E", "email", " " + emailDaAna.toUpperCase() + " "))
+                .retrieve().toEntity(MAPA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(400);
+        assertThat(r.getBody()).containsEntry("mensagem", "Já existe uma pessoa com este e-mail.");
+        var pessoas = http.get().uri("/v1/pessoas").header("Authorization", token).retrieve().body(LISTA);
+        assertThat(pessoas).filteredOn(p -> ((Number) p.get("id")).longValue() == bruno.longValue())
+                .singleElement().satisfies(p -> assertThat(p.get("email")).isEqualTo("bruno-" + sufixo + "@e2e.local"));
+
+        for (Number id : List.of(ana, bruno)) {
+            assertThat(http.delete().uri("/v1/pessoas/" + id).header("Authorization", token).retrieve()
+                    .toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+        }
+    }
+
+    @Test
+    void historicoFipeEmOrdemDeMesComOsValores() {
+        var r = http.get().uri("/v1/carros/E2E-001").header("Authorization", token()).retrieve().toEntity(LISTA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(200);
+        assertThat(r.getBody()).extracting(c -> c.get("mesReferencia")).containsExactly("11/2025", "12/2025", "01/2026");
+        assertThat(r.getBody().getFirst()).containsEntry("codigoVeiculo", "E2E-001").containsEntry("marca", "MARCA E2E")
+                .containsEntry("modelo", "MODELO E2E").containsEntry("ano", "2020").containsEntry("valor", 52000.0)
+                .containsKey("id");
+    }
+
+    @Test
+    void leiturasDoInversorViramODiaOMesEOAno() {
+        for (var leitura : List.of(Map.of("gerado", 2.5, "potencia", 900.0), Map.of("gerado", 3.0, "potencia", 1500.0))) {
+            var r = http.post().uri("/v1/geracao-solar").header("X-API-KEY", chave())
+                    .contentType(MediaType.APPLICATION_JSON).body(leitura).retrieve().toBodilessEntity();
+            assertThat(r.getStatusCode().value()).isEqualTo(200);
+        }
+        String token = token();
+        LocalDate hoje = LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
+
+        var dia = http.get().uri("/v1/geracao-solar?data=" + hoje).header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat(dia.getStatusCode().value()).isEqualTo(200);
+        assertThat(dia.getBody()).containsEntry("geracao", 3.0);
+        assertThat((List<?>) dia.getBody().get("valores")).hasSizeGreaterThanOrEqualTo(2);
+
+        var mes = http.get().uri("/v1/geracao-solar/" + hoje.getYear() + "/" + hoje.getMonthValue())
+                .header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat(mes.getStatusCode().value()).isEqualTo(200);
+        assertThat((List<Map<String, Object>>) mes.getBody().get("valores")).extracting(v -> v.get("valor")).containsExactly(3.0);
+
+        var ano = http.get().uri("/v1/geracao-solar/" + hoje.getYear()).header("Authorization", token).retrieve().toEntity(LISTA);
+        assertThat(ano.getStatusCode().value()).isEqualTo(200);
+        assertThat(ano.getBody()).singleElement().satisfies(m -> {
+            assertThat(m).containsEntry("month", hoje.getMonth().name()).containsEntry("year", String.valueOf(hoje.getYear()));
+            assertThat(m).containsEntry("value", 3.0);
+        });
+    }
+
+    @Test
+    void despesasDoAnoSomamAsParcelasDeCadaMes() {
+        var r = http.get().uri("/v1/despesas/2031?pessoa=E2E COMPRADOR").header("Authorization", token()).retrieve().toEntity(MAPA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(200);
+        assertThat(r.getBody()).containsEntry("pessoa", "E2E COMPRADOR").containsEntry("ano", "2031");
+        var porMes = mapa(r.getBody(), "despesasPorMes");
+        var fevereiro = mapa(porMes, "02");
+        assertThat(((Number) fevereiro.get("valorMes")).doubleValue()).isEqualTo(150.0);
+        assertThat(((Number) fevereiro.get("comprasParceladas")).doubleValue()).isEqualTo(100.0);
+        assertThat(((Number) fevereiro.get("gastosNoCartao")).doubleValue()).isEqualTo(50.0);
+        assertThat(((Number) mapa(porMes, "04").get("valorMes")).doubleValue()).isEqualTo(100.0);
+    }
+
+    @Test
+    void filtrosDasTelasDeCompras() {
+        String token = token();
+
+        assertThat(filtro(token, "/v1/filtros/anos")).contains(Map.of("codigo", "2031", "descricao", "2031"));
+        assertThat(filtro(token, "/v1/filtros/meses?ano=2031")).containsExactly(
+                Map.of("codigo", "02", "descricao", "FEVEREIRO"),
+                Map.of("codigo", "03", "descricao", "MARCO"),
+                Map.of("codigo", "04", "descricao", "ABRIL"));
+        assertThat(filtro(token, "/v1/filtros/pessoas?ano=2031&mes=02"))
+                .containsExactly(Map.of("codigo", "E2E COMPRADOR", "descricao", "E2E COMPRADOR"));
+        assertThat(filtro(token, "/v1/filtros/cartoes?ano=2031&mes=02&pessoa=E2E COMPRADOR"))
+                .containsExactly(Map.of("codigo", "E2E CARTAO", "descricao", "E2E CARTAO"));
+        assertThat(filtro(token, "/v1/filtros/categorias"))
+                .contains(Map.of("codigo", "00000000-0000-0000-0000-0000000000a1", "descricao", "E2E CATEGORIA"));
+        assertThat(filtro(token, "/v1/filtros/tipos-lancamento"))
+                .contains(Map.of("codigo", "00000000-0000-0000-0000-0000000000c1", "descricao", "E2E CARTAO"));
+    }
+
+    @Test
+    void rotaDePassagemCriadaRenomeadaComOHistoricoERemovida() {
+        String token = token();
+        var nova = http.post().uri("/v1/passagens/rotas").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(rota("E2E ROTA")).retrieve().toEntity(MAPA);
+        assertThat(nova.getStatusCode().value()).isEqualTo(201);
+        assertThat(nova.getBody()).containsEntry("nome", "E2E ROTA").containsEntry("origem", List.of("FOR"));
+        Number id = (Number) nova.getBody().get("id");
+
+        var repetida = http.post().uri("/v1/passagens/rotas").header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(rota("e2e rota")).retrieve().toEntity(MAPA);
+        assertThat(repetida.getStatusCode().value()).isEqualTo(400);
+
+        var renomeada = http.put().uri("/v1/passagens/rotas/" + id).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(rota("E2E ROTA NOVA")).retrieve().toEntity(MAPA);
+        assertThat(renomeada.getStatusCode().value()).isEqualTo(200);
+        var painel = http.get().uri("/v1/passagens?dias=0").header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat(painel.getStatusCode().value()).isEqualTo(200);
+        assertThat((List<Map<String, Object>>) painel.getBody().get("rotas")).extracting(r -> r.get("nome")).contains("E2E ROTA NOVA");
+        assertThat((List<Map<String, Object>>) painel.getBody().get("alertas")).extracting(r -> r.get("rota"))
+                .contains("E2E ROTA NOVA").doesNotContain("E2E ROTA");
+
+        assertThat(http.delete().uri("/v1/passagens/rotas/" + id + "?historico=true").header("Authorization", token)
+                .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+        var depois = http.get().uri("/v1/passagens?dias=0").header("Authorization", token).retrieve().toEntity(MAPA);
+        assertThat((List<Map<String, Object>>) depois.getBody().get("rotas")).extracting(r -> r.get("nome")).doesNotContain("E2E ROTA NOVA");
+        assertThat((List<Map<String, Object>>) depois.getBody().get("alertas")).extracting(r -> r.get("rota")).doesNotContain("E2E ROTA NOVA");
+        assertThat(http.delete().uri("/v1/passagens/rotas/" + id).header("Authorization", token)
+                .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(404);
+    }
+
     // ---- apoio ----
+
+    private static Map<String, Object> rota(String nome) {
+        return Map.of("nome", nome, "origem", List.of("FOR"), "destino", List.of("GRU"),
+                "datas", List.of(Map.of("ida", "2099-01-10")), "precoAlvo", 1000);
+    }
+
+    private List<Map<String, Object>> filtro(String token, String url) {
+        var r = http.get().uri(url).header("Authorization", token).retrieve().toEntity(LISTA);
+        assertThat(r.getStatusCode().value()).as(url).isEqualTo(200);
+        return r.getBody();
+    }
+
+    private Map<String, Object> criarPessoa(String token, String nome, String email) {
+        var r = http.post().uri("/v1/pessoas").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("nome", nome, "email", email)).retrieve().toEntity(MAPA);
+        assertThat(r.getStatusCode().value()).as("cadastro de " + nome).isEqualTo(201);
+        return r.getBody();
+    }
 
     private String token() {
         var r = http.post().uri("/v1/auth/login").contentType(MediaType.APPLICATION_JSON)

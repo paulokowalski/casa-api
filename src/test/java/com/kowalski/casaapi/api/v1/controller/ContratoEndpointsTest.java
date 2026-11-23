@@ -1,14 +1,26 @@
 package com.kowalski.casaapi.api.v1.controller;
 
-import com.kowalski.casaapi.api.v1.response.*;
-import com.kowalski.casaapi.business.auth.AuthService;
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
+import com.kowalski.casaapi.auth.*;
+import com.kowalski.casaapi.auth.AuthService;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
-import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.monitor.MonitorService;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
-import com.kowalski.casaapi.business.service.*;
+import com.kowalski.casaapi.carro.CarroResponse;
+import com.kowalski.casaapi.carro.CarroService;
+import com.kowalski.casaapi.compra.*;
+import com.kowalski.casaapi.conta.*;
+import com.kowalski.casaapi.fatura.*;
+import com.kowalski.casaapi.geracao.*;
+import com.kowalski.casaapi.internet.*;
+import com.kowalski.casaapi.passagens.*;
+import com.kowalski.casaapi.renda.*;
+import com.kowalski.casaapi.ventilacao.*;
+import com.kowalski.casaapi.pessoa.Pessoa;
+import com.kowalski.casaapi.servidor.*;
+import com.kowalski.casaapi.pessoa.PessoaResponse;
+import com.kowalski.casaapi.pessoa.PessoaService;
+import com.kowalski.casaapi.despesa.*;
+import com.kowalski.casaapi.filtro.*;
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +40,6 @@ import java.time.Month;
 import java.time.Year;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -59,12 +70,11 @@ class ContratoEndpointsTest {
     @MockitoBean ContaService contaService;
     @MockitoBean CarroService carroService;
     @MockitoBean AuthService authService;
-    @MockitoBean PessoaRepository pessoaRepository;
-    @MockitoBean MonitorService monitorService;
-    @MockitoBean com.kowalski.casaapi.business.monitor.InternetService internetService;
-    @MockitoBean com.kowalski.casaapi.business.monitor.VentilacaoService ventilacaoService;
-    @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
-    @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
+    @MockitoBean ServidorService servidorService;
+    @MockitoBean InternetService internetService;
+    @MockitoBean VentilacaoService ventilacaoService;
+    @MockitoBean PassagensService passagensService;
+    @MockitoBean RotasPassagemService rotasPassagemService;
     // módulo crescimento: controllers carregados pelo @WebMvcTest
     @MockitoBean com.kowalski.casaapi.crescimento.familia.FamiliaService familiaService;
     @MockitoBean com.kowalski.casaapi.crescimento.crianca.CriancaService criancaService;
@@ -363,7 +373,7 @@ class ContratoEndpointsTest {
 
         @Test
         void doMesPassaAnoEMesNaOrdem() throws Exception {
-            when(geracaoService.buscarGeracaoMensal(2025, 3)).thenReturn(new GeracaoMensalResponse(List.of(), Year.of(2025), Month.MARCH));
+            when(geracaoService.doMes(2025, 3)).thenReturn(new GeracaoMensalResponse(List.of(), Year.of(2025), Month.MARCH));
 
             mvc.perform(get("/v1/geracao-solar/2025/3"))
                     .andExpect(status().isOk())
@@ -373,7 +383,7 @@ class ContratoEndpointsTest {
 
         @Test
         void doAno() throws Exception {
-            when(geracaoService.buscarGeracaoAnual(2025)).thenReturn(List.of(new GeracaoMesAnoResponse(Month.JANUARY, Year.of(2025), 3.5)));
+            when(geracaoService.doAno(2025)).thenReturn(List.of(new GeracaoMesAnoResponse(Month.JANUARY, Year.of(2025), 3.5)));
 
             mvc.perform(get("/v1/geracao-solar/2025"))
                     .andExpect(status().isOk())
@@ -384,7 +394,7 @@ class ContratoEndpointsTest {
 
         @Test
         void doDia() throws Exception {
-            when(geracaoService.buscarGeracao(LocalDate.of(2025, 1, 2))).thenReturn(new GeracaoDiariaResponse(List.of(), null));
+            when(geracaoService.doDia(LocalDate.of(2025, 1, 2))).thenReturn(new GeracaoDiariaResponse(List.of(), null));
 
             mvc.perform(get("/v1/geracao-solar").param("data", "2025-01-02")).andExpect(status().isOk());
             mvc.perform(get("/v1/geracao-solar").param("data", "02/01/2025")).andExpect(status().isBadRequest());
@@ -394,7 +404,7 @@ class ContratoEndpointsTest {
         void integracaoEnviaLeituraERecebe200() throws Exception {
             mvc.perform(post("/v1/geracao-solar").contentType(JSON).content("{\"gerado\":1.5,\"potencia\":300}"))
                     .andExpect(status().isOk());
-            verify(geracaoService).salvar(argThat(d -> d.getGerado() == 1.5 && d.getPotencia() == 300.0));
+            verify(geracaoService).registrar(new GeradoDTO(1.5, 300.0));
         }
     }
 
@@ -407,7 +417,7 @@ class ContratoEndpointsTest {
 
         @Test
         void agora() throws Exception {
-            when(monitorService.agora()).thenReturn(new ServidorAgoraResponse(null, "casa", null, null, 60,
+            when(servidorService.agora()).thenReturn(new ServidorAgoraResponse(null, "casa", null, null, 60,
                     new ServidorAgoraResponse.Cpu(12.5, 0.1, List.of()), new ServidorAgoraResponse.Carga(1, 1, 1, 100),
                     new ServidorAgoraResponse.Memoria(100, 50, 50, 0, 0, 0), List.of(), null, List.of(), List.of(),
                     new ServidorAgoraResponse.DiscoIo(0, 0),
@@ -428,7 +438,7 @@ class ContratoEndpointsTest {
 
         @Test
         void diaUsaHojeComoPadrao() throws Exception {
-            when(monitorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of(), List.of()));
+            when(servidorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of(), List.of()));
 
             mvc.perform(get("/v1/servidor/dia")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").value(LocalDate.now().toString()))
@@ -441,20 +451,20 @@ class ContratoEndpointsTest {
 
         @Test
         void diasUsaOsUltimos30DiasComoPadrao() throws Exception {
-            when(monitorService.dias(any(), any())).thenReturn(List.of(new ServidorResumoDiaResponse(LocalDate.of(2026, 11, 15), resumo)));
+            when(servidorService.dias(any(), any())).thenReturn(List.of(new ServidorResumoDiaResponse(LocalDate.of(2026, 11, 15), resumo)));
 
             mvc.perform(get("/v1/servidor/dias")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].data").value("2026-11-15"))
                     .andExpect(jsonPath("$[0].resumo.amostras").value(1440));
-            verify(monitorService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+            verify(servidorService).dias(LocalDate.now().minusDays(29), LocalDate.now());
 
             mvc.perform(get("/v1/servidor/dias").param("de", "2026-11-01").param("ate", "2026-11-10"));
-            verify(monitorService).dias(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+            verify(servidorService).dias(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
         }
 
         @Test
         void bancoForaDoArDa503ComMensagem() throws Exception {
-            when(monitorService.dia(any())).thenThrow(new MonitorIndisponivelException("O banco do monitoramento (MariaDB) está indisponível", null));
+            when(servidorService.dia(any())).thenThrow(new MonitorIndisponivelException("O banco do monitoramento (MariaDB) está indisponível", null));
 
             mvc.perform(get("/v1/servidor/dia"))
                     .andExpect(status().isServiceUnavailable())
@@ -467,17 +477,17 @@ class ContratoEndpointsTest {
 
         @Test
         void buscarInexistenteDa404ComMensagem() throws Exception {
+            doThrow(new RecursoNaoEncontradoException("Pessoa não encontrada")).when(pessoaService).excluir(99L);
+
             mvc.perform(delete("/v1/pessoas/99")).andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.mensagem").value("Pessoa não encontrada"));
-            verify(pessoaService, never()).deletar(any());
         }
 
         @Test
         void criarAtualizarExcluir() throws Exception {
-            Pessoa ana = Login.pessoa(1L, "ANA");
-            when(pessoaService.buscarPorId(1L)).thenReturn(Optional.of(ana));
+            PessoaResponse ana = PessoaResponse.de(Login.pessoa(1L, "ANA"));
             when(pessoaService.criar(any())).thenReturn(ana);
-            when(pessoaService.atualizar(eq(ana), any())).thenReturn(ana);
+            when(pessoaService.atualizar(eq(1L), any())).thenReturn(ana);
             String corpo = "{\"nome\":\"Ana\",\"email\":\"ana@x.com\"}";
 
             mvc.perform(post("/v1/pessoas").contentType(JSON).content(corpo)).andExpect(status().isCreated())
@@ -485,7 +495,7 @@ class ContratoEndpointsTest {
                     .andExpect(jsonPath("$.senhaHash").doesNotExist());
             mvc.perform(put("/v1/pessoas/1").contentType(JSON).content(corpo)).andExpect(status().isOk());
             mvc.perform(delete("/v1/pessoas/1")).andExpect(status().isNoContent());
-            verify(pessoaService).deletar(ana);
+            verify(pessoaService).excluir(1L);
         }
     }
 
@@ -523,7 +533,7 @@ class ContratoEndpointsTest {
         void listarDevolveOsCamposSemASenha() throws Exception {
             Pessoa ana = Login.pessoa(1L, "ANA");
             ana.setSenhaHash("hash");
-            when(pessoaService.listar()).thenReturn(List.of(ana));
+            when(pessoaService.listar()).thenReturn(List.of(PessoaResponse.de(ana)));
 
             mvc.perform(get("/v1/pessoas")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(1))
@@ -541,14 +551,14 @@ class ContratoEndpointsTest {
 
         @Test
         void hostDevolveOMapaDoServico() throws Exception {
-            when(monitorService.host()).thenReturn(Map.of("desatualizado", false));
+            when(servidorService.host()).thenReturn(Map.of("desatualizado", false));
             mvc.perform(get("/v1/servidor/host")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.desatualizado").value(false));
         }
 
         @Test
         void eventosUsaOsUltimos7DiasComoPadrao() throws Exception {
-            when(monitorService.eventos(any(), any())).thenReturn(List.of(
+            when(servidorService.eventos(any(), any())).thenReturn(List.of(
                     new ServidorEventoResponse(java.time.LocalDateTime.of(2026, 11, 15, 3, 41), "backup", "sucesso", "ok")));
 
             mvc.perform(get("/v1/servidor/eventos")).andExpect(status().isOk())
@@ -556,10 +566,10 @@ class ContratoEndpointsTest {
                     .andExpect(jsonPath("$[0].tipo").value("backup"))
                     .andExpect(jsonPath("$[0].nivel").value("sucesso"))
                     .andExpect(jsonPath("$[0].mensagem").value("ok"));
-            verify(monitorService).eventos(LocalDate.now().minusDays(6), LocalDate.now());
+            verify(servidorService).eventos(LocalDate.now().minusDays(6), LocalDate.now());
 
             mvc.perform(get("/v1/servidor/eventos").param("de", "2026-11-01").param("ate", "2026-11-10"));
-            verify(monitorService).eventos(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
+            verify(servidorService).eventos(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
         }
     }
 
@@ -643,13 +653,23 @@ class ContratoEndpointsTest {
 
         @Test
         void carroPorCodigoFipe() throws Exception {
-            mvc.perform(get("/v1/carros/001")).andExpect(status().isOk());
-            verify(carroService).buscarPorCodigoFipe("001");
+            UUID id = UUID.randomUUID();
+            when(carroService.historico("001")).thenReturn(List.of(
+                    new CarroResponse(id, "001", "01/2026", "VW", "Gol", "2020", 55000.5)));
+
+            mvc.perform(get("/v1/carros/001")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(id.toString()))
+                    .andExpect(jsonPath("$[0].codigoVeiculo").value("001"))
+                    .andExpect(jsonPath("$[0].mesReferencia").value("01/2026"))
+                    .andExpect(jsonPath("$[0].marca").value("VW"))
+                    .andExpect(jsonPath("$[0].modelo").value("Gol"))
+                    .andExpect(jsonPath("$[0].ano").value("2020"))
+                    .andExpect(jsonPath("$[0].valor").value(55000.5));
         }
 
         @Test
         void erroInesperadoDa500SemDetalhesInternos() throws Exception {
-            when(carroService.buscarPorCodigoFipe(any())).thenThrow(new IllegalStateException("senha do banco: xyz"));
+            when(carroService.historico(any())).thenThrow(new IllegalStateException("senha do banco: xyz"));
 
             mvc.perform(get("/v1/carros/001"))
                     .andExpect(status().isInternalServerError())

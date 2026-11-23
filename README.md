@@ -422,6 +422,145 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.18 — 23/11/2026
+
+Refatoração interna da autenticação: o login passa a ficar em um pacote próprio, sem mudar endpoints nem o comportamento para quem usa o sistema.
+
+- Novo pacote auth com AuthController, AuthService, AdminInicial, LoginInput, LoginResponse e UsuarioResponse, que saem de api/v1 e business/auth
+- UsuarioLogado e UsuarioAutenticado movidos para o pacote pessoa; imports atualizados em Compra, Conta, Despesa, Fatura, Filtro e Renda
+- Acesso a pessoas centralizado no PessoaService com os métodos porEmail, porId, porIds e definirComoAdmin, usados pelo login, pelo conversor de JWT, pelo admin inicial e pela identidade do Crescimento
+- Lógica do GET /v1/auth/me (dados do usuário logado) levada do controller para AuthService.usuarioAtual, mantendo a mesma resposta
+- Removidos imports que não eram usados em PessoaInput e PessoaRepository
+- Testes ajustados à nova organização dos pacotes (AuthServiceTest, UsuarioLogadoTest, testes de contrato, segurança e serviços)
+
+### 2.0.17 — 23/11/2026
+
+Reorganiza o código da aba Passagens num pacote próprio, sem mudar o comportamento da API, e adiciona testes do cadastro de rotas.
+
+- Pacote único com.kowalski.casaapi.passagens: o controller, os serviços, a entrada (RotaPassagemInput) e a resposta (PassagensResponse) das Passagens saíram de api.v1 e business e foram para esse pacote.
+- Acesso ao banco separado nas classes PassagensRepository (robô, rotas, séries, pontos e alertas) e RotaPassagemRepository (criar, editar, renomear o histórico e remover rotas do schema passagens).
+- Validação da rota extraída para a classe ConfiguracaoDaRota, sem mudança nas regras (aeroportos IATA, datas, janela e passageiros).
+- PassagensService e RotasPassagemService passam a só aplicar as regras: aviso de robô desatualizado, nome de rota repetido, histórico que acompanha a rota ao renomear e remoção com ou sem histórico.
+- Os endpoints GET /v1/passagens e /v1/passagens/rotas (POST, PUT e DELETE) continuam com o mesmo contrato. Nenhuma migração de banco nem configuração nova.
+- Novos testes unitários do RotasPassagemService com o repositório simulado e teste e2e que cria, renomeia (levando junto os alertas) e remove uma rota, com um alerta de exemplo em e2e/dados.sql.
+
+### 2.0.16 — 23/11/2026
+
+Refatoração interna do monitoramento da internet, que passa a ficar no próprio pacote; para quem usa o sistema, nada muda.
+
+- Monitoramento da internet (controller, service, repositório, leitor, amostra e respostas) reunido no pacote com.kowalski.casaapi.internet, seguindo a organização por funcionalidade
+- Endpoints /v1 da internet sem mudança de contrato: mesmas rotas, parâmetros e respostas
+- Data e hora padrão da internet (dia atual, coleta por minuto, limpeza de amostras antigas e aviso de dado desatualizado) passam a vir do relógio único da aplicação (Clock)
+- Eventos da internet agora gravados pelo novo método ServidorService.registrarEventos, sem acessar direto o repositório do servidor
+- Agregados de velocidade no InternetRepository trocados de Object[] por um record tipado (Velocidade)
+- Testes da internet movidos para o novo pacote e ajustados aos novos construtores
+
+### 2.0.15 — 23/11/2026
+
+Reorganiza o código do monitoramento do servidor em um pacote próprio. Os endpoints, as respostas e as tabelas continuam iguais.
+
+- Funcionalidade Servidor reunida no pacote com.kowalski.casaapi.servidor (controller, serviço, repositório, leitores e respostas), que antes ficavam espalhados por api/v1 e business/monitor
+- MonitorService renomeado para ServidorService e MonitorRepository para ServidorRepository; os endpoints /v1/servidor (agora, host, eventos, dia, dias) seguem iguais
+- Data e hora do monitoramento do servidor agora vêm do relógio central da aplicação (Clock) em vez de LocalDateTime.now()/Instant.now(): coleta, limpeza das amostras antigas, leitura ao vivo, datas padrão dos filtros e validade do status do host
+- Consulta do último resumo do host no ServidorRepository passou a usar um record no lugar de Object[], sem mudar o resultado
+- Monitoramento da internet ajustado para usar as classes do novo pacote servidor; funções auxiliares de leitura do JSON do LeitorHost agora são públicas
+- Testes do monitoramento movidos para o novo pacote e testes de contrato e segurança atualizados para o ServidorService
+
+### 2.0.14 — 23/11/2026
+
+Reorganiza o código da ventilação do servidor em um pacote próprio e passa a usar o relógio central da aplicação para datas e horários, sem mudar os endpoints.
+
+- Funcionalidade ventilação reunida no pacote com.kowalski.casaapi.ventilacao (VentilacaoController, VentilacaoService, VentilacaoRepository e VentilacaoResponse), saindo de api.v1 e business.monitor
+- VentilacaoController e VentilacaoService passam a usar o Clock injetado (RelogioConfig, fuso da casa) em vez de LocalDate.now()/LocalDateTime.now() para o dia padrão, os registros, o aviso de leitura desatualizada e a limpeza de leituras antigas
+- Consulta da última leitura em VentilacaoRepository passa a devolver Optional com o record Ultima em vez de Object[] nulo
+- Testes VentilacaoTest, ContratoEndpointsTest e SecurityConfigTest ajustados ao novo pacote
+
+### 2.0.13 — 23/11/2026
+
+Reorganizadas as funcionalidades de despesas e filtros em pacotes próprios, sem mudar os endpoints, e incluídos testes de ponta a ponta para elas.
+
+- Refatorada a funcionalidade de despesas no pacote despesa (DespesaController, DespesaService, DespesaRepository), com consulta JPQL tipada dos totais do mês no lugar do antigo DAO; o endpoint GET /v1/despesas/{ano} não muda.
+- Refatorada a funcionalidade de filtros no pacote filtro (FiltroController, FiltroService, FiltroRepository), com as consultas de categorias, anos, meses, pessoas, cartões e tipos de lançamento reunidas em um só repositório; os endpoints /v1/filtros/* não mudam.
+- Removidas as camadas antigas business/dao, business/service e api/v1 (interfaces e implementações de Despesa e Filtro).
+- MensagemResponse movida para o pacote comum e convertida em record, mantendo o mesmo formato JSON.
+- Serviços de despesas e filtros passaram a rodar em transação somente leitura.
+- Novos testes e2e para GET /v1/despesas/{ano} e para todos os filtros das telas de compras, com dados de teste de compras, parcelas, categoria e tipo de lançamento em dados.sql.
+- Teste unitário DespesaServiceImplTest renomeado para DespesaServiceTest e ajustado ao novo repositório.
+
+### 2.0.12 — 23/11/2026
+
+Esta versão reorganiza o módulo de compras em um pacote próprio, com as regras na entidade, e corrige as datas das parcelas de compras feitas no fim do mês.
+
+- Compras reorganizadas no pacote próprio `compra` (controller, entidades, repositórios, DTOs e serviço juntos), seguindo a refatoração por funcionalidade. Os endpoints /v1 de compras continuam iguais.
+- Regras levadas para as entidades: `Compra.nova`/`alterar` geram as parcelas, `CompraParcela.valorQueFalta` calcula o saldo restante e `CompraInput` passa a validar e dividir o valor entre as pessoas.
+- Corrigida a data das parcelas de compras feitas no fim do mês: agora cada parcela é calculada a partir da data da compra (ex.: 31/01 gera 28/02, 31/03 e 30/04), e não mais encadeada mês a mês, o que fazia o dia cair para 28.
+- Removidas as interfaces e implementações `CompraService`/`CompraServiceImpl` e `TipoLancamentoService`/`TipoLancamentoServiceImpl`, além da classe `util.Util`. O serviço de compras passa a consultar direto o `TipoLancamentoRepository`.
+- Testes ajustados ao novo pacote (`CompraServiceTest`, `CompraResponseTest`) e novo `CompraTest`, que cobre a geração das parcelas, a alteração da compra e o valor que falta pagar.
+
+### 2.0.11 — 23/11/2026
+
+Reorganiza internamente o módulo de Contas, sem mudar os endpoints nem o comportamento para quem usa o sistema.
+
+- Código de Contas reunido no pacote próprio `conta` (controller, entrada, resposta, entidades, repositórios e serviço), como já foi feito com pessoa, categoria, carro, geração, fatura e renda
+- Regras de cadastro e edição da conta (descrição, tipo, valor, dia do vencimento, juros, parcelas e período) levadas para a entidade `Conta`, com o novo registro `DadosDaConta`
+- Cálculo de parcela atual, parcelas restantes e saldo restante separado no novo registro `SituacaoDasParcelas`
+- Baixa manual, correção da data de pagamento, registro do valor real e baixa automática no débito automático levados para `ContaLancamento`
+- Interface `ContaService` e implementação `ContaServiceImpl` unidas em uma só classe `ContaService`
+- Novo método `PessoaService.referencia` para buscar a dona da conta, devolvendo 404 com o id quando não existe
+- Novos testes unitários da entidade `Conta` e do `PessoaService.referencia`; teste do serviço renomeado para `ContaServiceTest`
+
+### 2.0.10 — 23/11/2026
+
+Reorganização interna das funcionalidades de fatura e renda, sem mudança de comportamento para quem usa o sistema.
+
+- Fatura reorganizada no pacote próprio `fatura` (controller, entrada, resposta, entidade FaturaPaga, repositório e serviço juntos); os endpoints não mudaram.
+- Renda reorganizada no pacote próprio `renda` (controller, entrada, resposta, entidade RendaMensal, repositório e serviço juntos); os endpoints não mudaram.
+- Removidas as interfaces FaturaService/RendaService e as implementações *ServiceImpl; agora cada funcionalidade tem um único serviço concreto.
+- Novo método `garantirQueExiste` no PessoaService, usado por fatura e renda para retornar 404 quando a pessoa não existe.
+- Montagem das respostas passada para FaturaResponse (`paga`/`naoPaga`) e RendaResponse (`de`/`semValor`), e regra de remoção da renda para RendaInput (`removeOValorDoMes`).
+- Testes separados em FaturaServiceTest e RendaServiceTest (no lugar de FaturaERendaServiceImplTest), com novo teste para `garantirQueExiste` no PessoaServiceTest.
+
+### 2.0.9 — 23/11/2026
+
+A geração solar foi reorganizada em um módulo próprio, com consultas mais simples. Os endpoints e o formato das respostas continuam os mesmos.
+
+- Refatorada a funcionalidade de geração solar: controller, entidades, repositórios, serviço e respostas agora ficam juntos no pacote geracao, e as interfaces de serviço separadas foram removidas
+- Consultas de geração diária, mensal e anual trocadas de SQL nativo com EXTRACT/DATE por consultas JPA por intervalo de datas; tabelas geracao e geracao_diaria sem mudança e sem migração necessária
+- Total anual em GET /v1/geracao/{ano} agora volta em ordem de mês (antes a ordem não era garantida)
+- Registro de leitura (POST /v1/geracao) atualiza ou cria o total do dia dentro da mesma transação; consultas marcadas como somente leitura
+- GeradoDTO convertido em record, com os mesmos campos gerado e potencia
+- Testes de serviço, contrato, segurança e e2e ajustados ao novo pacote (GeracaoServiceTest substitui GeracaoServiceImplTest)
+
+### 2.0.8 — 23/11/2026
+
+A funcionalidade de carros (histórico FIPE) foi reorganizada no novo pacote próprio. Para quem usa a API, nada muda: o endpoint e o formato da resposta continuam iguais.
+
+- Reorganizada a funcionalidade de carros no pacote próprio com.kowalski.casaapi.carro (entidade, repositório, serviço e controller), no lugar das camadas business/api.
+- Endpoint GET /v1/carros/{codigoFipe} agora responde com o DTO CarroResponse, montado direto na consulta, sem expor a entidade JPA. Os campos do JSON continuam os mesmos.
+- Removidas a interface CarroService e sua implementação separada. O serviço passou a ser uma classe única com transação somente leitura.
+- Testes de contrato ampliados para conferir todos os campos da resposta de /v1/carros/{codigoFipe}.
+- Novo teste e2e do histórico FIPE em ordem de mês de referência, com dados de exemplo na tabela monitoramento.carro do banco de teste.
+
+### 2.0.7 — 23/11/2026
+
+Refatoração interna que reúne o código de categorias em um pacote próprio, sem mudar o comportamento da API.
+
+- Entidade Categorias e CategoriaRepository movidas para o novo pacote com.kowalski.casaapi.categoria
+- Interface CategoriasService e CategoriasServiceImpl substituídas por uma única classe CategoriaService com o método buscar, com transação somente leitura
+- Compras e contas passaram a usar o novo CategoriaService; continua a mesma resposta de "não encontrado" para categoria inexistente
+- Novos testes unitários em CategoriaServiceTest e testes de compras e contas ajustados ao novo serviço
+
+### 2.0.6 — 23/11/2026
+
+Reorganiza o cadastro de pessoas num módulo próprio, sem mudar o comportamento nem o contrato da API.
+
+- Pessoas reunidas no pacote `pessoa` (entidade, papel, repositório, serviço, controller e input), que antes ficavam espalhados pelas camadas `api`/`business`.
+- Endpoints `/v1/pessoas` agora devolvem o novo DTO `PessoaResponse` em vez da entidade, com os mesmos campos (id, nome, email, papel, ativo, temAcesso) e ainda sem a senha.
+- Regras da pessoa levadas para a entidade: `definirSenha` (mínimo de 8 caracteres, guarda só o hash), `alterarDados` (nome e e-mail obrigatórios, sem espaços nas pontas) e `tornarAdmin`.
+- `PessoaService` passou de interface + implementação a uma classe única, que recebe o id e devolve 404 quando a pessoa não existe; o método `hash` saiu do `AuthService`.
+- Admin inicial (`AUTH_ADMIN_EMAIL`) configurado pelas novas regras da entidade, sem mudança de comportamento.
+- Testes novos `PessoaTest` e `PessoaServiceTest`, e teste e2e que confirma que trocar o e-mail para o de outra pessoa dá 400 e não altera nada.
+
 ### 2.0.5 — 23/11/2026
 
 Refatoração interna: datas calculadas sempre no fuso de São Paulo, erros de validação com a mensagem do campo e classes comuns reunidas em um só pacote, sem mudar nenhuma rota da API.

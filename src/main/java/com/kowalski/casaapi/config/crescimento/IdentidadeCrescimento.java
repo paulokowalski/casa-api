@@ -1,8 +1,8 @@
 package com.kowalski.casaapi.config.crescimento;
 
-import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.model.Pessoa;
-import com.kowalski.casaapi.business.repository.PessoaRepository;
+import com.kowalski.casaapi.pessoa.Pessoa;
+import com.kowalski.casaapi.pessoa.PessoaService;
+import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.crescimento.identidade.DiretorioUsuarios;
 import com.kowalski.casaapi.crescimento.identidade.UsuarioAtual;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import java.util.Map;
 public class IdentidadeCrescimento implements UsuarioAtual, DiretorioUsuarios {
 
     private final UsuarioLogado usuarioLogado;
-    private final PessoaRepository pessoas;
+    private final PessoaService pessoas;
 
     @Override
     public long id() {
@@ -31,13 +31,13 @@ public class IdentidadeCrescimento implements UsuarioAtual, DiretorioUsuarios {
     @Override
     public Map<Long, String> nomes(Collection<Long> ids) {
         Map<Long, String> r = new HashMap<>();
-        pessoas.findAllById(ids).forEach(p -> r.put(p.getId(), nomeBonito(p.getNome())));
+        pessoas.porIds(ids).forEach(p -> r.put(p.getId(), nomeBonito(p.getNome())));
         return r;
     }
 
     @Override
     public boolean existe(long id) {
-        return pessoas.findById(id).map(Pessoa::isAtivo).orElse(false);
+        return pessoas.porId(id).map(Pessoa::isAtivo).orElse(false);
     }
 
     /** No casa os nomes ficam em maiúsculas ("PAULO"); para mostrar, "Paulo". */

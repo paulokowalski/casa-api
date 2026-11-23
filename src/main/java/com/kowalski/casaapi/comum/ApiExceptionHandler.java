@@ -1,8 +1,5 @@
 package com.kowalski.casaapi.comum;
 
-import com.kowalski.casaapi.comum.ErroResponse;
-import com.kowalski.casaapi.comum.MonitorIndisponivelException;
-import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
