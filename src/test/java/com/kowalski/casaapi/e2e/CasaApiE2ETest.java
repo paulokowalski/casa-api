@@ -179,6 +179,17 @@ class CasaApiE2ETest {
         }
     }
 
+    @Test
+    void historicoFipeEmOrdemDeMesComOsValores() {
+        var r = http.get().uri("/v1/carros/E2E-001").header("Authorization", token()).retrieve().toEntity(LISTA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(200);
+        assertThat(r.getBody()).extracting(c -> c.get("mesReferencia")).containsExactly("11/2025", "12/2025", "01/2026");
+        assertThat(r.getBody().getFirst()).containsEntry("codigoVeiculo", "E2E-001").containsEntry("marca", "MARCA E2E")
+                .containsEntry("modelo", "MODELO E2E").containsEntry("ano", "2020").containsEntry("valor", 52000.0)
+                .containsKey("id");
+    }
+
     // ---- apoio ----
 
     private Map<String, Object> criarPessoa(String token, String nome, String email) {

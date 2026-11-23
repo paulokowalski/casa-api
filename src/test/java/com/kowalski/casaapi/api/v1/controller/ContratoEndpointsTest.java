@@ -5,6 +5,8 @@ import com.kowalski.casaapi.business.auth.AuthService;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
+import com.kowalski.casaapi.carro.CarroResponse;
+import com.kowalski.casaapi.carro.CarroService;
 import com.kowalski.casaapi.pessoa.Pessoa;
 import com.kowalski.casaapi.business.monitor.MonitorService;
 import com.kowalski.casaapi.pessoa.PessoaRepository;
@@ -644,13 +646,23 @@ class ContratoEndpointsTest {
 
         @Test
         void carroPorCodigoFipe() throws Exception {
-            mvc.perform(get("/v1/carros/001")).andExpect(status().isOk());
-            verify(carroService).buscarPorCodigoFipe("001");
+            UUID id = UUID.randomUUID();
+            when(carroService.historico("001")).thenReturn(List.of(
+                    new CarroResponse(id, "001", "01/2026", "VW", "Gol", "2020", 55000.5)));
+
+            mvc.perform(get("/v1/carros/001")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value(id.toString()))
+                    .andExpect(jsonPath("$[0].codigoVeiculo").value("001"))
+                    .andExpect(jsonPath("$[0].mesReferencia").value("01/2026"))
+                    .andExpect(jsonPath("$[0].marca").value("VW"))
+                    .andExpect(jsonPath("$[0].modelo").value("Gol"))
+                    .andExpect(jsonPath("$[0].ano").value("2020"))
+                    .andExpect(jsonPath("$[0].valor").value(55000.5));
         }
 
         @Test
         void erroInesperadoDa500SemDetalhesInternos() throws Exception {
-            when(carroService.buscarPorCodigoFipe(any())).thenThrow(new IllegalStateException("senha do banco: xyz"));
+            when(carroService.historico(any())).thenThrow(new IllegalStateException("senha do banco: xyz"));
 
             mvc.perform(get("/v1/carros/001"))
                     .andExpect(status().isInternalServerError())

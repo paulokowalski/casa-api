@@ -1,7 +1,5 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.carro;
 
-import com.kowalski.casaapi.business.model.Carro;
-import com.kowalski.casaapi.business.service.CarroService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,8 +23,8 @@ public class CarroController {
     @GetMapping("/{codigoFipe}")
     @Operation(summary = "Histórico FIPE de um veículo",
             description = "Valores registrados mês a mês para o código FIPE, em ordem de mês de referência.")
-    public List<Carro> buscarPorCodigoFipe(
+    public List<CarroResponse> historico(
             @Parameter(description = "Código FIPE do veículo", example = "015203-0") @PathVariable String codigoFipe) {
-        return carroService.buscarPorCodigoFipe(codigoFipe);
+        return carroService.historico(codigoFipe);
     }
 }

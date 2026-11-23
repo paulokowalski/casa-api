@@ -422,6 +422,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.8 — 23/11/2026
+
+A funcionalidade de carros (histórico FIPE) foi reorganizada no novo pacote próprio. Para quem usa a API, nada muda: o endpoint e o formato da resposta continuam iguais.
+
+- Reorganizada a funcionalidade de carros no pacote próprio com.kowalski.casaapi.carro (entidade, repositório, serviço e controller), no lugar das camadas business/api.
+- Endpoint GET /v1/carros/{codigoFipe} agora responde com o DTO CarroResponse, montado direto na consulta, sem expor a entidade JPA. Os campos do JSON continuam os mesmos.
+- Removidas a interface CarroService e sua implementação separada. O serviço passou a ser uma classe única com transação somente leitura.
+- Testes de contrato ampliados para conferir todos os campos da resposta de /v1/carros/{codigoFipe}.
+- Novo teste e2e do histórico FIPE em ordem de mês de referência, com dados de exemplo na tabela monitoramento.carro do banco de teste.
+
 ### 2.0.7 — 23/11/2026
 
 Refatoração interna que reúne o código de categorias em um pacote próprio, sem mudar o comportamento da API.
