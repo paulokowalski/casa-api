@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.crescimento.comum;
 
-import com.kowalski.casaapi.crescimento.ia.IaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,7 +8,7 @@ import java.time.Clock;
 import java.time.ZoneId;
 
 @Configuration
-@EnableConfigurationProperties({CrescimentoProperties.class, IaProperties.class})
+@EnableConfigurationProperties(CrescimentoProperties.class)
 public class CrescimentoConfig {
 
     /** Fuso usado para "hoje" (idade da criança, alertas). */

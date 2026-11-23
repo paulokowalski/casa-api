@@ -69,8 +69,8 @@ class ContratoEndpointsTest {
     @MockitoBean com.kowalski.casaapi.crescimento.familia.FamiliaService familiaService;
     @MockitoBean com.kowalski.casaapi.crescimento.crianca.CriancaService criancaService;
     @MockitoBean com.kowalski.casaapi.crescimento.medida.MedicaoService medicaoService;
-    @MockitoBean com.kowalski.casaapi.crescimento.ia.ResumoService resumoService;
     @MockitoBean com.kowalski.casaapi.crescimento.foto.FotoService fotoService;
+    @MockitoBean com.kowalski.casaapi.crescimento.exame.ExameService exameService;
     @MockitoBean com.kowalski.casaapi.crescimento.diario.RegistroService registroService;
     @MockitoBean com.kowalski.casaapi.crescimento.album.AlbumService albumService;
     @MockitoBean com.kowalski.casaapi.crescimento.marco.MarcoService marcoService;

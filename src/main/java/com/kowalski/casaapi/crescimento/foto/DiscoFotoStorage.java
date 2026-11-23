@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 public class DiscoFotoStorage implements FotoStorage {
 
     public static final String SENTINELA = ".armazenamento-crescimento";
-    private static final Pattern CHAVE = Pattern.compile("[a-z0-9][a-z0-9/_-]*\\.jpg");
+    private static final Pattern CHAVE = Pattern.compile("[a-z0-9][a-z0-9/_-]*\\.(jpg|pdf)");
 
     private final Path base;
 

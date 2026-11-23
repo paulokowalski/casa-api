@@ -164,23 +164,6 @@ CREATE TABLE crescimento.medicao (
 
 
 --
--- Name: pergunta_ia; Type: TABLE; Schema: crescimento; Owner: -
---
-
-CREATE TABLE crescimento.pergunta_ia (
-    id uuid NOT NULL,
-    crianca_id uuid NOT NULL,
-    mes smallint NOT NULL,
-    pergunta character varying(500) NOT NULL,
-    resposta character varying(3000) NOT NULL,
-    modelo character varying(60),
-    feita_por bigint,
-    feita_em timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT pergunta_ia_mes_check CHECK ((mes >= 0))
-);
-
-
---
 -- Name: registro; Type: TABLE; Schema: crescimento; Owner: -
 --
 
@@ -199,25 +182,6 @@ CREATE TABLE crescimento.registro (
     criado_em timestamp with time zone DEFAULT now() NOT NULL,
     atualizado_em timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT registro_tipo_check CHECK (((tipo)::text = ANY ((ARRAY['PESAGEM'::character varying, 'MOMENTO'::character varying, 'CONSULTA'::character varying])::text[])))
-);
-
-
---
--- Name: resumo_mes; Type: TABLE; Schema: crescimento; Owner: -
---
-
-CREATE TABLE crescimento.resumo_mes (
-    id uuid NOT NULL,
-    crianca_id uuid NOT NULL,
-    mes smallint NOT NULL,
-    inicio date NOT NULL,
-    fim date NOT NULL,
-    texto character varying(4000) NOT NULL,
-    perguntas character varying(4000) DEFAULT ''::character varying NOT NULL,
-    modelo character varying(60),
-    gerado_por bigint,
-    gerado_em timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT resumo_mes_mes_check CHECK ((mes >= 0))
 );
 
 
@@ -819,27 +783,11 @@ ALTER TABLE ONLY crescimento.medicao
 
 
 --
--- Name: pergunta_ia pergunta_ia_pkey; Type: CONSTRAINT; Schema: crescimento; Owner: -
---
-
-ALTER TABLE ONLY crescimento.pergunta_ia
-    ADD CONSTRAINT pergunta_ia_pkey PRIMARY KEY (id);
-
-
---
 -- Name: registro registro_pkey; Type: CONSTRAINT; Schema: crescimento; Owner: -
 --
 
 ALTER TABLE ONLY crescimento.registro
     ADD CONSTRAINT registro_pkey PRIMARY KEY (id);
-
-
---
--- Name: resumo_mes resumo_mes_pkey; Type: CONSTRAINT; Schema: crescimento; Owner: -
---
-
-ALTER TABLE ONLY crescimento.resumo_mes
-    ADD CONSTRAINT resumo_mes_pkey PRIMARY KEY (id);
 
 
 --
@@ -864,14 +812,6 @@ ALTER TABLE ONLY crescimento.foto
 
 ALTER TABLE ONLY crescimento.marco_atingido
     ADD CONSTRAINT uq_marco_atingido UNIQUE (crianca_id, marco_id);
-
-
---
--- Name: resumo_mes uq_resumo_mes; Type: CONSTRAINT; Schema: crescimento; Owner: -
---
-
-ALTER TABLE ONLY crescimento.resumo_mes
-    ADD CONSTRAINT uq_resumo_mes UNIQUE (crianca_id, mes);
 
 
 --
@@ -1150,13 +1090,6 @@ CREATE INDEX ix_medicao_crianca_data ON crescimento.medicao USING btree (crianca
 
 
 --
--- Name: ix_pergunta_ia_crianca_mes; Type: INDEX; Schema: crescimento; Owner: -
---
-
-CREATE INDEX ix_pergunta_ia_crianca_mes ON crescimento.pergunta_ia USING btree (crianca_id, mes, feita_em);
-
-
---
 -- Name: ix_registro_crianca_data; Type: INDEX; Schema: crescimento; Owner: -
 --
 
@@ -1326,14 +1259,6 @@ ALTER TABLE ONLY crescimento.medicao
 
 
 --
--- Name: pergunta_ia pergunta_ia_crianca_id_fkey; Type: FK CONSTRAINT; Schema: crescimento; Owner: -
---
-
-ALTER TABLE ONLY crescimento.pergunta_ia
-    ADD CONSTRAINT pergunta_ia_crianca_id_fkey FOREIGN KEY (crianca_id) REFERENCES crescimento.crianca(id) ON DELETE CASCADE;
-
-
---
 -- Name: registro registro_crianca_id_fkey; Type: FK CONSTRAINT; Schema: crescimento; Owner: -
 --
 
@@ -1347,14 +1272,6 @@ ALTER TABLE ONLY crescimento.registro
 
 ALTER TABLE ONLY crescimento.registro
     ADD CONSTRAINT registro_medicao_id_fkey FOREIGN KEY (medicao_id) REFERENCES crescimento.medicao(id) ON DELETE SET NULL;
-
-
---
--- Name: resumo_mes resumo_mes_crianca_id_fkey; Type: FK CONSTRAINT; Schema: crescimento; Owner: -
---
-
-ALTER TABLE ONLY crescimento.resumo_mes
-    ADD CONSTRAINT resumo_mes_crianca_id_fkey FOREIGN KEY (crianca_id) REFERENCES crescimento.crianca(id) ON DELETE CASCADE;
 
 
 --
@@ -1466,3 +1383,22 @@ ALTER TABLE ONLY public.transacao
 --
 
 
+
+-- db/crescimento/V6__exames.sql (ainda não aplicada no servidor quando este arquivo foi gerado)
+CREATE TABLE IF NOT EXISTS crescimento.exame (
+    id            uuid PRIMARY KEY,
+    familia_id    uuid NOT NULL REFERENCES crescimento.familia (id) ON DELETE CASCADE,
+    crianca_id    uuid NOT NULL REFERENCES crescimento.crianca (id) ON DELETE CASCADE,
+    titulo        varchar(120) NOT NULL,
+    data          date NOT NULL,
+    observacao    varchar(1000),
+    nome_arquivo  varchar(200) NOT NULL,
+    tipo          varchar(4) NOT NULL CHECK (tipo IN ('PDF', 'JPEG')),
+    chave         varchar(200) NOT NULL,
+    bytes         bigint NOT NULL,
+    sha256        varchar(64) NOT NULL,
+    enviado_por   bigint,
+    criado_em     timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_exame_crianca_sha UNIQUE (crianca_id, sha256)
+);
+CREATE INDEX IF NOT EXISTS ix_exame_crianca_data ON crescimento.exame (crianca_id, data DESC);

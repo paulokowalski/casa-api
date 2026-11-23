@@ -51,7 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = {CompraController.class, PessoaController.class, GeracaoController.class, AuthController.class,
         ServidorController.class, VentilacaoController.class,
-        com.kowalski.casaapi.api.v1.controller.PassagensController.class})
+        com.kowalski.casaapi.api.v1.controller.PassagensController.class,
+        com.kowalski.casaapi.crescimento.exame.ExameController.class})
 @Import({SecurityConfig.class, JwtConfig.class, PessoaJwtConverter.class, ApiKeyAuthFilter.class,
         UsuarioLogado.class, ApiExceptionHandler.class, ErroSegurancaJson.class, AuthService.class, AdminInicial.class})
 @TestPropertySource(properties = {
@@ -74,6 +75,7 @@ class SecurityConfigTest {
     @MockitoBean com.kowalski.casaapi.business.monitor.VentilacaoService ventilacaoService;
     @MockitoBean com.kowalski.casaapi.business.passagens.PassagensService passagensService;
     @MockitoBean com.kowalski.casaapi.business.passagens.RotasPassagemService rotasPassagemService;
+    @MockitoBean com.kowalski.casaapi.crescimento.exame.ExameService exameService;
 
     @BeforeEach
     void pessoas() {
@@ -234,6 +236,16 @@ class SecurityConfigTest {
             int status = mvc.perform(get(rota)).andReturn().getResponse().getStatus();
             assertThat(status).as(rota).isNotIn(401, 403);
         }
+    }
+
+    /** O arquivo do exame só sai com login (a liberação sem login dos arquivos de foto não pode pegar esta rota). */
+    @Test
+    void arquivoDoExameExigeLogin() throws Exception {
+        String rota = "/v1/crescimento/criancas/" + java.util.UUID.randomUUID() + "/exames/" + java.util.UUID.randomUUID() + "/arquivo";
+        mvc.perform(get(rota)).andExpect(status().isUnauthorized());
+        mvc.perform(get(rota).header("X-API-KEY", "chave-integracao")).andExpect(status().isForbidden());
+        mvc.perform(get(rota + "?v=ORIGINAL&exp=9999999999&sig=x")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/v1/crescimento/criancas/" + java.util.UUID.randomUUID() + "/exames")).andExpect(status().isUnauthorized());
     }
 
     @Test

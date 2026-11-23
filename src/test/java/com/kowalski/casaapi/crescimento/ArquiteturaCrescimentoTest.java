@@ -51,20 +51,25 @@ class ArquiteturaCrescimentoTest {
         }
     }
 
-    /** A IA só recebe dados em texto: o pacote ia não pode usar nada das fotos (classes, armazenamento, links). */
+    /**
+     * Regra da família: nenhuma IA tem acesso aos dados das crianças. O módulo não pode ter pacote de IA nem abrir
+     * conexões para fora (cliente HTTP, socket), nem citar serviços de IA. Ele só responde ao app, com login.
+     */
     @Test
-    void iaNaoUsaFotos() throws IOException {
-        Pattern foto = Pattern.compile("crescimento\\.foto\\b|\\bFoto\\w*|\\bLinkAssinado\\b|fotoId|getFoto");
-        try (Stream<Path> arquivos = Files.walk(MODULO.resolve("ia"))) {
+    void nenhumaIaRecebeDadosDasCriancas() throws IOException {
+        assertThat(MODULO.resolve("ia")).as("o módulo crescimento não pode ter pacote de IA").doesNotExist();
+        Pattern proibido = Pattern.compile("java\\.net\\.(http|Socket|URL\\b|URLConnection|HttpURLConnection)|RestClient|RestTemplate"
+                + "|WebClient|HttpClient|Feign|OkHttp|(?i:anthropic|openai|claude|gemini|chatgpt|ollama|llm|GeradorIa)");
+        try (Stream<Path> arquivos = Files.walk(MODULO)) {
             List<String> violacoes = arquivos.filter(p -> p.toString().endsWith(".java")).flatMap(p -> {
                 try {
-                    return Files.readAllLines(p).stream().filter(l -> !l.trim().startsWith("*") && !l.trim().startsWith("//"))
-                            .filter(l -> foto.matcher(l).find()).map(l -> p.getFileName() + ": " + l.trim());
+                    return Files.readAllLines(p).stream().filter(l -> proibido.matcher(l).find())
+                            .map(l -> MODULO.relativize(p) + ": " + l.trim());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             }).toList();
-            assertThat(violacoes).as("o pacote ia não pode acessar fotos").isEmpty();
+            assertThat(violacoes).as("o módulo crescimento não pode mandar dados para fora nem para IA").isEmpty();
         }
     }
 }

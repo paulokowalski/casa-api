@@ -104,10 +104,3 @@ crescimento:
     link-segredo: ${CRESCIMENTO_LINK_SEGREDO:${JWT_SECRET:}}
     link-validade: ${CRESCIMENTO_LINK_VALIDADE:6h}
     foto-max-megapixels: ${CRESCIMENTO_FOTO_MAX_MEGAPIXELS:16}
-    # resumo do mês com IA (container casa-ia); sem url fica desligado
-    ia:
-        url: ${CRESCIMENTO_IA_URL:}
-        segredo: ${CRESCIMENTO_IA_SEGREDO:}
-        tempo: ${CRESCIMENTO_IA_TEMPO:58s} # o nginx do casa corta em 60s
-        # a rede do casa-ia: requisições vindas dela são recusadas (a IA nunca chama a API nem vê fotos)
-        rede-bloqueada: ${CRESCIMENTO_IA_REDE_BLOQUEADA:}

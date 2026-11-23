@@ -92,8 +92,8 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
-| `db/crescimento/V4__resumo_ia.sql` | Resumos do mês gerados por IA (um por criança e mês de vida) |
-| `db/crescimento/V5__perguntas_ia.sql` | Perguntas dos pais à IA sobre um mês e as respostas |
+| `db/crescimento/V6__exames.sql` | Exames da criança (PDF ou imagem) |
+| `db/crescimento/V7__remove_ia.sql` | Apaga as tabelas `resumo_mes` e `pergunta_ia` (V4 e V5, removidas) |
 | `db/passagens/V1__estrutura.sql` | Schema `passagens`: estado do robô, preços buscados e alertas (sem ele, `/v1/passagens` responde 503) |
 | `db/passagens/V2__rotas_pelo_casa.sql` | Tabela `passagens.rota`: as rotas passam a ser cadastradas pela aba Passagens (o robô só lê) |
 
@@ -246,8 +246,8 @@ Foi feito para **poder virar um produto separado** (com app iOS/Android) sem ree
 | `GET criancas/{id}/marcos`, `PUT/DELETE criancas/{id}/marcos/{marcoId}` | Marcos do desenvolvimento por fase (Caderneta da Criança), com idade corrigida e brincadeiras |
 | `GET criancas/{id}/vacinas`, `PUT/DELETE criancas/{id}/vacinas/{vacinaId}`, `POST criancas/{id}/vacinas/extras` | Carteira de vacinação (calendário do SUS) e vacinas extras |
 | `GET criancas/{id}/agenda` | Vacinas atrasadas e dos próximos 60 dias, retorno marcado e próximo mêsversário |
-| `GET criancas/{id}/resumos`, `POST/DELETE criancas/{id}/resumos/{mes}` | Resumo do mês de vida com perguntas para a consulta, gerado por IA só quando pedido (`mes` 0 = 1º mês) |
-| `POST criancas/{id}/resumos/{mes}/perguntas`, `DELETE criancas/{id}/resumos/perguntas/{id}` | Pergunta dos pais à IA sobre o mês (só assuntos da criança; outros dão 400), guardada com a resposta |
+| `GET/POST criancas/{id}/exames` (multipart: `arquivo`, `titulo`, `data`, `observacao`), `PUT/DELETE criancas/{id}/exames/{exameId}` | Exames (PDF ou imagem) |
+| `GET criancas/{id}/exames/{exameId}/arquivo` | O arquivo do exame (exige login e ser da família) |
 
 **Diário e álbum:** um lugar do álbum é um registro do diário com `album_chave` (no máximo um por lugar e criança),
 então tudo o que vai para o álbum aparece também na linha do tempo. As fotos são enviadas antes (`POST .../fotos`) e
@@ -259,21 +259,17 @@ informadas num registro viram uma medição com percentil. Os mêsversários seg
 só o que foi registrado, pelo id do catálogo, que nunca deve ser reaproveitado com outro sentido. Marcos usam a idade
 corrigida dos prematuros; vacinas, a idade real. Script: `db/crescimento/V3__marcos_e_vacinas.sql`.
 
-**Resumo do mês com IA:** `ResumoService` monta um texto com as medidas (e percentis), o diário, os marcos e as
-vacinas do mês, sem fotos, sem links, sem o nome da criança (trocado por "a criança") e sem o nome dos profissionais,
-e `GeradorIa.resumirMes` devolve o resumo e de 3 a 6 perguntas para o pediatra. A IA só faz essa tarefa: as instruções
-ficam no serviço de IA, não aqui. No casa, `CasaIaGerador` chama o container `casa-ia` (`/opt/projetos/casa-ia`, ver o
-README dele para as barreiras), que roda o Claude Code sem ferramentas com a assinatura pessoal
-(`CLAUDE_CODE_OAUTH_TOKEN`, vale 1 ano: renovar com `claude setup-token`). Limite de 5 resumos por criança por dia.
-`BloqueioRedeIaFilter` recusa toda requisição vinda do IP do casa-ia (`CRESCIMENTO_IA_REDE_BLOQUEADA`), e
-`ArquiteturaCrescimentoTest` garante que o pacote `ia` não usa nada de fotos. Configuração: `CRESCIMENTO_IA_URL` (sem
-ela o botão some) e `CRESCIMENTO_IA_SEGREDO` (igual a `IA_SEGREDO` do casa-ia). A assinatura é só para uso pessoal:
-num produto para outras famílias, implemente `GeradorIa` com chave de API. Script: `db/crescimento/V4__resumo_ia.sql`.
+**Exames:** PDF, JPG ou PNG até 25 MB, com nome, data e observação. O tipo é conferido pelo conteúdo (não pelo nome);
+imagens são regravadas em JPEG, endireitadas e **sem metadados** (GPS); PDFs ficam como vieram. Os arquivos ficam no
+mesmo armazenamento das fotos, em `exames/{familia}/{crianca}/{uuid}.pdf|.jpg`, e **só saem com login** de quem é da
+família (`GET .../exames/{id}/arquivo`, sem link público, `Cache-Control: no-store`); o front mostra por um endereço
+`blob:` local. O mesmo arquivo enviado de novo não é duplicado (SHA-256). Excluir a criança apaga os exames.
+Script: `db/crescimento/V6__exames.sql`.
 
-**Perguntas à IA:** abaixo do resumo, os responsáveis podem perguntar sobre a criança naquele mês (até 500 caracteres,
-20 por criança por dia). A IA recebe os mesmos dados do resumo, o resumo e as 4 últimas perguntas; o serviço de IA
-marca `foraDoAssunto` para o que não for crescimento, saúde e cuidados da criança, e a casa-api recusa sem guardar.
-Apagar o resumo apaga as perguntas do mês. Script: `db/crescimento/V5__perguntas_ia.sql`.
+**Sem IA:** nenhuma IA tem acesso a dados pessoais, em nenhuma parte do sistema. A integração com IA do módulo foi
+**removida em 23/11/2026** (as tabelas dela são apagadas por `db/crescimento/V7__remove_ia.sql`, aplicado pelo
+usuário). O `ArquiteturaCrescimentoTest` falha se o módulo voltar a ter pacote de IA, cliente HTTP ou menção a serviços
+de IA, e o `SemIaTest` falha se qualquer código da API mencionar um serviço de IA.
 
 **Para levar a outro projeto:** copie o pacote `crescimento`, `resources/crescimento`, `db/crescimento` e os testes;
 implemente `UsuarioAtual`/`DiretorioUsuarios` com o login do produto; exporte o schema (`pg_dump -n crescimento`) e a
@@ -421,6 +417,19 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.0 — 23/11/2026
+
+O Crescimento ganha os exames da criança (PDF ou imagem) e deixa de ter o resumo do mês com IA: nenhum dado das crianças vai mais para serviços de IA.
+
+- Novos endpoints de exames em /v1/crescimento/criancas/{criancaId}/exames: POST (multipart com arquivo, titulo, data e observacao), GET para listar, PUT /{id}, DELETE /{id} e GET /{id}/arquivo (com login, sem cache e com cabeçalhos noindex/nosniff).
+- Exames aceitam PDF, JPG ou PNG até 25 MB. O tipo é reconhecido pelo conteúdo do arquivo, as imagens são regravadas em JPEG sem metadados (o GPS é removido) e o mesmo arquivo enviado de novo não é duplicado (jaExistia=true).
+- Removidos os endpoints de resumo do mês e de perguntas à IA (/v1/crescimento/criancas/{criancaId}/resumos…), junto com a integração com o container casa-ia e o filtro que bloqueava a rede da IA.
+- Removidas as configurações crescimento.ia.* (variáveis CRESCIMENTO_IA_URL, CRESCIMENTO_IA_SEGREDO, CRESCIMENTO_IA_TEMPO e CRESCIMENTO_IA_REDE_BLOQUEADA), que podem sair do ambiente do servidor.
+- Migração V6__exames.sql: cria a tabela crescimento.exame. Precisa ser aplicada no servidor, e quem roda é o usuário.
+- Migração V7__remove_ia.sql, destrutiva: apaga as tabelas crescimento.resumo_mes e crescimento.pergunta_ia, e com elas os resumos e as respostas já gerados. Também precisa ser aplicada no servidor pelo usuário.
+- Excluir uma criança agora apaga também os exames dela e os arquivos. O armazenamento passa a aceitar arquivos .pdf, e a mensagem de limite de tamanho fala em arquivo, não mais só em foto.
+- Novos testes dos exames e o teste SemIaTest, que falha se o código ou o pom.xml citarem serviços de IA. Os testes da IA foram removidos e a estrutura e2e foi atualizada.
+
 ### 1.2.0 — 22/11/2026
 
 A Saúde do Servidor ganha o acompanhamento da internet, da ventilação e dos acessos pela VPN, e a API passa a ter o módulo Passagens, que cadastra as rotas do robô e mostra o histórico de preços.
@@ -436,16 +445,15 @@ A Saúde do Servidor ganha o acompanhamento da internet, da ventilação e dos a
 
 ### 1.1.0 — 22/11/2026
 
-Novo módulo Crescimento para acompanhar as crianças da família: medidas com curvas da OMS, diário, álbum, fotos, marcos do desenvolvimento, vacinas, agenda e resumo do mês feito por IA.
+Novo módulo Crescimento para acompanhar as crianças da família: medidas com curvas da OMS, diário, álbum, fotos, marcos do desenvolvimento, vacinas e agenda.
 
 - Famílias e crianças em /v1/crescimento/familias e /v1/crescimento/criancas/{id}, com membros nos papéis RESPONSAVEL ou LEITOR; o usuário do módulo é a pessoa logada no casa
 - Medidas em /medicoes, com avaliação pelas tabelas da OMS em /resumo e curvas em /curvas/{indicador}
 - Diário com pesagens, momentos e consultas (/registros e /linha-do-tempo) e álbum com mêsversários, primeiras vezes e momentos especiais (/album)
 - Fotos enviadas por multipart (até 25 MB), guardadas em disco nas versões original, média e mini; o arquivo da foto é servido por link assinado com HMAC e prazo de validade, sem precisar de login
 - Marcos do desenvolvimento (/marcos), cartão de vacinas com doses extras (/vacinas) e agenda com vacinas atrasadas ou dos próximos 60 dias, retorno marcado e próximo mêsversário (/agenda)
-- Resumo do mês de vida e perguntas dos pais respondidas pelo container casa-ia (/resumos/{mes} e /resumos/{mes}/perguntas); requisições vindas da rede da IA são recusadas
-- Novas variáveis de ambiente, todas com valor padrão: CRESCIMENTO_FOTOS_DIRETORIO, CRESCIMENTO_LINK_SEGREDO, CRESCIMENTO_LINK_VALIDADE, CRESCIMENTO_FOTO_MAX_MEGAPIXELS, CRESCIMENTO_IA_URL, CRESCIMENTO_IA_SEGREDO, CRESCIMENTO_IA_TEMPO e CRESCIMENTO_IA_REDE_BLOQUEADA. A pasta das fotos precisa ter o arquivo .armazenamento-crescimento
-- Migrações a aplicar à mão no servidor, em ordem: src/main/resources/db/crescimento/V1__estrutura.sql até V5__perguntas_ia.sql (criam o schema crescimento)
+- Novas variáveis de ambiente, todas com valor padrão: CRESCIMENTO_FOTOS_DIRETORIO, CRESCIMENTO_LINK_SEGREDO, CRESCIMENTO_LINK_VALIDADE e CRESCIMENTO_FOTO_MAX_MEGAPIXELS. A pasta das fotos precisa ter o arquivo .armazenamento-crescimento
+- Migrações a aplicar à mão no servidor, em ordem: src/main/resources/db/crescimento/V1__estrutura.sql até V3__marcos_e_vacinas.sql (criam o schema crescimento)
 
 ### 1.0.1 — 22/11/2026
 

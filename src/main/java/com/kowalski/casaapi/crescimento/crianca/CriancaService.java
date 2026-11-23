@@ -3,6 +3,7 @@ package com.kowalski.casaapi.crescimento.crianca;
 import com.kowalski.casaapi.crescimento.comum.NaoEncontradoException;
 import com.kowalski.casaapi.crescimento.crianca.CriancaDtos.*;
 import com.kowalski.casaapi.crescimento.familia.AcessoFamilia;
+import com.kowalski.casaapi.crescimento.exame.ExameService;
 import com.kowalski.casaapi.crescimento.foto.FotoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class CriancaService {
     private final CriancaRepository criancas;
     private final AcessoFamilia acesso;
     private final FotoService fotos;
+    private final ExameService exames;
     private final Clock relogio;
 
     /** Carrega a criança conferindo se o usuário é da família (e responsável, quando vai alterar). */
@@ -65,13 +67,14 @@ public class CriancaService {
         return resposta(criancas.save(c), true);
     }
 
-    /** Apaga a criança com medidas e fotos (inclusive os arquivos). */
+    /** Apaga a criança com medidas, fotos e exames (inclusive os arquivos). */
     @Transactional
     public void excluir(UUID id) {
         Crianca c = carregar(id, true);
         c.setFotoId(null);
         criancas.saveAndFlush(c);
         fotos.excluirTodasDaCrianca(c.getId());
+        exames.excluirTodosDaCrianca(c.getId());
         criancas.delete(c);
     }
 

@@ -45,14 +45,7 @@ public class ProcessadorImagem {
     }
 
     public ImagemProcessada processar(byte[] dados) {
-        if (dados == null || dados.length == 0) throw new FotoInvalidaException("O arquivo está vazio");
-        try {
-            umaPorVez.acquire();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Processamento interrompido", e);
-        }
-        try {
+        return umaDeCadaVez(dados, () -> {
             Exif exif = lerExif(dados);
             BufferedImage img = orientar(ler(dados), exif.orientacao());
             Map<Variante, byte[]> arquivos = new EnumMap<>(Variante.class);
@@ -62,6 +55,32 @@ public class ProcessadorImagem {
                 arquivos.put(v, jpeg(atual, v.qualidade()));
             }
             return new ImagemProcessada(arquivos, img.getWidth(), img.getHeight(), exif.tiradaEm());
+        });
+    }
+
+    /**
+     * Só a resolução cheia ({@link Variante#ORIGINAL}), endireitada e sem metadados, para quem não usa as reduções
+     * (exames). Evita gerar e descartar as outras variantes com a vez das fotos ocupada.
+     */
+    public byte[] processarOriginal(byte[] dados) {
+        return umaDeCadaVez(dados, () ->
+                jpeg(orientar(ler(dados), lerExif(dados).orientacao()), Variante.ORIGINAL.qualidade()));
+    }
+
+    private interface Trabalho<T> {
+        T executar() throws IOException;
+    }
+
+    private <T> T umaDeCadaVez(byte[] dados, Trabalho<T> trabalho) {
+        if (dados == null || dados.length == 0) throw new FotoInvalidaException("O arquivo está vazio");
+        try {
+            umaPorVez.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Processamento interrompido", e);
+        }
+        try {
+            return trabalho.executar();
         } catch (IOException e) {
             throw new FotoInvalidaException("Não consegui ler a imagem. Envie uma foto em JPG ou PNG.");
         } finally {

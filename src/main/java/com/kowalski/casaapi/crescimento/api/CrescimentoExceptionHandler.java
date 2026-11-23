@@ -2,7 +2,6 @@ package com.kowalski.casaapi.crescimento.api;
 
 import com.kowalski.casaapi.crescimento.comum.ArmazenamentoIndisponivelException;
 import com.kowalski.casaapi.crescimento.comum.FotoInvalidaException;
-import com.kowalski.casaapi.crescimento.comum.IaIndisponivelException;
 import com.kowalski.casaapi.crescimento.comum.NaoEncontradoException;
 import com.kowalski.casaapi.crescimento.comum.SemPermissaoException;
 import lombok.extern.slf4j.Slf4j;
@@ -44,18 +43,12 @@ public class CrescimentoExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErroCrescimento> grandeDemais(MaxUploadSizeExceededException e) {
-        return erro(HttpStatus.CONTENT_TOO_LARGE, "A foto é grande demais. O limite é de 25 MB por foto.");
+        return erro(HttpStatus.CONTENT_TOO_LARGE, "O arquivo é grande demais. O limite é de 25 MB.");
     }
 
     @ExceptionHandler(ArmazenamentoIndisponivelException.class)
     public ResponseEntity<ErroCrescimento> armazenamento(ArmazenamentoIndisponivelException e) {
         log.error("{}", e.getMessage(), e.getCause());
         return erro(HttpStatus.SERVICE_UNAVAILABLE, "As fotos estão indisponíveis agora. Tente de novo em alguns minutos.");
-    }
-
-    @ExceptionHandler(IaIndisponivelException.class)
-    public ResponseEntity<ErroCrescimento> ia(IaIndisponivelException e) {
-        if (e.getCause() != null) log.warn("IA indisponível: {}", e.getCause().toString());
-        return erro(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
     }
 }
