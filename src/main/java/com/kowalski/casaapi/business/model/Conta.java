@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.model;
 
+import com.kowalski.casaapi.categoria.Categorias;
 import com.kowalski.casaapi.business.enumerator.TipoConta;
 import com.kowalski.casaapi.pessoa.Pessoa;
 import jakarta.persistence.*;

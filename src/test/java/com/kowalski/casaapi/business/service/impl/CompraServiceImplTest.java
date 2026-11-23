@@ -8,13 +8,13 @@ import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
 import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.model.Categorias;
+import com.kowalski.casaapi.categoria.Categorias;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
 import com.kowalski.casaapi.business.model.TipoLancamento;
 import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
 import com.kowalski.casaapi.business.repository.CompraRepository;
-import com.kowalski.casaapi.business.service.CategoriasService;
+import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.business.service.TipoLancamentoService;
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
@@ -42,10 +42,10 @@ class CompraServiceImplTest {
 
     private final CompraRepository compraRepository = mock(CompraRepository.class);
     private final TipoLancamentoService tipoService = mock(TipoLancamentoService.class);
-    private final CategoriasService categoriasService = mock(CategoriasService.class);
+    private final CategoriaService categoriaService = mock(CategoriaService.class);
     private final CompraParcelaRepository parcelaRepository = mock(CompraParcelaRepository.class);
     private final CompraServiceImpl service = new CompraServiceImpl(
-            compraRepository, tipoService, categoriasService, parcelaRepository, new UsuarioLogado(), RELOGIO);
+            compraRepository, tipoService, categoriaService, parcelaRepository, new UsuarioLogado(), RELOGIO);
 
     private final UUID tipoId = UUID.randomUUID();
     private final UUID categoriaId = UUID.randomUUID();
@@ -53,7 +53,7 @@ class CompraServiceImplTest {
     @BeforeEach
     void setUp() {
         when(tipoService.findById(tipoId)).thenReturn(TipoLancamento.builder().id(tipoId).nome("NUBANK").build());
-        when(categoriasService.findByUUid(categoriaId)).thenReturn(Categorias.builder().id(categoriaId).nome("MERCADO").build());
+        when(categoriaService.buscar(categoriaId)).thenReturn(Categorias.builder().id(categoriaId).nome("MERCADO").build());
     }
 
     @AfterEach

@@ -5,7 +5,7 @@ import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
 import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
-import com.kowalski.casaapi.business.service.CategoriasService;
+import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.business.model.Compra;
 import com.kowalski.casaapi.business.model.CompraParcela;
 import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
@@ -39,7 +39,7 @@ public class CompraServiceImpl implements CompraService {
 
     private final CompraRepository compraRepository;
     private final TipoLancamentoService tipoLancamentoService;
-    private final CategoriasService categoriasService;
+    private final CategoriaService categoriaService;
     private final CompraParcelaRepository compraParcelaRepository;
     private final UsuarioLogado usuarioLogado;
     private final Clock relogio;
@@ -142,7 +142,7 @@ public class CompraServiceImpl implements CompraService {
 
     private Compra criarCompra(CompraInput compraInput) {
         var tipoLancamento = tipoLancamentoService.findById(compraInput.tipoLancamentoId());
-        var categoria = categoriasService.findByUUid(compraInput.categoriaId());
+        var categoria = categoriaService.buscar(compraInput.categoriaId());
 
         return Compra.builder()
                 .nomeProduto(compraInput.nomeProduto().toUpperCase())
@@ -196,7 +196,7 @@ public class CompraServiceImpl implements CompraService {
         compra.setNomeProduto(compraInput.nomeProduto().toUpperCase());
         compra.setTipoLancamento(tipoLancamento);
         compra.setNomeCartao(tipoLancamento.getNome());
-        compra.setCategoria(categoriasService.findByUUid(compraInput.categoriaId()));
+        compra.setCategoria(categoriaService.buscar(compraInput.categoriaId()));
         compra.setValorProduto(compraInput.valorProduto());
         compra.setNomePessoaCompra(compraInput.nomePessoaCompra().toUpperCase());
         compra.setDataCompra(compraInput.dataCompra());

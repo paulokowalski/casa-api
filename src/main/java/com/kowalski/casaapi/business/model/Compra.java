@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.business.model;
 
+import com.kowalski.casaapi.categoria.Categorias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;

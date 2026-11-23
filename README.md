@@ -422,6 +422,15 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.7 — 23/11/2026
+
+Refatoração interna que reúne o código de categorias em um pacote próprio, sem mudar o comportamento da API.
+
+- Entidade Categorias e CategoriaRepository movidas para o novo pacote com.kowalski.casaapi.categoria
+- Interface CategoriasService e CategoriasServiceImpl substituídas por uma única classe CategoriaService com o método buscar, com transação somente leitura
+- Compras e contas passaram a usar o novo CategoriaService; continua a mesma resposta de "não encontrado" para categoria inexistente
+- Novos testes unitários em CategoriaServiceTest e testes de compras e contas ajustados ao novo serviço
+
 ### 2.0.6 — 23/11/2026
 
 Reorganiza o cadastro de pessoas num módulo próprio, sem mudar o comportamento nem o contrato da API.

@@ -18,7 +18,7 @@ import com.kowalski.casaapi.pessoa.Pessoa;
 import com.kowalski.casaapi.business.repository.ContaLancamentoRepository;
 import com.kowalski.casaapi.business.repository.ContaRepository;
 import com.kowalski.casaapi.pessoa.PessoaRepository;
-import com.kowalski.casaapi.business.service.CategoriasService;
+import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,9 +45,9 @@ class ContaServiceImplTest {
     private final ContaRepository contaRepository = mock(ContaRepository.class);
     private final ContaLancamentoRepository lancamentoRepository = mock(ContaLancamentoRepository.class);
     private final PessoaRepository pessoaRepository = mock(PessoaRepository.class);
-    private final CategoriasService categoriasService = mock(CategoriasService.class);
+    private final CategoriaService categoriaService = mock(CategoriaService.class);
     private final ContaServiceImpl service = new ContaServiceImpl(
-            contaRepository, lancamentoRepository, pessoaRepository, categoriasService, new UsuarioLogado(), RELOGIO);
+            contaRepository, lancamentoRepository, pessoaRepository, categoriaService, new UsuarioLogado(), RELOGIO);
 
     private final Pessoa ana = Login.pessoa(Login.ANA_ID, "ANA");
     private final Pessoa bruno = Login.pessoa(Login.BRUNO_ID, "BRUNO");

@@ -12,7 +12,7 @@ import com.kowalski.casaapi.business.model.ContaLancamento;
 import com.kowalski.casaapi.business.repository.ContaLancamentoRepository;
 import com.kowalski.casaapi.business.repository.ContaRepository;
 import com.kowalski.casaapi.pessoa.PessoaRepository;
-import com.kowalski.casaapi.business.service.CategoriasService;
+import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.business.service.ContaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class ContaServiceImpl implements ContaService {
     private final ContaRepository contaRepository;
     private final ContaLancamentoRepository lancamentoRepository;
     private final PessoaRepository pessoaRepository;
-    private final CategoriasService categoriasService;
+    private final CategoriaService categoriaService;
     private final UsuarioLogado usuarioLogado;
     private final Clock relogio;
 
@@ -205,7 +205,7 @@ public class ContaServiceImpl implements ContaService {
 
         conta.setPessoa(pessoaRepository.findById(in.pessoaId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa " + in.pessoaId() + " não encontrada")));
-        conta.setCategoria(in.categoriaId() == null ? null : categoriasService.findByUUid(in.categoriaId()));
+        conta.setCategoria(in.categoriaId() == null ? null : categoriaService.buscar(in.categoriaId()));
         conta.setDescricao(in.descricao().trim());
         conta.setTipo(in.tipo());
         conta.setValor(in.valor());
