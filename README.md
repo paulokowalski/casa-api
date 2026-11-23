@@ -107,6 +107,18 @@ docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa -v ON_ERROR_
 Os scripts usam `IF EXISTS` / `IF NOT EXISTS` e podem ser reaplicados. Aplique cada um **depois** do
 deploy da versão que deixou de depender do que ele remove.
 
+### Diagnóstico do banco
+
+`banco/diagnostico.sql` roda numa transação só de leitura e desfeita no fim (`ROLLBACK`). Mostra só quantidades e
+estatísticas, nunca linhas com dados: inconsistências (cartão, pessoa e parcelas das compras, competências fora do
+dia 1, pagamentos sem data, família das fotos e exames), linhas das tabelas sem uso, tamanho e forma de leitura das
+tabelas, uso dos índices e a configuração do PostgreSQL. É a base da refatoração do banco. O e2e roda o script contra
+a estrutura para garantir que ele continua funcionando.
+
+```bash
+docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa < banco/diagnostico.sql
+```
+
 ## Monitoramento do servidor
 
 A cada minuto a API lê as métricas direto do kernel e grava uma amostra no **MariaDB** (banco
@@ -421,6 +433,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 2.0.19 — 23/11/2026
+
+Adiciona um script de diagnóstico do banco PostgreSQL, somente leitura, que mostra quantidades de inconsistências e estatísticas de tabelas e índices para orientar a refatoração do banco.
+
+- Novo script banco/diagnostico.sql: roda dentro de uma transação somente leitura (READ ONLY) e termina com ROLLBACK, então não altera nada no banco.
+- 36 verificações de inconsistência que mostram só a quantidade de registros afetados, sem conteúdo: compras × tipo_lancamento/financa.cartao, nomes de pessoa, parcelas, competências fora do dia 1, contas e lançamentos, categorias, monitoramento.carro, geração solar e família de fotos/exames do Crescimento.
+- Contagem de linhas das tabelas que podem ser arquivadas (public.transacao, lista_compra, rastreamento, geracao_mensal, financa.banco, financa.cartao, tabelas de investimento).
+- Relatórios de tamanho e forma de leitura das tabelas, uso dos índices, período coberto pelas estatísticas, versão do PostgreSQL e configurações principais (shared_buffers, work_mem, autovacuum etc.).
+- Teste E2E (e2e/rodar.sh) agora executa o diagnóstico contra a estrutura do banco de teste para garantir que o script continua válido.
 
 ### 2.0.18 — 23/11/2026
 
