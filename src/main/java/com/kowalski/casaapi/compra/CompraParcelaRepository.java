@@ -1,6 +1,5 @@
-package com.kowalski.casaapi.business.repository;
+package com.kowalski.casaapi.compra;
 
-import com.kowalski.casaapi.business.model.CompraParcela;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

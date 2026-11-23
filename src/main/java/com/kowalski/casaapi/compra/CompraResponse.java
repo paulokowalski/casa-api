@@ -1,13 +1,12 @@
-package com.kowalski.casaapi.api.v1.response;
+package com.kowalski.casaapi.compra;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import com.kowalski.casaapi.business.model.CompraParcela;
 import org.springframework.util.StringUtils;
 
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Objects;
 
-import static com.kowalski.casaapi.util.Util.removerAcentos;
 
 @Schema(description = "Lista de parcelas")
 public record CompraResponse(
@@ -31,15 +30,13 @@ public record CompraResponse(
                 cp.getNumeroParcela(),
                 cp.isUltimaParcela() ? "SIM" : "NÃO",
                 cp.getCompra().getNomeCartao().toUpperCase(),
-                calculaValorFalta(cp),
+                cp.valorQueFalta(),
                 cp.getCompra().getNomePessoaCompra().toUpperCase(),
                 cp.getCompra().getValorProduto().doubleValue(),
                 Objects.nonNull(cp.getCompra().getCategoria()) ? cp.getCompra().getCategoria().getNome().toUpperCase() : "");
     }
 
-    private static Double calculaValorFalta(CompraParcela cp) {
-        if(cp.getCompra().getNumeroParcelas().equals(cp.getNumeroParcela())) return Double.valueOf("0");
-        var numeroParcelas = cp.getCompra().getNumeroParcelas() - cp.getNumeroParcela();
-        return cp.getValorParcela().doubleValue() * numeroParcelas;
+    private static String removerAcentos(String valor) {
+        return Normalizer.normalize(valor, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "");
     }
 }

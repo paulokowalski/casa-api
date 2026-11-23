@@ -1,21 +1,14 @@
-package com.kowalski.casaapi.business.service.impl;
+package com.kowalski.casaapi.compra;
 
 import com.kowalski.casaapi.comum.RelogioConfig;
 import java.time.Clock;
 import java.time.Instant;
 
-import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
-import com.kowalski.casaapi.api.v1.input.CompraInput;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.categoria.Categorias;
-import com.kowalski.casaapi.business.model.Compra;
-import com.kowalski.casaapi.business.model.CompraParcela;
-import com.kowalski.casaapi.business.model.TipoLancamento;
-import com.kowalski.casaapi.business.repository.CompraParcelaRepository;
-import com.kowalski.casaapi.business.repository.CompraRepository;
 import com.kowalski.casaapi.categoria.CategoriaService;
-import com.kowalski.casaapi.business.service.TipoLancamentoService;
+
 import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,23 +29,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class CompraServiceImplTest {
+class CompraServiceTest {
 
     private static final Clock RELOGIO = Clock.fixed(Instant.parse("2026-11-23T15:00:00Z"), RelogioConfig.FUSO_DA_CASA);
 
     private final CompraRepository compraRepository = mock(CompraRepository.class);
-    private final TipoLancamentoService tipoService = mock(TipoLancamentoService.class);
+    private final TipoLancamentoRepository tipoRepository = mock(TipoLancamentoRepository.class);
     private final CategoriaService categoriaService = mock(CategoriaService.class);
     private final CompraParcelaRepository parcelaRepository = mock(CompraParcelaRepository.class);
-    private final CompraServiceImpl service = new CompraServiceImpl(
-            compraRepository, tipoService, categoriaService, parcelaRepository, new UsuarioLogado(), RELOGIO);
+    private final CompraService service = new CompraService(
+            compraRepository, tipoRepository, categoriaService, parcelaRepository, new UsuarioLogado(), RELOGIO);
 
     private final UUID tipoId = UUID.randomUUID();
     private final UUID categoriaId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        when(tipoService.findById(tipoId)).thenReturn(TipoLancamento.builder().id(tipoId).nome("NUBANK").build());
+        when(tipoRepository.findById(tipoId)).thenReturn(Optional.of(TipoLancamento.builder().id(tipoId).nome("NUBANK").build()));
         when(categoriaService.buscar(categoriaId)).thenReturn(Categorias.builder().id(categoriaId).nome("MERCADO").build());
     }
 
@@ -71,7 +64,6 @@ class CompraServiceImplTest {
         verify(compraRepository, times(vezes)).save(captor.capture());
         return captor.getAllValues();
     }
-
 
     @Test
     void salvarCriaParcelasAPartirDoMesSeguinte() {
@@ -105,9 +97,9 @@ class CompraServiceImplTest {
 
     @Test
     void rateioArredondaMetadeParaCima() {
-        assertThat(CompraServiceImpl.dividirValorPorItens(input("A,B,C", "100.00", 1)))
+        assertThat(input("A,B,C", "100.00", 1).dividirEntrePessoas())
                 .allSatisfy(i -> assertThat(i.valorProduto()).isEqualByComparingTo("33.33"));
-        assertThat(CompraServiceImpl.dividirValorPorItens(input("A,B", "0.05", 1)))
+        assertThat(input("A,B", "0.05", 1).dividirEntrePessoas())
                 .allSatisfy(i -> assertThat(i.valorProduto()).isEqualByComparingTo("0.03"));
     }
 
@@ -120,7 +112,6 @@ class CompraServiceImplTest {
                 .isInstanceOf(IllegalArgumentException.class);
         verify(compraRepository, never()).save(any());
     }
-
 
     private Compra compraDe(String pessoa) {
         Compra c = Compra.builder().id(UUID.randomUUID()).nomePessoaCompra(pessoa).numeroParcelas(1)
@@ -172,7 +163,6 @@ class CompraServiceImplTest {
         assertThat(c.getNomePessoaCompra()).isEqualTo("ANA");
     }
 
-
     @Test
     void removerApagaSoAPropriaCompra() {
         Login.comoAna();
@@ -191,7 +181,6 @@ class CompraServiceImplTest {
         Login.comoAdmin();
         assertThatThrownBy(() -> service.remover(UUID.randomUUID())).isInstanceOf(RecursoNaoEncontradoException.class);
     }
-
 
     @Test
     void adminListaTodasAsCompras() {

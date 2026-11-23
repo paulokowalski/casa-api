@@ -1,4 +1,4 @@
-package com.kowalski.casaapi.business.model;
+package com.kowalski.casaapi.compra;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -35,5 +35,10 @@ public class CompraParcela {
 
     public boolean isUltimaParcela() {
         return this.getCompra().getNumeroParcelas().equals(this.getNumeroParcela());
+    }
+
+    public double valorQueFalta() {
+        if (isUltimaParcela()) return 0;
+        return valorParcela.doubleValue() * (compra.getNumeroParcelas() - numeroParcela);
     }
 }

@@ -1,11 +1,7 @@
-package com.kowalski.casaapi.api.v1.controller;
+package com.kowalski.casaapi.compra;
 
-import com.kowalski.casaapi.api.v1.input.CompraInput;
-import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
-import com.kowalski.casaapi.api.v1.response.CompraResponse;
 import com.kowalski.casaapi.business.MensagemResponse;
 import com.kowalski.casaapi.business.auth.UsuarioLogado;
-import com.kowalski.casaapi.business.service.CompraService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

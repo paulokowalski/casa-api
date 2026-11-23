@@ -1,7 +1,7 @@
 package com.kowalski.casaapi.config;
 
 import com.kowalski.casaapi.api.v1.controller.AuthController;
-import com.kowalski.casaapi.api.v1.controller.CompraController;
+import com.kowalski.casaapi.compra.CompraController;
 import com.kowalski.casaapi.business.auth.AdminInicial;
 import com.kowalski.casaapi.business.auth.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,7 +17,7 @@ import com.kowalski.casaapi.business.auth.UsuarioLogado;
 import com.kowalski.casaapi.pessoa.Papel;
 import com.kowalski.casaapi.pessoa.Pessoa;
 import com.kowalski.casaapi.pessoa.PessoaRepository;
-import com.kowalski.casaapi.business.service.CompraService;
+import com.kowalski.casaapi.compra.CompraService;
 import com.kowalski.casaapi.geracao.GeracaoService;
 import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.config.security.JwtConfig;

@@ -1,7 +1,5 @@
-package com.kowalski.casaapi.business.repository;
+package com.kowalski.casaapi.compra;
 
-import com.kowalski.casaapi.api.v1.response.CompraRegistroResponse;
-import com.kowalski.casaapi.business.model.Compra;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -12,7 +10,7 @@ import java.util.UUID;
 @Repository
 public interface CompraRepository extends JpaRepository<Compra, UUID> {
 
-    String REGISTRO = " SELECT new com.kowalski.casaapi.api.v1.response.CompraRegistroResponse(" +
+    String REGISTRO = " SELECT new com.kowalski.casaapi.compra.CompraRegistroResponse(" +
             " c.id, c.nomeProduto, c.valorProduto, c.dataCompra, c.numeroParcelas, " +
             " c.nomePessoaCompra, c.nomeCartao, c.dataCadastro) FROM Compra c ";
 

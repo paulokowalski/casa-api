@@ -1,8 +1,6 @@
-package com.kowalski.casaapi.api.v1.response;
+package com.kowalski.casaapi.compra;
 
 import com.kowalski.casaapi.categoria.Categorias;
-import com.kowalski.casaapi.business.model.Compra;
-import com.kowalski.casaapi.business.model.CompraParcela;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

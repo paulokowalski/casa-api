@@ -422,6 +422,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.12 — 23/11/2026
+
+Esta versão reorganiza o módulo de compras em um pacote próprio, com as regras na entidade, e corrige as datas das parcelas de compras feitas no fim do mês.
+
+- Compras reorganizadas no pacote próprio `compra` (controller, entidades, repositórios, DTOs e serviço juntos), seguindo a refatoração por funcionalidade. Os endpoints /v1 de compras continuam iguais.
+- Regras levadas para as entidades: `Compra.nova`/`alterar` geram as parcelas, `CompraParcela.valorQueFalta` calcula o saldo restante e `CompraInput` passa a validar e dividir o valor entre as pessoas.
+- Corrigida a data das parcelas de compras feitas no fim do mês: agora cada parcela é calculada a partir da data da compra (ex.: 31/01 gera 28/02, 31/03 e 30/04), e não mais encadeada mês a mês, o que fazia o dia cair para 28.
+- Removidas as interfaces e implementações `CompraService`/`CompraServiceImpl` e `TipoLancamentoService`/`TipoLancamentoServiceImpl`, além da classe `util.Util`. O serviço de compras passa a consultar direto o `TipoLancamentoRepository`.
+- Testes ajustados ao novo pacote (`CompraServiceTest`, `CompraResponseTest`) e novo `CompraTest`, que cobre a geração das parcelas, a alteração da compra e o valor que falta pagar.
+
 ### 2.0.11 — 23/11/2026
 
 Reorganiza internamente o módulo de Contas, sem mudar os endpoints nem o comportamento para quem usa o sistema.

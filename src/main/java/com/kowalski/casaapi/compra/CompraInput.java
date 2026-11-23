@@ -1,10 +1,15 @@
-package com.kowalski.casaapi.api.v1.input;
+package com.kowalski.casaapi.compra;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.kowalski.casaapi.categoria.Categorias;
+import io.swagger.v3.oas.annotations.media.Schema;
+import org.springframework.util.Assert;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 @Schema(description = "Dados para cadastrar ou editar uma compra")
@@ -27,5 +32,27 @@ public record CompraInput(
                         this.tipoLancamentoId,
                         this.categoriaId
                 );
+        }
+
+        public void validar() {
+                Assert.hasText(nomeProduto, "O nome do produto é obrigatório");
+                Assert.notNull(tipoLancamentoId, "O tipo de lançamento é obrigatório");
+                Assert.hasText(nomePessoaCompra, "O nome da pessoa é obrigatório");
+                Assert.notNull(valorProduto, "O valor do produto é obrigatório");
+                Assert.notNull(dataCompra, "A data da compra é obrigatória");
+                Assert.isTrue(numeroParcelas > 0, "O número de parcelas deve ser maior que zero");
+        }
+
+        public List<CompraInput> dividirEntrePessoas() {
+                List<String> pessoas = Arrays.stream(nomePessoaCompra.split(","))
+                        .map(String::trim)
+                        .filter(pessoa -> !pessoa.isBlank())
+                        .toList();
+                BigDecimal valorPorPessoa = valorProduto.divide(BigDecimal.valueOf(pessoas.size()), 2, RoundingMode.HALF_UP);
+                return pessoas.stream().map(pessoa -> comNomePessoaEValor(pessoa, valorPorPessoa)).toList();
+        }
+
+        public DadosDaCompra paraDados(TipoLancamento cartao, Categorias categoria) {
+                return new DadosDaCompra(nomeProduto, valorProduto, dataCompra, numeroParcelas, nomePessoaCompra, cartao, categoria);
         }
 }
