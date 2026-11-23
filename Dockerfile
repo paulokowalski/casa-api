@@ -1,8 +1,10 @@
+# mesma imagem dos testes do commit e do e2e (maven:3.9-eclipse-temurin-17)
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY src ./src
-RUN mvn clean package -DskipTests
+# cache do Maven entre builds (BuildKit): as dependências não são baixadas de novo a cada deploy
+RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp clean package -DskipTests
 
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
@@ -28,5 +30,4 @@ ENTRYPOINT ["java", \
 ]
 
 LABEL maintainer="Paulo Kowalski" \
-      version="1.0.0" \
       description="Casa API - Gerenciamento de despesas domésticas"

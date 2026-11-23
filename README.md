@@ -422,6 +422,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 2.0.2 — 23/11/2026
+
+Esta versão deixa o build da imagem Docker da API mais rápido e mais enxuto, sem mudar o comportamento do sistema.
+
+- Novo arquivo .dockerignore, que deixa de fora do contexto de build: target, .git, .idea, .vscode, logs, .env/.env.* e e2e.
+- Cache do Maven entre builds no Dockerfile (RUN --mount=type=cache em /root/.m2), para não baixar as dependências de novo a cada deploy. Para funcionar, o Docker precisa usar o BuildKit.
+- Maven rodando em modo batch e sem log de download (-B -ntp) no build da imagem.
+- Removido o label fixo version="1.0.0" da imagem.
+- Comentário no Dockerfile indicando que a imagem é a mesma dos testes do commit e do e2e (maven:3.9-eclipse-temurin-17).
+
 ### 2.0.1 — 23/11/2026
 
 Adiciona um teste automático que confere as migrations de banco antes do commit. Nada muda no comportamento da API.
