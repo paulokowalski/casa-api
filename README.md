@@ -92,6 +92,7 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V6__compras_consistencia.sql` | Compras consistentes: cartão com chave para `tipo_lancamento` (recuperado pelo nome quando faltava) e obrigatório nas compras novas; nome da pessoa único; `pessoa_id` obrigatório, preenchido pelo nome (um gatilho cobre a versão antiga da API até o deploy); parcela única por número, a partir de 1, apagada junto com a compra. **Antes** do deploy que passa a usar `pessoa_id` |
 | `V7__compras_cartao_validado.sql` | Confirma o cartão obrigatório nas compras antigas. Só depois de escolher, pela tela de edição, o cartão das compras que ficaram sem cartão após a V6; antes disso falha sem mudar nada |
 | `V8__compras_sem_nome_da_pessoa.sql` | Apaga `compra.nm_pessoa_compra`, o gatilho que a preenchia e o índice dela: a compra guarda só `pessoa_id` e o nome vem do cadastro da pessoa. **Depois** do deploy que passa a usar `pessoa_id` |
+| `V9__regras_de_consistencia.sql` | Regras no banco: competência no dia 1 (renda, fatura, conta e lançamento), lançamento pago se e só se tiver data de pagamento, número da parcela a partir de 1, cor da categoria em `#RRGGBB`, `ativo` da categoria obrigatório e `id` do carro único. Só acrescenta regras que os dados e a API já cumprem: roda a qualquer momento, sem deploy |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -436,6 +437,19 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 3.0.2 — 24/11/2026
+
+O banco passa a garantir regras de consistência em rendas, faturas pagas, contas, lançamentos, categorias e carros, e assim recusa dados fora do padrão.
+
+- Nova migração V9__regras_de_consistencia.sql: competência sempre no dia 1 em renda_mensal, fatura_paga, conta (competencia_inicio e competencia_fim, quando houver) e conta_lancamento.
+- Lançamento de conta agora fica coerente: com paga verdadeiro precisa ter data_pagamento, sem pagamento não pode ter data (ck_conta_lancamento_pagamento). numero_parcela, quando houver, precisa ser >= 1.
+- Categorias: cor só no formato #RRGGBB (ck_categorias_cor) e ativo obrigatório (categorias_ativo_not_null).
+- Novo índice único uq_carro_id em monitoramento.carro (id).
+- A migração cria as restrições como NOT VALID e depois valida todas. Se ainda houver registro fora das regras, a validação falha e a transação inteira é desfeita.
+- No servidor: a V9 é aplicada à mão, depois da V8. Antes, vale o usuário rodar o banco/diagnostico.sql para ver se há dados que quebram as regras. O NOT NULL com nome usado em categorias.ativo depende da versão do PostgreSQL, então também vale o usuário conferir isso.
+- Removidas do banco/diagnostico.sql as checagens 18 a 26 e 29, que agora o próprio banco garante.
+- Atualizada a estrutura do banco de testes e2e com a V9. Novo teste e2e cobre pagar e desfazer o pagamento de um lançamento (PATCH /v1/contas/lancamentos/{id}) e confirma que dataPagamento é limpa.
 
 ### 3.0.1 — 24/11/2026
 
