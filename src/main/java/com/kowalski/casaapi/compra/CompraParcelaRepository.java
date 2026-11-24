@@ -19,6 +19,7 @@ public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UU
     @Query( " SELECT cp FROM CompraParcela cp " +
             " JOIN FETCH cp.compra c " +
             " JOIN FETCH c.pessoa p " +
+            " JOIN FETCH c.tipoLancamento t " +
             " LEFT JOIN FETCH c.categoria " +
             " WHERE cp.dataParcela >= :inicio AND cp.dataParcela < :fim " +
             " AND upper(p.nome) = upper(:pessoa) " +
@@ -29,10 +30,11 @@ public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UU
     @Query( " SELECT cp FROM CompraParcela cp " +
             " JOIN FETCH cp.compra c " +
             " JOIN FETCH c.pessoa p " +
+            " JOIN FETCH c.tipoLancamento t " +
             " LEFT JOIN FETCH c.categoria " +
             " WHERE cp.dataParcela >= :inicio AND cp.dataParcela < :fim " +
             " AND upper(p.nome) = upper(:pessoa) " +
-            " AND upper(c.nomeCartao) like upper(:cartao) " +
+            " AND upper(t.nome) like upper(:cartao) " +
             " ORDER BY c.dataCadastro DESC "
     )
     List<CompraParcela> buscarPorPeriodoECartao(LocalDate inicio, LocalDate fim, String pessoa, String cartao);

@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CompraResponseTest {
 
     private static CompraParcela parcela(String produto, String cartao, int numero, int total, String valor, Categorias cat) {
-        Compra compra = Compra.builder().id(UUID.randomUUID()).nomeProduto(produto).nomeCartao(cartao)
+        Compra compra = Compra.builder().id(UUID.randomUUID()).nomeProduto(produto).tipoLancamento(TipoLancamento.builder().id(UUID.randomUUID()).nome(cartao).build())
                 .numeroParcelas(total).pessoa(Login.pessoa(Login.ANA_ID, "ana")).valorProduto(new BigDecimal(valor).multiply(BigDecimal.valueOf(total)))
                 .dataCompra(LocalDate.of(2026, 1, 10)).categoria(cat).build();
         return CompraParcela.builder().compra(compra).numeroParcela(numero).valorParcela(new BigDecimal(valor))

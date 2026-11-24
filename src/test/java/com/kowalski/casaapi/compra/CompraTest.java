@@ -25,7 +25,7 @@ class CompraTest {
 
         assertThat(compra.getNomeProduto()).isEqualTo("TV");
         assertThat(compra.nomeDaPessoa()).isEqualTo("ANA");
-        assertThat(compra.getNomeCartao()).isEqualTo("NUBANK");
+        assertThat(compra.nomeDoCartao()).isEqualTo("NUBANK");
         assertThat(compra.getDataCadastro()).isEqualTo(AGORA);
         assertThat(compra.getParcelas()).extracting(CompraParcela::getDataParcela).containsExactly(
                 LocalDate.of(2026, 2, 28), LocalDate.of(2026, 3, 31), LocalDate.of(2026, 4, 30));

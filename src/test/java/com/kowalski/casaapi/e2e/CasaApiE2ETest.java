@@ -338,7 +338,10 @@ class CasaApiE2ETest {
         assertThat(renomeada.getStatusCode().is2xxSuccessful()).isTrue();
 
         var compras = http.get().uri("/v1/compras?pessoa=" + novo).header("Authorization", token).retrieve().body(LISTA);
-        assertThat(compras).singleElement().satisfies(c -> assertThat(c.get("nomePessoaCompra")).isEqualTo(novo));
+        assertThat(compras).singleElement().satisfies(c -> {
+            assertThat(c.get("nomePessoaCompra")).isEqualTo(novo);
+            assertThat(c.get("nomeCartao")).isEqualTo("E2E CARTAO");
+        });
         assertThat(http.get().uri("/v1/compras?pessoa=" + antigo).header("Authorization", token).retrieve().body(LISTA))
                 .isEmpty();
         Object id = compras.getFirst().get("id");

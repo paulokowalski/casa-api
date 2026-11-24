@@ -15,11 +15,14 @@ BEGIN
     END IF;
 END $$;
 
-UPDATE public.compra c
-SET cartao_id = t.id
-FROM public.tipo_lancamento t
-WHERE c.cartao_id IS NULL
-  AND upper(trim(t.nome)) = upper(trim(c.nm_cartao));
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'compra' AND column_name = 'nm_cartao') THEN
+        EXECUTE 'UPDATE public.compra c SET cartao_id = t.id FROM public.tipo_lancamento t '
+             || 'WHERE c.cartao_id IS NULL AND upper(trim(t.nome)) = upper(trim(c.nm_cartao))';
+    END IF;
+END $$;
 
 ALTER TABLE public.compra VALIDATE CONSTRAINT compra_cartao_id_fkey;
 
