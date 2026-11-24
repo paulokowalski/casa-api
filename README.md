@@ -97,6 +97,7 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V11__arquivo.sql` | Move para o schema `arquivo`, sem apagar nada, as tabelas que nenhum programa usa (`transacao`, `lista_compra`, `rastreamento`, `rastreamento_detalhe`, `geracao_mensal`, `financa.banco`, `financa.cartao`, `investimento.tb_carteira`, `investimento.tb_investimento_renda_fixa`) e apaga os schemas `financa` e `investimento` se ficarem vazios. Roda a qualquer momento, sem deploy. Para voltar uma tabela: `ALTER TABLE arquivo.<tabela> SET SCHEMA <schema de antes>;` (e `CREATE SCHEMA` antes, se for `financa` ou `investimento`) |
 | `V12__compras_nome_do_cartao_opcional.sql` | `compra.nm_cartao` passa a aceitar vazio: a versão nova da API não grava mais o nome do cartão na compra. **Antes** do deploy que passa a ler o nome do cadastro do cartão |
 | `V13__compras_sem_nome_do_cartao.sql` | Apaga `compra.nm_cartao`, sem volta: o nome do cartão vem sempre de `tipo_lancamento`. **Depois** desse deploy, e só quando a seção "Antes da V13" do `banco/diagnostico.sql` der 0 (uma compra com nome diferente está no cartão errado ou é de um cartão renomeado; corrija o cartão pela tela ou aceite o nome do cadastro) |
+| `V14__categoria_em_uso_nao_sai.sql` | Regra única para categorias: não dá para excluir uma categoria usada por compra ou conta (`ON DELETE RESTRICT` nas duas chaves). Antes, excluir apagava a categoria das compras sem aviso e era recusado nas contas. Roda a qualquer momento, sem deploy (a API não exclui categorias) |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -442,6 +443,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 4.0.1 — 24/11/2026
+
+A partir desta versão, o banco não deixa excluir uma categoria que ainda é usada por compras ou contas.
+
+- Nova migração V14__categoria_em_uso_nao_sai.sql: as chaves estrangeiras compra.categoria_id e conta.categoria_id passam a usar ON DELETE RESTRICT para public.categorias.
+- Removida a restrição antiga fk_compras_categoria e substituída por compra_categoria_id_fkey; conta_categoria_id_fkey é recriada só se hoje tiver outra regra de exclusão (a migração pode ser rodada mais de uma vez sem erro).
+- Restrições criadas como NOT VALID e validadas depois, com lock_timeout de 5s, para não travar as tabelas por muito tempo.
+- Ao tentar excluir uma categoria em uso, a API devolve 409 com a mensagem de registro ligado a outros dados.
+- Migração V14 precisa ser aplicada no servidor. A validação falha se já houver compras ou contas apontando para categorias que não existem mais.
+- Estrutura do banco dos testes e2e (estrutura.sql) atualizada com a V14.
 
 ### 4.0.0 — 24/11/2026
 
