@@ -24,13 +24,13 @@ public class CompraParcela {
     @JoinColumn(name = "compra_id")
     private Compra compra;
 
-    @Column(name = "nr_parcela")
+    @Column(name = "numero")
     private Integer numeroParcela;
 
-    @Column(name = "vl_parcela")
+    @Column(name = "valor")
     private BigDecimal valorParcela;
 
-    @Column(name = "dt_parcela")
+    @Column(name = "data")
     private LocalDate dataParcela;
 
     public boolean isUltimaParcela() {
