@@ -94,6 +94,7 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V8__compras_sem_nome_da_pessoa.sql` | Apaga `compra.nm_pessoa_compra`, o gatilho que a preenchia e o índice dela: a compra guarda só `pessoa_id` e o nome vem do cadastro da pessoa. **Depois** do deploy que passa a usar `pessoa_id` |
 | `V9__regras_de_consistencia.sql` | Regras no banco: competência no dia 1 (renda, fatura, conta e lançamento), lançamento pago se e só se tiver data de pagamento, número da parcela a partir de 1, cor da categoria em `#RRGGBB`, `ativo` da categoria obrigatório e `id` do carro único. Só acrescenta regras que os dados e a API já cumprem: roda a qualquer momento, sem deploy |
 | `V10__indices.sql` | Índices sem travar a escrita (`CONCURRENTLY`, por isso fora de transação): `geracao(data)`, que é lida por período, e as chaves `compra.cartao_id` e `conta.categoria_id`; apaga os repetidos `idx_categorias_nome` (coberto pelo único do nome), `idx_categorias_ativo` e `pessoa_email_key` (coberto por `uq_pessoa_email`). Roda a qualquer momento, sem deploy; se avisar índice inválido, apague-o com `DROP INDEX CONCURRENTLY` e rode de novo |
+| `V11__arquivo.sql` | Move para o schema `arquivo`, sem apagar nada, as tabelas que nenhum programa usa (`transacao`, `lista_compra`, `rastreamento`, `rastreamento_detalhe`, `geracao_mensal`, `financa.banco`, `financa.cartao`, `investimento.tb_carteira`, `investimento.tb_investimento_renda_fixa`) e apaga os schemas `financa` e `investimento` se ficarem vazios. Roda a qualquer momento, sem deploy. Para voltar uma tabela: `ALTER TABLE arquivo.<tabela> SET SCHEMA <schema de antes>;` (e `CREATE SCHEMA` antes, se for `financa` ou `investimento`) |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -439,6 +440,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 3.0.4 — 24/11/2026
+
+As tabelas antigas que o sistema não usa mais vão para um schema separado, o `arquivo`. Os dados continuam lá, mas a estrutura em uso fica mais limpa.
+
+- Nova migração V11__arquivo.sql: cria o schema `arquivo` e move para ele as tabelas sem uso public.transacao, public.lista_compra, public.rastreamento, public.rastreamento_detalhe, public.geracao_mensal, financa.cartao, financa.banco, investimento.tb_carteira e investimento.tb_investimento_renda_fixa. Os dados são mantidos.
+- Removidos os schemas `financa` e `investimento` quando ficam vazios depois da mudança (sem tabelas, funções nem tipos).
+- Migração a aplicar no banco do servidor: roda em uma transação com lock_timeout de 5s e pode ser executada mais de uma vez (IF EXISTS).
+- Diagnóstico (banco/diagnostico.sql): retiradas as verificações 3 e 4, que comparavam tipo_lancamento com financa.cartao. A contagem de linhas agora lê as tabelas no schema `arquivo`.
+- Estrutura dos testes e2e (estrutura.sql) atualizada com a migração V11.
 
 ### 3.0.3 — 24/11/2026
 
