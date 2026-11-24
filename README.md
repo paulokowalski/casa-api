@@ -100,6 +100,7 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V14__categoria_em_uso_nao_sai.sql` | Regra única para categorias: não dá para excluir uma categoria usada por compra ou conta (`ON DELETE RESTRICT` nas duas chaves). Antes, excluir apagava a categoria das compras sem aviso e era recusado nas contas. Roda a qualquer momento, sem deploy (a API não exclui categorias) |
 | `V15__carro_mes_e_valor.sql` | `monitoramento.carro` ganha `mes` (date), calculada pelo banco a partir de `mes_referencia` (`MM/AAAA`), e `valor` passa a `numeric(12,2)`. O n8n continua gravando igual. **Antes** do deploy que ordena o histórico por `mes` |
 | `V16__usuario_da_api.sql` | Cria o usuário `casa_app` da API (só leitura e gravação nas tabelas que ela usa, com limites de tempo) e as permissões das tabelas futuras. **Antes** do deploy que passa a API para `casa_app`; a senha é definida à parte (seção "Usuário da API e operação do banco") |
+| `V17__nomes_das_colunas.sql` | Padroniza os nomes das colunas (sem prefixo de tipo, instantes em `criado_em`/`atualizado_em`, em português): `compra` (`produto`, `valor`, `data_compra`, `numero_parcelas`, `criado_em`), `compra_parcela` (`numero`, `valor`, `data`), `categorias` (`criado_em`, `atualizado_em`), `conta` (`criado_em`), `crescimento.foto` (`criado_em`) e `passagens.alerta` (`criado_em`). Só a versão nova da API e do robo-passagens entendem os nomes novos: **com a API e o robô parados**, logo antes do deploy dos dois |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -454,13 +455,25 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
   categoria com `JOIN FETCH`, e `default_batch_fetch_size: 100` cobre os demais casos — evite voltar
   para `EAGER`, que gerava uma consulta por compra.
 - Filtros por mês usam intervalo de datas (`dataParcela >= início AND < fim`), que aproveita o índice
-  de `dt_parcela`; não use `date_part`/conversão para texto no `WHERE`.
+  `ix_compra_parcela_data` (coluna `data`); não use `date_part`/conversão para texto no `WHERE`.
 - Para várias competências, prefira `GET /v1/compras/parcelas?de&ate` a uma chamada por mês.
 - Consultas acima de 1 s são registradas no log (`LOG_QUERIES_SLOWER_THAN_MS`).
 
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 4.1.1 — 24/11/2026
+
+Colunas do banco renomeadas para nomes por extenso e padronizados (como criado_em), sem mudar os endpoints nem o JSON da API.
+
+- Nova migration V17__nomes_das_colunas.sql: renomeia as colunas de compra (nm_produto → produto, vl_produto → valor, dt_compra → data_compra, nr_parcelas → numero_parcelas, dt_cadastrato → criado_em) e de compra_parcela (nr_parcela → numero, vl_parcela → valor, dt_parcela → data)
+- Datas de cadastro padronizadas como criado_em/atualizado_em em categorias (created_at/updated_at), conta (dt_cadastro), crescimento.foto (criada_em) e passagens.alerta (em)
+- Índice idx_compra_parcela_dt_parcela renomeado para ix_compra_parcela_data
+- Entidades Compra, CompraParcela, Conta e Foto e as consultas de FiltroRepository e PassagensRepository ajustadas aos novos nomes, sem mudar os campos do JSON da API
+- Migrations V4 (índices de compras) e V1 dos esquemas crescimento e passagens ajustadas para rodar tanto em banco novo quanto em banco já renomeado
+- Script banco/diagnostico.sql e banco de teste e2e (estrutura.sql e dados.sql) atualizados com os novos nomes
+- Migration V17 a ser aplicada no PostgreSQL do servidor junto com o deploy desta versão: a versão anterior da API não funciona depois da renomeação, e esta não funciona antes dela
 
 ### 4.1.0 — 24/11/2026
 

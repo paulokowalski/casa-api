@@ -67,10 +67,19 @@ CREATE TABLE IF NOT EXISTS crescimento.foto (
     sha256      char(64) NOT NULL,
     tirada_em   timestamp,
     enviada_por bigint,
-    criada_em   timestamptz NOT NULL DEFAULT now(),
+    criado_em   timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT uq_foto_crianca_sha UNIQUE (crianca_id, sha256)
 );
-CREATE INDEX IF NOT EXISTS ix_foto_crianca ON crescimento.foto (crianca_id, criada_em);
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'crescimento' AND table_name = 'foto' AND column_name = 'criado_em') THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS ix_foto_crianca ON crescimento.foto (crianca_id, criado_em)';
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema = 'crescimento' AND table_name = 'foto' AND column_name = 'criada_em') THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS ix_foto_crianca ON crescimento.foto (crianca_id, criada_em)';
+    END IF;
+END $$;
 
 DO $$ BEGIN
     ALTER TABLE crescimento.crianca

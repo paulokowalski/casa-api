@@ -27,16 +27,16 @@ public class Compra {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "nm_produto")
+    @Column(name = "produto")
     private String nomeProduto;
 
-    @Column(name = "vl_produto")
+    @Column(name = "valor")
     private BigDecimal valorProduto;
 
-    @Column(name = "dt_compra")
+    @Column(name = "data_compra")
     private LocalDate dataCompra;
 
-    @Column(name = "nr_parcelas")
+    @Column(name = "numero_parcelas")
     private Integer numeroParcelas;
 
     @JsonIgnore
@@ -44,7 +44,7 @@ public class Compra {
     @JoinColumn(name = "pessoa_id", nullable = false)
     private Pessoa pessoa;
 
-    @Column(name = "dt_cadastrato")
+    @Column(name = "criado_em")
     private LocalDateTime dataCadastro;
 
     @JsonIgnore

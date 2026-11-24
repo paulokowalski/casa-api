@@ -52,6 +52,6 @@ public class Foto {
     /** Posição dentro do registro. */
     private Short ordem;
 
-    @Column(nullable = false)
+    @Column(name = "criado_em", nullable = false)
     private Instant criadaEm = Instant.now();
 }

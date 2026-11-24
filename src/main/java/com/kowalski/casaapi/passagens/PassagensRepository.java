@@ -72,11 +72,11 @@ public class PassagensRepository {
 
     public List<Alerta> alertas() {
         return jdbc.query("""
-                SELECT rota, origem, destino, ida, volta, preco, em FROM passagens.alerta
-                ORDER BY em DESC LIMIT 100""", Map.of(), (rs, i) -> new Alerta(
+                SELECT rota, origem, destino, ida, volta, preco, criado_em FROM passagens.alerta
+                ORDER BY criado_em DESC LIMIT 100""", Map.of(), (rs, i) -> new Alerta(
                 rs.getString("rota"), rs.getString("origem"), rs.getString("destino"),
                 rs.getObject("ida", LocalDate.class), rs.getObject("volta", LocalDate.class), rs.getInt("preco"),
-                rs.getObject("em", OffsetDateTime.class)));
+                rs.getObject("criado_em", OffsetDateTime.class)));
     }
 
     /** Pontos do gráfico por trecho: cada busca, ou o menor preço de cada dia (fuso de São Paulo). */

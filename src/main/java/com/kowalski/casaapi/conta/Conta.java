@@ -71,7 +71,7 @@ public class Conta {
     @Column(name = "debito_automatico", nullable = false)
     private boolean debitoAutomatico;
 
-    @Column(name = "dt_cadastro", nullable = false)
+    @Column(name = "criado_em", nullable = false)
     private LocalDateTime dataCadastro;
 
     public static Conta nova(DadosDaConta dados, LocalDateTime agora) {

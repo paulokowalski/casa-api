@@ -23,15 +23,15 @@ public class FiltroRepository {
 
     public List<FiltroResponse> anos() {
         return pares(" select distinct cast(tb01.ano as text), cast(tb01.ano as text) from ( " +
-                " select distinct DATE_PART('YEAR', dt_parcela) ano from compra_parcela cp " +
+                " select distinct DATE_PART('YEAR', data) ano from compra_parcela cp " +
                 " ) tb01 order by cast(tb01.ano as text) desc ", Map.of());
     }
 
     public List<FiltroResponse> meses(String ano) {
         LocalDate inicio = Competencias.inicioDoAno(ano);
         return pares(" select distinct cast(tb01.mes as text), cast(tb01.mes as text) from (" +
-                        " select distinct DATE_PART('MONTH', dt_parcela) mes from compra_parcela cp " +
-                        " where dt_parcela >= :inicio and dt_parcela < :fim " +
+                        " select distinct DATE_PART('MONTH', data) mes from compra_parcela cp " +
+                        " where data >= :inicio and data < :fim " +
                         " ) tb01 order by cast(tb01.mes as text) asc ",
                 Map.of("inicio", inicio, "fim", inicio.plusYears(1))).stream()
                 .map(par -> Integer.parseInt(par.codigo()))
@@ -45,7 +45,7 @@ public class FiltroRepository {
         return pares(" select distinct upper(p.nome), upper(p.nome) from compra c " +
                         " join pessoa p on p.id = c.pessoa_id " +
                         " join compra_parcela cp on cp.compra_id = c.id " +
-                        " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim ",
+                        " where cp.data >= :inicio and cp.data < :fim ",
                 Map.of("inicio", inicio, "fim", inicio.plusMonths(1)));
     }
 
@@ -55,7 +55,7 @@ public class FiltroRepository {
                         " join tipo_lancamento t on t.id = c.cartao_id " +
                         " join pessoa p on p.id = c.pessoa_id " +
                         " join compra_parcela cp on cp.compra_id = c.id " +
-                        " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim " +
+                        " where cp.data >= :inicio and cp.data < :fim " +
                         "   AND upper(p.nome) = upper(:pessoa) ",
                 Map.of("inicio", inicio, "fim", inicio.plusMonths(1), "pessoa", pessoa));
     }

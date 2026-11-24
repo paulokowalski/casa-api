@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS passagens.alerta (
     ida     date         NOT NULL,
     volta   date,
     preco   integer      NOT NULL,
-    em      timestamptz  NOT NULL
+    criado_em timestamptz NOT NULL
 );
 
 -- Estado do robô (uma linha): quando enviou pela última vez e de quanto em quanto tempo busca.

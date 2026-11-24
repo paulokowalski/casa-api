@@ -14,23 +14,23 @@ SELECT verificacao, quantidade FROM (
            (SELECT count(*) FROM (SELECT 1 FROM tipo_lancamento GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
     UNION ALL SELECT 10, 'nomes de pessoa repetidos (grupos)',
            (SELECT count(*) FROM (SELECT 1 FROM pessoa GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
-    UNION ALL SELECT 11, 'compras com nr_parcelas menor que 1',
-           (SELECT count(*) FROM compra WHERE nr_parcelas < 1)
+    UNION ALL SELECT 11, 'compras com numero_parcelas menor que 1',
+           (SELECT count(*) FROM compra WHERE numero_parcelas < 1)
     UNION ALL SELECT 12, 'compras sem nenhuma parcela',
            (SELECT count(*) FROM compra c WHERE NOT EXISTS (SELECT 1 FROM compra_parcela p WHERE p.compra_id = c.id))
-    UNION ALL SELECT 13, 'compras com quantidade de parcelas diferente de nr_parcelas',
+    UNION ALL SELECT 13, 'compras com quantidade de parcelas diferente de numero_parcelas',
            (SELECT count(*) FROM compra c
-             WHERE c.nr_parcelas <> (SELECT count(*) FROM compra_parcela p WHERE p.compra_id = c.id))
+             WHERE c.numero_parcelas <> (SELECT count(*) FROM compra_parcela p WHERE p.compra_id = c.id))
     UNION ALL SELECT 14, 'compras com soma das parcelas diferente do total (mais de 1 centavo por parcela)',
            (SELECT count(*) FROM compra c
-             WHERE abs(c.vl_produto - coalesce((SELECT sum(p.vl_parcela) FROM compra_parcela p WHERE p.compra_id = c.id), 0))
-                   > 0.01 * greatest(c.nr_parcelas, 1))
+             WHERE abs(c.valor - coalesce((SELECT sum(p.valor) FROM compra_parcela p WHERE p.compra_id = c.id), 0))
+                   > 0.01 * greatest(c.numero_parcelas, 1))
     UNION ALL SELECT 15, 'compras com valor que não cabe em numeric(12,2)',
-           (SELECT count(*) FROM compra WHERE abs(vl_produto) >= 10000000000)
+           (SELECT count(*) FROM compra WHERE abs(valor) >= 10000000000)
     UNION ALL SELECT 16, 'parcelas com número repetido na mesma compra (grupos)',
-           (SELECT count(*) FROM (SELECT 1 FROM compra_parcela GROUP BY compra_id, nr_parcela HAVING count(*) > 1) g)
-    UNION ALL SELECT 17, 'parcelas com nr_parcela menor que 1',
-           (SELECT count(*) FROM compra_parcela WHERE nr_parcela < 1)
+           (SELECT count(*) FROM (SELECT 1 FROM compra_parcela GROUP BY compra_id, numero HAVING count(*) > 1) g)
+    UNION ALL SELECT 17, 'parcelas com numero menor que 1',
+           (SELECT count(*) FROM compra_parcela WHERE numero < 1)
     UNION ALL SELECT 27, 'nomes de categoria repetidos ignorando maiúsculas (grupos)',
            (SELECT count(*) FROM (SELECT 1 FROM categorias GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
     UNION ALL SELECT 28, 'categorias em uso por compras e por contas',
