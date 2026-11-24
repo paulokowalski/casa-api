@@ -47,12 +47,15 @@ done
 echo "E2E: conferindo o diagnóstico do banco (banco/diagnostico.sql) contra a estrutura..."
 docker exec -i "$PG" psql -q -U postgres -d casa -h 127.0.0.1 -v ON_ERROR_STOP=1 \
   < "$RAIZ/banco/diagnostico.sql" >/dev/null
+echo "E2E: a API sobe com o usuário casa_app (V16), para conferir que as permissões dele bastam..."
+docker exec -i "$PG" psql -q -U postgres -d casa -h 127.0.0.1 -v ON_ERROR_STOP=1 \
+  -c "ALTER ROLE casa_app PASSWORD '$SENHA'" >/dev/null
 esperar "MariaDB" docker exec "$MDB" mariadb -ucasa_monitor -p"$SENHA" casa_monitor -e 'select 1'
 
 echo "E2E: rodando os testes (a API sobe inteira, ligada aos bancos de teste)..."
 docker run --rm --network "$REDE" -v casa-m2:/root/.m2 -v "$RAIZ:/app" -w /app \
   -e E2E=1 \
-  -e SPRING_DATASOURCE_URL="jdbc:postgresql://$PG:5432/casa" -e SPRING_DATASOURCE_USERNAME=postgres \
+  -e SPRING_DATASOURCE_URL="jdbc:postgresql://$PG:5432/casa" -e SPRING_DATASOURCE_USERNAME=casa_app \
   -e SPRING_DATASOURCE_PASSWORD="$SENHA" \
   -e MONITOR_DATASOURCE_URL="jdbc:mariadb://$MDB:3306/casa_monitor" -e MONITOR_DATASOURCE_USERNAME=casa_monitor \
   -e MONITOR_DATASOURCE_PASSWORD="$SENHA" \

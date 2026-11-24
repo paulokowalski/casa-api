@@ -99,6 +99,7 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V13__compras_sem_nome_do_cartao.sql` | Apaga `compra.nm_cartao`, sem volta: o nome do cartão vem sempre de `tipo_lancamento`. **Depois** desse deploy, e só quando a seção "Antes da V13" do `banco/diagnostico.sql` der 0 (uma compra com nome diferente está no cartão errado ou é de um cartão renomeado; corrija o cartão pela tela ou aceite o nome do cadastro) |
 | `V14__categoria_em_uso_nao_sai.sql` | Regra única para categorias: não dá para excluir uma categoria usada por compra ou conta (`ON DELETE RESTRICT` nas duas chaves). Antes, excluir apagava a categoria das compras sem aviso e era recusado nas contas. Roda a qualquer momento, sem deploy (a API não exclui categorias) |
 | `V15__carro_mes_e_valor.sql` | `monitoramento.carro` ganha `mes` (date), calculada pelo banco a partir de `mes_referencia` (`MM/AAAA`), e `valor` passa a `numeric(12,2)`. O n8n continua gravando igual. **Antes** do deploy que ordena o histórico por `mes` |
+| `V16__usuario_da_api.sql` | Cria o usuário `casa_app` da API (só leitura e gravação nas tabelas que ela usa, com limites de tempo) e as permissões das tabelas futuras. **Antes** do deploy que passa a API para `casa_app`; a senha é definida à parte (seção "Usuário da API e operação do banco") |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -129,6 +130,22 @@ a estrutura para garantir que ele continua funcionando.
 ```bash
 docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa < banco/diagnostico.sql
 ```
+
+### Usuário da API e operação do banco
+
+A API conecta como `casa_app` (V16), não como `postgres`: só lê e grava as tabelas de `public`, `crescimento` e
+`passagens`, só lê `monitoramento`, não altera a estrutura e não vê o schema `arquivo`. As migrations continuam
+rodando como `postgres`; as tabelas criadas por elas já recebem as permissões do `casa_app` (`ALTER DEFAULT
+PRIVILEGES`). O usuário tem limites próprios: 30 s por consulta, 10 s esperando lock e 60 s parado dentro de uma
+transação. A senha não fica no repositório: é definida no banco e vai em `SPRING_DATASOURCE_PASSWORD` no `.env`.
+
+Configuração do servidor PostgreSQL (não é migration do banco `casa`; roda uma vez):
+- `banco/operacao-1-configuracao.sql`: registra no log as consultas acima de 500 ms e as esperas por lock, **sem os
+  valores** das consultas (`log_parameter_max_length = 0`), e prepara o `pg_stat_statements`. Exige reiniciar o
+  PostgreSQL (alguns segundos fora do ar).
+- `banco/operacao-2-estatisticas.sql`: depois de reiniciar, cria a extensão `pg_stat_statements`.
+- `banco/consultas-mais-lentas.sql`: só leitura; as 15 consultas que mais tempo gastaram, com o texto normalizado
+  (os valores viram `$1`, `$2`...).
 
 ## Monitoramento do servidor
 
@@ -444,6 +461,18 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 4.1.0 — 24/11/2026
+
+Esta versão cria um usuário próprio do banco para a API, com permissões mínimas e tempos-limite, e traz scripts para registrar e analisar as consultas lentas do PostgreSQL.
+
+- Migração V16__usuario_da_api: cria o papel casa_app (LOGIN) com statement_timeout de 30s, lock_timeout de 10s e idle_in_transaction_session_timeout de 60s.
+- Permissões do casa_app: leitura e escrita nas tabelas e sequências dos schemas public, crescimento e passagens, e só leitura em monitoramento. Os privilégios padrão já valem para tabelas novas criadas pelo postgres.
+- Para a API usar o casa_app no servidor, falta definir a senha do papel (ALTER ROLE casa_app PASSWORD …) e trocar SPRING_DATASOURCE_USERNAME para casa_app. Enquanto isso não for feito, a API continua com o usuário atual.
+- Novo script banco/operacao-1-configuracao.sql: registra no log as consultas com mais de 500ms (sem os parâmetros) e as esperas por lock, e inclui pg_stat_statements em shared_preload_libraries. O PostgreSQL precisa ser reiniciado depois.
+- Novo script banco/operacao-2-estatisticas.sql: cria a extensão pg_stat_statements. Deve ser rodado depois do reinício.
+- Nova consulta só de leitura banco/consultas-mais-lentas.sql: lista as 15 consultas que mais tomam tempo, com número de chamadas, média e taxa de acerto de cache.
+- Testes e2e: a API agora sobe com o usuário casa_app, para confirmar que as permissões dele bastam. A estrutura de teste foi atualizada com a V16.
 
 ### 4.0.2 — 24/11/2026
 
