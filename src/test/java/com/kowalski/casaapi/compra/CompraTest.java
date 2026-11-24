@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.compra;
 
+import com.kowalski.casaapi.support.Login;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -15,7 +16,7 @@ class CompraTest {
     private final TipoLancamento nubank = TipoLancamento.builder().id(UUID.randomUUID()).nome("NUBANK").build();
 
     private DadosDaCompra dados(String valor, int parcelas) {
-        return new DadosDaCompra("tv", new BigDecimal(valor), LocalDate.of(2026, 1, 31), parcelas, "ana", nubank, null);
+        return new DadosDaCompra("tv", new BigDecimal(valor), LocalDate.of(2026, 1, 31), parcelas, Login.pessoa(Login.ANA_ID, "ana"), nubank, null);
     }
 
     @Test
@@ -23,7 +24,7 @@ class CompraTest {
         Compra compra = Compra.nova(dados("100.00", 3), AGORA);
 
         assertThat(compra.getNomeProduto()).isEqualTo("TV");
-        assertThat(compra.getNomePessoaCompra()).isEqualTo("ANA");
+        assertThat(compra.nomeDaPessoa()).isEqualTo("ANA");
         assertThat(compra.getNomeCartao()).isEqualTo("NUBANK");
         assertThat(compra.getDataCadastro()).isEqualTo(AGORA);
         assertThat(compra.getParcelas()).extracting(CompraParcela::getDataParcela).containsExactly(

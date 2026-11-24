@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import static com.kowalski.casaapi.comum.RelogioConfig.FUSO_DA_CASA;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -84,7 +85,7 @@ class CasaApiE2ETest {
         assertThat(familia.getStatusCode().is2xxSuccessful()).isTrue();
         String familiaId = (String) familia.getBody().get("id");
 
-        LocalDate nascimento = LocalDate.now().minusDays(60);
+        LocalDate nascimento = LocalDate.now(FUSO_DA_CASA).minusDays(60);
         var crianca = http.post().uri("/v1/crescimento/familias/{f}/criancas", familiaId).header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("nome", "Bebê E2E", "nascimento", nascimento.toString(), "sexo", "F"))
@@ -94,7 +95,7 @@ class CasaApiE2ETest {
 
         var medicao = http.post().uri("/v1/crescimento/criancas/{c}/medicoes", criancaId).header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("data", LocalDate.now().toString(), "pesoKg", 5.1, "comprimentoCm", 57.0))
+                .body(Map.of("data", LocalDate.now(FUSO_DA_CASA).toString(), "pesoKg", 5.1, "comprimentoCm", 57.0))
                 .retrieve().toEntity(MAPA);
         assertThat(medicao.getStatusCode().is2xxSuccessful()).isTrue();
 
@@ -283,6 +284,80 @@ class CasaApiE2ETest {
     }
 
     // ---- apoio ----
+
+    @Test
+    void compraParaNomeSemPessoaCadastradaDa400ENaoGrava() {
+        String token = token();
+
+        var r = http.post().uri("/v1/compras").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(compra("NINGUEM E2E")).retrieve().toEntity(MAPA);
+
+        assertThat(r.getStatusCode().value()).isEqualTo(400);
+        assertThat(r.getBody()).containsEntry("mensagem", "Não existe pessoa cadastrada com o nome NINGUEM E2E");
+        assertThat(http.get().uri("/v1/compras?pessoa=NINGUEM E2E").header("Authorization", token).retrieve().body(LISTA))
+                .isEmpty();
+    }
+
+    @Test
+    void pessoaComComprasNaoPodeSerExcluidaAteAsComprasSairem() {
+        String token = token();
+        String nome = "CARLA E2E " + System.nanoTime();
+        Number carla = (Number) criarPessoa(token, nome, "carla-" + System.nanoTime() + "@e2e.local").get("id");
+        var criada = http.post().uri("/v1/compras").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(compra(nome)).retrieve().toBodilessEntity();
+        assertThat(criada.getStatusCode().is2xxSuccessful()).isTrue();
+
+        var recusada = http.delete().uri("/v1/pessoas/" + carla).header("Authorization", token).retrieve().toEntity(MAPA);
+
+        assertThat(recusada.getStatusCode().value()).isEqualTo(409);
+        assertThat(recusada.getBody()).containsEntry("mensagem", "Não foi possível concluir: o registro está ligado a outros dados.");
+        assertThat(http.get().uri("/v1/pessoas").header("Authorization", token).retrieve().body(LISTA))
+                .anySatisfy(p -> assertThat(((Number) p.get("id")).longValue()).isEqualTo(carla.longValue()));
+
+        var compras = http.get().uri("/v1/compras?pessoa=" + nome).header("Authorization", token).retrieve().body(LISTA);
+        assertThat(compras).hasSize(1);
+        assertThat(http.delete().uri("/v1/compras/" + compras.getFirst().get("id")).header("Authorization", token)
+                .retrieve().toBodilessEntity().getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(http.delete().uri("/v1/pessoas/" + carla).header("Authorization", token).retrieve()
+                .toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+    }
+
+    @Test
+    void renomearPessoaLevaAsComprasJuntoEElasContinuamEditaveis() {
+        String token = token();
+        String antigo = "DANI E2E " + System.nanoTime();
+        String novo = "DANIELA E2E " + System.nanoTime();
+        String email = "dani-" + System.nanoTime() + "@e2e.local";
+        Number dani = (Number) criarPessoa(token, antigo, email).get("id");
+        assertThat(http.post().uri("/v1/compras").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(compra(antigo)).retrieve().toBodilessEntity().getStatusCode().is2xxSuccessful()).isTrue();
+
+        var renomeada = http.put().uri("/v1/pessoas/" + dani).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("nome", novo, "email", email))
+                .retrieve().toBodilessEntity();
+        assertThat(renomeada.getStatusCode().is2xxSuccessful()).isTrue();
+
+        var compras = http.get().uri("/v1/compras?pessoa=" + novo).header("Authorization", token).retrieve().body(LISTA);
+        assertThat(compras).singleElement().satisfies(c -> assertThat(c.get("nomePessoaCompra")).isEqualTo(novo));
+        assertThat(http.get().uri("/v1/compras?pessoa=" + antigo).header("Authorization", token).retrieve().body(LISTA))
+                .isEmpty();
+        Object id = compras.getFirst().get("id");
+        var editada = http.put().uri("/v1/compras/" + id).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(compra(novo)).retrieve().toBodilessEntity();
+        assertThat(editada.getStatusCode().is2xxSuccessful()).isTrue();
+
+        assertThat(http.delete().uri("/v1/compras/" + id).header("Authorization", token).retrieve()
+                .toBodilessEntity().getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(http.delete().uri("/v1/pessoas/" + dani).header("Authorization", token).retrieve()
+                .toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+    }
+
+    private static Map<String, Object> compra(String pessoa) {
+        return Map.of("nomeProduto", "COMPRA E2E", "valorProduto", 90.00, "dataCompra", "2033-05-10",
+                "numeroParcelas", 3, "nomePessoaCompra", pessoa,
+                "tipoLancamentoId", "00000000-0000-0000-0000-0000000000c1",
+                "categoriaId", "00000000-0000-0000-0000-0000000000a1");
+    }
 
     private static Map<String, Object> rota(String nome) {
         return Map.of("nome", nome, "origem", List.of("FOR"), "destino", List.of("GRU"),

@@ -31,7 +31,7 @@ public record CompraResponse(
                 cp.isUltimaParcela() ? "SIM" : "NÃO",
                 cp.getCompra().getNomeCartao().toUpperCase(),
                 cp.valorQueFalta(),
-                cp.getCompra().getNomePessoaCompra().toUpperCase(),
+                cp.getCompra().nomeDaPessoa(),
                 cp.getCompra().getValorProduto().doubleValue(),
                 Objects.nonNull(cp.getCompra().getCategoria()) ? cp.getCompra().getCategoria().getNome().toUpperCase() : "");
     }

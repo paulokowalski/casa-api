@@ -62,6 +62,13 @@ public class PessoaService {
     }
 
     @Transactional(readOnly = true)
+    public Pessoa buscarPorNome(String nome) {
+        Assert.hasText(nome, "O nome da pessoa é obrigatório");
+        return pessoaRepository.findByNomeIgnoreCase(nome.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Não existe pessoa cadastrada com o nome " + nome.trim()));
+    }
+
+    @Transactional(readOnly = true)
     public Pessoa referencia(Long id) {
         return pessoaRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Pessoa " + id + " não encontrada"));
     }
@@ -104,6 +111,11 @@ public class PessoaService {
                 .filter(outra -> !outra.getId().equals(pessoa.getId()))
                 .ifPresent(_ -> {
                     throw new IllegalArgumentException("Já existe uma pessoa com este e-mail.");
+                });
+        pessoaRepository.findByNomeIgnoreCase(in.nome().trim())
+                .filter(outra -> !outra.getId().equals(pessoa.getId()))
+                .ifPresent(_ -> {
+                    throw new IllegalArgumentException("Já existe uma pessoa com este nome.");
                 });
         pessoa.alterarDados(in.nome(), in.email());
         if (in.papel() != null) pessoa.setPapel(in.papel());

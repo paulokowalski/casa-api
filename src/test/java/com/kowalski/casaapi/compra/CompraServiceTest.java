@@ -4,6 +4,8 @@ import com.kowalski.casaapi.comum.RelogioConfig;
 import java.time.Clock;
 import java.time.Instant;
 
+import com.kowalski.casaapi.pessoa.Pessoa;
+import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.categoria.Categorias;
@@ -27,6 +29,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class CompraServiceTest {
@@ -37,8 +40,9 @@ class CompraServiceTest {
     private final TipoLancamentoRepository tipoRepository = mock(TipoLancamentoRepository.class);
     private final CategoriaService categoriaService = mock(CategoriaService.class);
     private final CompraParcelaRepository parcelaRepository = mock(CompraParcelaRepository.class);
+    private final PessoaService pessoaService = mock(PessoaService.class);
     private final CompraService service = new CompraService(
-            compraRepository, tipoRepository, categoriaService, parcelaRepository, new UsuarioLogado(), RELOGIO);
+            compraRepository, tipoRepository, categoriaService, parcelaRepository, pessoaService, new UsuarioLogado(), RELOGIO);
 
     private final UUID tipoId = UUID.randomUUID();
     private final UUID categoriaId = UUID.randomUUID();
@@ -47,11 +51,20 @@ class CompraServiceTest {
     void setUp() {
         when(tipoRepository.findById(tipoId)).thenReturn(Optional.of(TipoLancamento.builder().id(tipoId).nome("NUBANK").build()));
         when(categoriaService.buscar(categoriaId)).thenReturn(Categorias.builder().id(categoriaId).nome("MERCADO").build());
+        when(pessoaService.buscarPorNome(anyString())).thenAnswer(i -> pessoaDe(i.getArgument(0)));
     }
 
     @AfterEach
     void tearDown() {
         Login.sair();
+    }
+
+    private static Pessoa pessoaDe(String nome) {
+        return switch (nome.trim().toUpperCase()) {
+            case "ANA" -> Login.pessoa(Login.ANA_ID, "ANA");
+            case "BRUNO" -> Login.pessoa(Login.BRUNO_ID, "BRUNO");
+            default -> throw new IllegalArgumentException("Não existe pessoa cadastrada com o nome " + nome.trim());
+        };
     }
 
     private CompraInput input(String pessoas, String valor, int parcelas) {
@@ -72,7 +85,7 @@ class CompraServiceTest {
 
         Compra compra = salvas(1).get(0);
         assertThat(compra.getNomeProduto()).isEqualTo("GELADEIRA");
-        assertThat(compra.getNomePessoaCompra()).isEqualTo("ANA");
+        assertThat(compra.nomeDaPessoa()).isEqualTo("ANA");
         assertThat(compra.getNomeCartao()).isEqualTo("NUBANK");
         assertThat(compra.getValorProduto()).isEqualByComparingTo("100.00");
         assertThat(compra.getParcelas()).extracting(CompraParcela::getNumeroParcela).containsExactly(1, 2, 3);
@@ -87,7 +100,7 @@ class CompraServiceTest {
         service.salvar(input("Ana, Bruno ,", "100.00", 2));
 
         List<Compra> compras = salvas(2);
-        assertThat(compras).extracting(Compra::getNomePessoaCompra).containsExactly("ANA", "BRUNO");
+        assertThat(compras).extracting(Compra::nomeDaPessoa).containsExactly("ANA", "BRUNO");
         assertThat(compras).allSatisfy(c -> {
             assertThat(c.getValorProduto()).isEqualByComparingTo("50.00");
             assertThat(c.getParcelas()).hasSize(2)
@@ -104,6 +117,15 @@ class CompraServiceTest {
     }
 
     @Test
+    void compraParaNomeSemPessoaCadastradaNaoESalva() {
+        Login.comoAdmin();
+        assertThatThrownBy(() -> service.salvar(input("Ana, Zeca", "100.00", 1)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Não existe pessoa cadastrada com o nome Zeca");
+        verify(compraRepository, never()).save(any());
+    }
+
+    @Test
     void salvarValidaOsCamposObrigatorios() {
         Login.comoAna();
         assertThatThrownBy(() -> service.salvar(input("Ana", "10", 0))).isInstanceOf(IllegalArgumentException.class);
@@ -114,7 +136,7 @@ class CompraServiceTest {
     }
 
     private Compra compraDe(String pessoa) {
-        Compra c = Compra.builder().id(UUID.randomUUID()).nomePessoaCompra(pessoa).numeroParcelas(1)
+        Compra c = Compra.builder().id(UUID.randomUUID()).pessoa(pessoaDe(pessoa)).numeroParcelas(1)
                 .parcelas(new ArrayList<>()).build();
         when(compraRepository.findById(c.getId())).thenReturn(Optional.of(c));
         return c;
@@ -127,7 +149,7 @@ class CompraServiceTest {
 
         service.editar(c.getId(), input("Ana", "90.00", 3));
 
-        verify(parcelaRepository).deleteByCompraId(c.getId());
+        verify(parcelaRepository).apagarParcelasDaCompra(c.getId());
         assertThat(c.getParcelas()).hasSize(3);
         assertThat(c.getValorProduto()).isEqualByComparingTo("90.00");
         verify(compraRepository).save(c);
@@ -160,7 +182,7 @@ class CompraServiceTest {
 
         service.editar(c.getId(), input("Ana", "10", 1));
 
-        assertThat(c.getNomePessoaCompra()).isEqualTo("ANA");
+        assertThat(c.nomeDaPessoa()).isEqualTo("ANA");
     }
 
     @Test

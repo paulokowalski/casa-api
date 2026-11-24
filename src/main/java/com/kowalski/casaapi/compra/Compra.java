@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.compra;
 
 import com.kowalski.casaapi.categoria.Categorias;
+import com.kowalski.casaapi.pessoa.Pessoa;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,8 +39,10 @@ public class Compra {
     @Column(name = "nr_parcelas")
     private Integer numeroParcelas;
 
-    @Column(name = "nm_pessoa_compra")
-    private String nomePessoaCompra;
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "pessoa_id", nullable = false)
+    private Pessoa pessoa;
 
     @Column(name = "nm_cartao")
     private String nomeCartao;
@@ -61,6 +64,10 @@ public class Compra {
     @JoinColumn(name = "categoria_id")
     private Categorias categoria;
 
+    public String nomeDaPessoa() {
+        return pessoa.getNome().toUpperCase();
+    }
+
     public static Compra nova(DadosDaCompra dados, LocalDateTime agora) {
         Compra compra = new Compra();
         compra.dataCadastro = agora;
@@ -74,7 +81,7 @@ public class Compra {
         this.nomeCartao = dados.cartao().getNome();
         this.categoria = dados.categoria();
         this.valorProduto = dados.valorProduto();
-        this.nomePessoaCompra = dados.nomePessoa().toUpperCase();
+        this.pessoa = dados.pessoa();
         this.dataCompra = dados.dataCompra();
         this.numeroParcelas = dados.numeroParcelas();
         gerarParcelas();

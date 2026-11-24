@@ -19,15 +19,6 @@ SELECT verificacao, quantidade FROM (
              WHERE upper(trim(c.nm_cartao)) <> upper(trim(t.nome)))
     UNION ALL SELECT 6, 'nomes de tipo de lançamento repetidos (grupos)',
            (SELECT count(*) FROM (SELECT 1 FROM tipo_lancamento GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
-    UNION ALL SELECT 7, 'compras cujo nome não bate com nenhuma pessoa',
-           (SELECT count(*) FROM compra c
-             WHERE NOT EXISTS (SELECT 1 FROM pessoa p WHERE upper(trim(p.nome)) = upper(trim(c.nm_pessoa_compra))))
-    UNION ALL SELECT 8, 'nomes distintos de compra sem pessoa cadastrada',
-           (SELECT count(DISTINCT upper(trim(c.nm_pessoa_compra))) FROM compra c
-             WHERE NOT EXISTS (SELECT 1 FROM pessoa p WHERE upper(trim(p.nome)) = upper(trim(c.nm_pessoa_compra))))
-    UNION ALL SELECT 9, 'compras cujo nome bate com mais de uma pessoa',
-           (SELECT count(*) FROM compra c
-             WHERE (SELECT count(*) FROM pessoa p WHERE upper(trim(p.nome)) = upper(trim(c.nm_pessoa_compra))) > 1)
     UNION ALL SELECT 10, 'nomes de pessoa repetidos (grupos)',
            (SELECT count(*) FROM (SELECT 1 FROM pessoa GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
     UNION ALL SELECT 11, 'compras com nr_parcelas menor que 1',

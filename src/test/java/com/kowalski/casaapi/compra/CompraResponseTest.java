@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.compra;
 
+import com.kowalski.casaapi.support.Login;
 import com.kowalski.casaapi.categoria.Categorias;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +15,7 @@ class CompraResponseTest {
 
     private static CompraParcela parcela(String produto, String cartao, int numero, int total, String valor, Categorias cat) {
         Compra compra = Compra.builder().id(UUID.randomUUID()).nomeProduto(produto).nomeCartao(cartao)
-                .numeroParcelas(total).nomePessoaCompra("ana").valorProduto(new BigDecimal(valor).multiply(BigDecimal.valueOf(total)))
+                .numeroParcelas(total).pessoa(Login.pessoa(Login.ANA_ID, "ana")).valorProduto(new BigDecimal(valor).multiply(BigDecimal.valueOf(total)))
                 .dataCompra(LocalDate.of(2026, 1, 10)).categoria(cat).build();
         return CompraParcela.builder().compra(compra).numeroParcela(numero).valorParcela(new BigDecimal(valor))
                 .dataParcela(LocalDate.of(2026, 2, 10)).build();

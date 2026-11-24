@@ -1,6 +1,7 @@
 package com.kowalski.casaapi.compra;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -17,22 +18,26 @@ public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UU
     // uma consulta extra por compra ao montar a resposta.
     @Query( " SELECT cp FROM CompraParcela cp " +
             " JOIN FETCH cp.compra c " +
+            " JOIN FETCH c.pessoa p " +
             " LEFT JOIN FETCH c.categoria " +
             " WHERE cp.dataParcela >= :inicio AND cp.dataParcela < :fim " +
-            " AND upper(c.nomePessoaCompra) = upper(:pessoa) " +
+            " AND upper(p.nome) = upper(:pessoa) " +
             " ORDER BY c.dataCadastro DESC "
     )
     List<CompraParcela> buscarPorPeriodo(LocalDate inicio, LocalDate fim, String pessoa);
 
     @Query( " SELECT cp FROM CompraParcela cp " +
             " JOIN FETCH cp.compra c " +
+            " JOIN FETCH c.pessoa p " +
             " LEFT JOIN FETCH c.categoria " +
             " WHERE cp.dataParcela >= :inicio AND cp.dataParcela < :fim " +
-            " AND upper(c.nomePessoaCompra) = upper(:pessoa) " +
+            " AND upper(p.nome) = upper(:pessoa) " +
             " AND upper(c.nomeCartao) like upper(:cartao) " +
             " ORDER BY c.dataCadastro DESC "
     )
     List<CompraParcela> buscarPorPeriodoECartao(LocalDate inicio, LocalDate fim, String pessoa, String cartao);
 
-    void deleteByCompraId(UUID compraId);
+    @Modifying(flushAutomatically = true)
+    @Query("delete from CompraParcela cp where cp.compra.id = :compraId")
+    void apagarParcelasDaCompra(UUID compraId);
 }

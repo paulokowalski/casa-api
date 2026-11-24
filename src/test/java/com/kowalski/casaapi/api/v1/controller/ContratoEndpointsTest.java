@@ -5,6 +5,7 @@ import com.kowalski.casaapi.auth.AuthService;
 import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.comum.RecursoNaoEncontradoException;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
+import com.kowalski.casaapi.comum.RelogioConfig;
 import com.kowalski.casaapi.carro.CarroResponse;
 import com.kowalski.casaapi.carro.CarroService;
 import com.kowalski.casaapi.compra.*;
@@ -441,7 +442,7 @@ class ContratoEndpointsTest {
             when(servidorService.dia(any())).thenAnswer(i -> new ServidorDiaResponse(i.getArgument(0), resumo, List.of(), List.of(), List.of(), List.of(), List.of()));
 
             mvc.perform(get("/v1/servidor/dia")).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data").value(LocalDate.now().toString()))
+                    .andExpect(jsonPath("$.data").value(LocalDate.now(RelogioConfig.FUSO_DA_CASA).toString()))
                     .andExpect(jsonPath("$.resumo.cpu.max").value(3.0))
                     .andExpect(jsonPath("$.resumo.discoTemperaturaMax").value(58.0));
             mvc.perform(get("/v1/servidor/dia").param("data", "2026-11-01")).andExpect(status().isOk())
@@ -456,7 +457,7 @@ class ContratoEndpointsTest {
             mvc.perform(get("/v1/servidor/dias")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].data").value("2026-11-15"))
                     .andExpect(jsonPath("$[0].resumo.amostras").value(1440));
-            verify(servidorService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+            verify(servidorService).dias(LocalDate.now(RelogioConfig.FUSO_DA_CASA).minusDays(29), LocalDate.now(RelogioConfig.FUSO_DA_CASA));
 
             mvc.perform(get("/v1/servidor/dias").param("de", "2026-11-01").param("ate", "2026-11-10"));
             verify(servidorService).dias(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
@@ -566,7 +567,7 @@ class ContratoEndpointsTest {
                     .andExpect(jsonPath("$[0].tipo").value("backup"))
                     .andExpect(jsonPath("$[0].nivel").value("sucesso"))
                     .andExpect(jsonPath("$[0].mensagem").value("ok"));
-            verify(servidorService).eventos(LocalDate.now().minusDays(6), LocalDate.now());
+            verify(servidorService).eventos(LocalDate.now(RelogioConfig.FUSO_DA_CASA).minusDays(6), LocalDate.now(RelogioConfig.FUSO_DA_CASA));
 
             mvc.perform(get("/v1/servidor/eventos").param("de", "2026-11-01").param("ate", "2026-11-10"));
             verify(servidorService).eventos(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
@@ -586,7 +587,7 @@ class ContratoEndpointsTest {
         @Test
         void diaUsaHojeComoPadrao() throws Exception {
             mvc.perform(get("/v1/servidor/internet/dia")).andExpect(status().isOk());
-            verify(internetService).dia(LocalDate.now());
+            verify(internetService).dia(LocalDate.now(RelogioConfig.FUSO_DA_CASA));
             mvc.perform(get("/v1/servidor/internet/dia").param("data", "2026-11-01")).andExpect(status().isOk());
             verify(internetService).dia(LocalDate.of(2026, 11, 1));
         }
@@ -594,9 +595,9 @@ class ContratoEndpointsTest {
         @Test
         void diasEVelocidadeUsamOsUltimos30Dias() throws Exception {
             mvc.perform(get("/v1/servidor/internet/dias")).andExpect(status().isOk());
-            verify(internetService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+            verify(internetService).dias(LocalDate.now(RelogioConfig.FUSO_DA_CASA).minusDays(29), LocalDate.now(RelogioConfig.FUSO_DA_CASA));
             mvc.perform(get("/v1/servidor/internet/velocidade")).andExpect(status().isOk());
-            verify(internetService).velocidade(LocalDate.now().minusDays(29), LocalDate.now());
+            verify(internetService).velocidade(LocalDate.now(RelogioConfig.FUSO_DA_CASA).minusDays(29), LocalDate.now(RelogioConfig.FUSO_DA_CASA));
 
             mvc.perform(get("/v1/servidor/internet/velocidade").param("de", "2026-11-01").param("ate", "2026-11-10"));
             verify(internetService).velocidade(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 10));
@@ -614,7 +615,7 @@ class ContratoEndpointsTest {
         @Test
         void diasUsaOsUltimos30Dias() throws Exception {
             mvc.perform(get("/v1/servidor/ventilacao/dias")).andExpect(status().isOk());
-            verify(ventilacaoService).dias(LocalDate.now().minusDays(29), LocalDate.now());
+            verify(ventilacaoService).dias(LocalDate.now(RelogioConfig.FUSO_DA_CASA).minusDays(29), LocalDate.now(RelogioConfig.FUSO_DA_CASA));
         }
     }
 
