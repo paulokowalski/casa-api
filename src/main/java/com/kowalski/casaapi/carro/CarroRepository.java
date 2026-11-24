@@ -13,7 +13,7 @@ public interface CarroRepository extends JpaRepository<Carro, UUID> {
                 carro.id, carro.codigoVeiculo, carro.mesReferencia, carro.marca, carro.modelo, carro.ano, carro.valor)
             from Carro carro
             where carro.codigoVeiculo = :codigoVeiculo
-            order by substring(carro.mesReferencia, 4, 4), substring(carro.mesReferencia, 1, 2)
+            order by carro.mes nulls last, carro.mesReferencia
             """)
     List<CarroResponse> historicoDoVeiculo(String codigoVeiculo);
 }

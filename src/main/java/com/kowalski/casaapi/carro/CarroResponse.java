@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.carro;
 
+import java.math.BigDecimal;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
@@ -12,5 +13,5 @@ public record CarroResponse(
         @Schema(description = "Marca") String marca,
         @Schema(description = "Modelo") String modelo,
         @Schema(description = "Ano/modelo") String ano,
-        @Schema(description = "Valor na tabela (R$)") Double valor) {
+        @Schema(description = "Valor na tabela (R$)") BigDecimal valor) {
 }

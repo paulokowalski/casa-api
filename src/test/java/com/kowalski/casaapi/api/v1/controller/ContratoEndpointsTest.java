@@ -656,7 +656,7 @@ class ContratoEndpointsTest {
         void carroPorCodigoFipe() throws Exception {
             UUID id = UUID.randomUUID();
             when(carroService.historico("001")).thenReturn(List.of(
-                    new CarroResponse(id, "001", "01/2026", "VW", "Gol", "2020", 55000.5)));
+                    new CarroResponse(id, "001", "01/2026", "VW", "Gol", "2020", new BigDecimal("55000.50"))));
 
             mvc.perform(get("/v1/carros/001")).andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].id").value(id.toString()))
