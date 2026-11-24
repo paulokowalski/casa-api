@@ -1,5 +1,6 @@
 package com.kowalski.casaapi.compra;
 
+import com.kowalski.casaapi.pessoa.PessoaService;
 import com.kowalski.casaapi.pessoa.UsuarioLogado;
 import com.kowalski.casaapi.categoria.CategoriaService;
 import com.kowalski.casaapi.comum.Competencias;
@@ -27,6 +28,7 @@ public class CompraService {
     private final TipoLancamentoRepository tipoLancamentoRepository;
     private final CategoriaService categoriaService;
     private final CompraParcelaRepository compraParcelaRepository;
+    private final PessoaService pessoaService;
     private final UsuarioLogado usuarioLogado;
     private final Clock relogio;
 
@@ -66,8 +68,8 @@ public class CompraService {
     @Transactional
     public void salvar(CompraInput input) {
         validar(input);
-        input.dividirEntrePessoas().forEach(daPessoa ->
-                compraRepository.save(Compra.nova(dadosDe(daPessoa), LocalDateTime.now(relogio))));
+        List<DadosDaCompra> compras = input.dividirEntrePessoas().stream().map(this::dadosDe).toList();
+        compras.forEach(dados -> compraRepository.save(Compra.nova(dados, LocalDateTime.now(relogio))));
     }
 
     @Transactional
@@ -77,7 +79,7 @@ public class CompraService {
         usuarioLogado.nomePessoa(input.nomePessoaCompra());
         DadosDaCompra dados = dadosDe(input);
 
-        compraParcelaRepository.deleteByCompraId(compra.getId());
+        compraParcelaRepository.apagarParcelasDaCompra(compra.getId());
         compra.alterar(dados);
         compraRepository.save(compra);
     }
@@ -94,7 +96,7 @@ public class CompraService {
     }
 
     private DadosDaCompra dadosDe(CompraInput input) {
-        return input.paraDados(buscarCartao(input.tipoLancamentoId()), categoriaService.buscar(input.categoriaId()));
+        return input.paraDados(pessoaService.buscarPorNome(input.nomePessoaCompra()), buscarCartao(input.tipoLancamentoId()), categoriaService.buscar(input.categoriaId()));
     }
 
     private TipoLancamento buscarCartao(UUID id) {
@@ -104,7 +106,7 @@ public class CompraService {
 
     private Compra buscarDoUsuario(UUID id) {
         return compraRepository.findById(id)
-                .filter(c -> usuarioLogado.podeAcessarNome(c.getNomePessoaCompra()))
+                .filter(c -> usuarioLogado.podeAcessar(c.getPessoa().getId()))
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Compra não encontrada"));
     }
 

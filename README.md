@@ -89,6 +89,9 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V3__login.sql` | Senha, papel e ativo em `pessoa` (login por pessoa) |
 | `V4__indices_compras.sql` | Índices de `compra_parcela` (compra e data) e de `compra` (pessoa) |
 | `V5__remove_funcao_remove_zeros_esquerda.sql` | Remove a função SQL que os filtros antigos usavam |
+| `V6__compras_consistencia.sql` | Compras consistentes: cartão com chave para `tipo_lancamento` (recuperado pelo nome quando faltava) e obrigatório nas compras novas; nome da pessoa único; `pessoa_id` obrigatório, preenchido pelo nome (um gatilho cobre a versão antiga da API até o deploy); parcela única por número, a partir de 1, apagada junto com a compra. **Antes** do deploy que passa a usar `pessoa_id` |
+| `V7__compras_cartao_validado.sql` | Confirma o cartão obrigatório nas compras antigas. Só depois de escolher, pela tela de edição, o cartão das compras que ficaram sem cartão após a V6; antes disso falha sem mudar nada |
+| `V8__compras_sem_nome_da_pessoa.sql` | Apaga `compra.nm_pessoa_compra`, o gatilho que a preenchia e o índice dela: a compra guarda só `pessoa_id` e o nome vem do cadastro da pessoa. **Depois** do deploy que passa a usar `pessoa_id` |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -106,6 +109,18 @@ docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa -v ON_ERROR_
 
 Os scripts usam `IF EXISTS` / `IF NOT EXISTS` e podem ser reaplicados. Aplique cada um **depois** do
 deploy da versão que deixou de depender do que ele remove.
+
+### Diagnóstico do banco
+
+`banco/diagnostico.sql` roda numa transação só de leitura e desfeita no fim (`ROLLBACK`). Mostra só quantidades e
+estatísticas, nunca linhas com dados: inconsistências (cartão, pessoa e parcelas das compras, competências fora do
+dia 1, pagamentos sem data, família das fotos e exames), linhas das tabelas sem uso, tamanho e forma de leitura das
+tabelas, uso dos índices e a configuração do PostgreSQL. É a base da refatoração do banco. O e2e roda o script contra
+a estrutura para garantir que ele continua funcionando.
+
+```bash
+docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa < banco/diagnostico.sql
+```
 
 ## Monitoramento do servidor
 
@@ -421,6 +436,38 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 3.0.1 — 24/11/2026
+
+Corrige a migração V6 das compras para que ela não falhe em bancos que ainda têm compras antigas sem cartão.
+
+- Corrigida a migração V6__compras_consistencia.sql: a restrição compra_cartao_id_not_null (NOT NULL NOT VALID em compra.cartao_id) agora é criada no fim do script, depois de todos os UPDATE na tabela compra. Antes, os UPDATE seguintes podiam falhar nas linhas antigas que ainda tinham cartao_id nulo.
+- Atualizada a estrutura do banco de testes e2e (estrutura.sql) com a mesma ordem da V6.
+- Novo teste em MigrationsTest: falha quando um script tem UPDATE em uma tabela depois de um NOT NULL NOT VALID nessa mesma tabela.
+- No servidor: a V6 precisa ser aplicada com a versão corrigida se ainda não foi. Se a versão anterior já foi aplicada, vale o usuário conferir se o controle de migrações reclama da alteração do arquivo.
+
+### 3.0.0 — 23/11/2026
+
+Agora cada compra fica ligada a uma pessoa cadastrada, não mais só ao nome digitado. O banco passa a garantir a consistência de compras, parcelas e cartões. Esta versão traz migrações destrutivas que precisam ser aplicadas à mão no servidor.
+
+- Compras ligadas à pessoa pela nova coluna pessoa_id (chave estrangeira para pessoa), no lugar do nome digitado. O campo nomePessoaCompra continua igual na API.
+- POST e PUT /v1/compras agora recusam, com erro 400, compra para nome sem pessoa cadastrada ("Não existe pessoa cadastrada com o nome …"). Quando a compra é dividida entre várias pessoas, nenhuma parte é gravada se uma delas não existir.
+- Nome de pessoa agora é único, sem diferenciar maiúsculas (índice uq_pessoa_nome). O cadastro e a edição de pessoas recusam nome repetido. Ao renomear uma pessoa, as compras dela acompanham o novo nome.
+- Excluir uma pessoa que ainda tem compras agora devolve 409 com mensagem genérica, sem detalhes do banco. Esse tratamento vale para qualquer violação de integridade.
+- Migração V6__compras_consistencia.sql: cria e preenche pessoa_id e cartao_id; cria chaves estrangeiras, parcela única por número, exclusão de parcelas em cascata e checagens de número de parcelas >= 1. Falha se houver pessoas com o mesmo nome.
+- Migração V7__compras_cartao_validado.sql: valida que toda compra tem cartão (cartao_id).
+- Migração V8__compras_sem_nome_da_pessoa.sql (destrutiva): remove a coluna nm_pessoa_compra, o índice idx_compra_pessoa e o gatilho temporário. As migrações são aplicadas à mão, nesta ordem, e a V6 precisa rodar antes da implantação desta versão.
+- Removidas do banco/diagnostico.sql as checagens do nome da pessoa nas compras. Testes ajustados ao fuso da casa e novos testes de unidade e e2e para compras, pessoas e erro 409.
+
+### 2.0.19 — 23/11/2026
+
+Adiciona um script de diagnóstico do banco PostgreSQL, somente leitura, que mostra quantidades de inconsistências e estatísticas de tabelas e índices para orientar a refatoração do banco.
+
+- Novo script banco/diagnostico.sql: roda dentro de uma transação somente leitura (READ ONLY) e termina com ROLLBACK, então não altera nada no banco.
+- 36 verificações de inconsistência que mostram só a quantidade de registros afetados, sem conteúdo: compras × tipo_lancamento/financa.cartao, nomes de pessoa, parcelas, competências fora do dia 1, contas e lançamentos, categorias, monitoramento.carro, geração solar e família de fotos/exames do Crescimento.
+- Contagem de linhas das tabelas que podem ser arquivadas (public.transacao, lista_compra, rastreamento, geracao_mensal, financa.banco, financa.cartao, tabelas de investimento).
+- Relatórios de tamanho e forma de leitura das tabelas, uso dos índices, período coberto pelas estatísticas, versão do PostgreSQL e configurações principais (shared_buffers, work_mem, autovacuum etc.).
+- Teste E2E (e2e/rodar.sh) agora executa o diagnóstico contra a estrutura do banco de teste para garantir que o script continua válido.
 
 ### 2.0.18 — 23/11/2026
 

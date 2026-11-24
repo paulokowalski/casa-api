@@ -2,6 +2,7 @@ package com.kowalski.casaapi.compra;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.kowalski.casaapi.categoria.Categorias;
+import com.kowalski.casaapi.pessoa.Pessoa;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.util.Assert;
 
@@ -52,7 +53,7 @@ public record CompraInput(
                 return pessoas.stream().map(pessoa -> comNomePessoaEValor(pessoa, valorPorPessoa)).toList();
         }
 
-        public DadosDaCompra paraDados(TipoLancamento cartao, Categorias categoria) {
-                return new DadosDaCompra(nomeProduto, valorProduto, dataCompra, numeroParcelas, nomePessoaCompra, cartao, categoria);
+        public DadosDaCompra paraDados(Pessoa pessoa, TipoLancamento cartao, Categorias categoria) {
+                return new DadosDaCompra(nomeProduto, valorProduto, dataCompra, numeroParcelas, pessoa, cartao, categoria);
         }
 }

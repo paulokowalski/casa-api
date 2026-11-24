@@ -44,6 +44,9 @@ for f in estrutura.sql dados.sql; do
   docker exec -i "$PG" psql -q -U postgres -d casa -h 127.0.0.1 -v ON_ERROR_STOP=1 \
     < "$RAIZ/src/test/resources/e2e/$f" >/dev/null
 done
+echo "E2E: conferindo o diagnóstico do banco (banco/diagnostico.sql) contra a estrutura..."
+docker exec -i "$PG" psql -q -U postgres -d casa -h 127.0.0.1 -v ON_ERROR_STOP=1 \
+  < "$RAIZ/banco/diagnostico.sql" >/dev/null
 esperar "MariaDB" docker exec "$MDB" mariadb -ucasa_monitor -p"$SENHA" casa_monitor -e 'select 1'
 
 echo "E2E: rodando os testes (a API sobe inteira, ligada aos bancos de teste)..."

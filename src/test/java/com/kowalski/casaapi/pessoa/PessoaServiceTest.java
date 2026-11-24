@@ -72,6 +72,43 @@ class PessoaServiceTest {
     }
 
     @Test
+    void nomeSemPessoaCadastradaERecusado() {
+        when(repository.findByNomeIgnoreCase("ZECA")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.buscarPorNome(" ZECA "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Não existe pessoa cadastrada com o nome ZECA");
+    }
+
+    @Test
+    void nomeDePessoaCadastradaPassaSemDiferenciarMaiusculas() {
+        Pessoa ana = Login.pessoa(Login.ANA_ID, "ANA");
+        when(repository.findByNomeIgnoreCase("ana")).thenReturn(Optional.of(ana));
+
+        assertThat(service.buscarPorNome(" ana ")).isSameAs(ana);
+    }
+
+    @Test
+    void nomeRepetidoNaoPode() {
+        when(repository.findByNomeIgnoreCase("Ana")).thenReturn(Optional.of(Login.pessoa(9, "ANA")));
+
+        assertThatThrownBy(() -> service.criar(new PessoaInput(" Ana ", "nova@x.com", null, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Já existe uma pessoa com este nome.");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void manterOProprioNomeNaEdicaoPode() {
+        Pessoa ana = cadastrada(Login.ANA_ID, "ANA");
+        when(repository.findByNomeIgnoreCase("ANA")).thenReturn(Optional.of(ana));
+
+        service.atualizar(Login.ANA_ID, new PessoaInput("ANA", "ana@x.com", null, null, null));
+
+        verify(repository).save(ana);
+    }
+
+    @Test
     void emailRepetidoNaoPode() {
         when(repository.findByEmailIgnoreCase("ana@x.com")).thenReturn(Optional.of(Login.pessoa(9, "OUTRA")));
 

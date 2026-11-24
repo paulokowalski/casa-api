@@ -17,7 +17,8 @@ public class DespesaRepository {
                 sum(case when cp.numeroParcela = 1 and c.numeroParcelas = 1 and cp.valorParcela > 0 then cp.valorParcela else 0 end))
             from CompraParcela cp
             join cp.compra c
-            where upper(c.nomePessoaCompra) = upper(:nomePessoa)
+            join c.pessoa p
+            where upper(p.nome) = upper(:nomePessoa)
               and cp.dataParcela >= :inicio and cp.dataParcela < :fim
             """;
 
