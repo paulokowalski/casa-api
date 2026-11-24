@@ -93,11 +93,13 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V7__compras_cartao_validado.sql` | Confirma o cartão obrigatório nas compras antigas. Só depois de escolher, pela tela de edição, o cartão das compras que ficaram sem cartão após a V6; antes disso falha sem mudar nada |
 | `V8__compras_sem_nome_da_pessoa.sql` | Apaga `compra.nm_pessoa_compra`, o gatilho que a preenchia e o índice dela: a compra guarda só `pessoa_id` e o nome vem do cadastro da pessoa. **Depois** do deploy que passa a usar `pessoa_id` |
 | `V9__regras_de_consistencia.sql` | Regras no banco: competência no dia 1 (renda, fatura, conta e lançamento), lançamento pago se e só se tiver data de pagamento, número da parcela a partir de 1, cor da categoria em `#RRGGBB`, `ativo` da categoria obrigatório e `id` do carro único. Só acrescenta regras que os dados e a API já cumprem: roda a qualquer momento, sem deploy |
+| `V10__indices.sql` | Índices sem travar a escrita (`CONCURRENTLY`, por isso fora de transação): `geracao(data)`, que é lida por período, e as chaves `compra.cartao_id` e `conta.categoria_id`; apaga os repetidos `idx_categorias_nome` (coberto pelo único do nome), `idx_categorias_ativo` e `pessoa_email_key` (coberto por `uq_pessoa_email`). Roda a qualquer momento, sem deploy; se avisar índice inválido, apague-o com `DROP INDEX CONCURRENTLY` e rode de novo |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
 | `db/crescimento/V6__exames.sql` | Exames da criança (PDF ou imagem) |
 | `db/crescimento/V7__remove_ia.sql` | Apaga as tabelas `resumo_mes` e `pergunta_ia` (V4 e V5, removidas) |
+| `db/crescimento/V8__indices.sql` | Índices das chaves do crescimento sem travar a escrita: `crianca.foto_id`, `foto.familia_id` e `registro.medicao_id`. Roda a qualquer momento, sem deploy |
 | `db/passagens/V1__estrutura.sql` | Schema `passagens`: estado do robô, preços buscados e alertas (sem ele, `/v1/passagens` responde 503) |
 | `db/passagens/V2__rotas_pelo_casa.sql` | Tabela `passagens.rota`: as rotas passam a ser cadastradas pela aba Passagens (o robô só lê) |
 
@@ -437,6 +439,17 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 3.0.3 — 24/11/2026
+
+Esta versão deixa mais rápidas as consultas de energia, compras, contas e Crescimento com índices novos no banco, e remove do banco índices e restrições que estavam duplicados. A API não muda.
+
+- Nova migração V10__indices.sql: cria os índices ix_geracao_data (geracao.data), ix_compra_cartao_id (compra.cartao_id) e ix_conta_categoria_id (conta.categoria_id), e depois roda ANALYZE nessas tabelas.
+- Na V10, removidos os índices idx_categorias_nome e idx_categorias_ativo e a restrição pessoa_email_key. O e-mail da pessoa continua único pelo índice uq_pessoa_email (lower(email)), que já existia.
+- Nova migração crescimento/V8__indices.sql: cria os índices ix_crianca_foto_id, ix_foto_familia_id e ix_registro_medicao_id no esquema crescimento.
+- Os índices são criados com CREATE INDEX CONCURRENTLY e lock_timeout de 5s, sem travar as tabelas. No fim, cada script falha com uma mensagem se algum índice ficou inválido.
+- No servidor: as duas migrações precisam ser aplicadas à mão e fora de uma transação (sem BEGIN e sem psql --single-transaction), porque CONCURRENTLY não roda dentro de transação.
+- Atualizada a estrutura.sql dos testes e2e com o resultado das duas migrações.
 
 ### 3.0.2 — 24/11/2026
 
