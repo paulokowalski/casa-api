@@ -10,10 +10,6 @@ SELECT verificacao, quantidade FROM (
     UNION ALL SELECT 2, 'compras com cartao_id fora de tipo_lancamento',
            (SELECT count(*) FROM compra c WHERE c.cartao_id IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM tipo_lancamento t WHERE t.id = c.cartao_id))
-    UNION ALL SELECT 3, 'tipos de lançamento sem o mesmo id em financa.cartao',
-           (SELECT count(*) FROM tipo_lancamento t WHERE NOT EXISTS (SELECT 1 FROM financa.cartao f WHERE f.id = t.id))
-    UNION ALL SELECT 4, 'cartões de financa.cartao sem o mesmo id em tipo_lancamento',
-           (SELECT count(*) FROM financa.cartao f WHERE NOT EXISTS (SELECT 1 FROM tipo_lancamento t WHERE t.id = f.id))
     UNION ALL SELECT 5, 'compras com nm_cartao diferente do nome do tipo de lançamento',
            (SELECT count(*) FROM compra c JOIN tipo_lancamento t ON t.id = c.cartao_id
              WHERE upper(trim(c.nm_cartao)) <> upper(trim(t.nome)))
@@ -66,17 +62,17 @@ SELECT verificacao, quantidade FROM (
 ORDER BY ordem;
 
 \echo
-\echo '== Tabelas que seriam arquivadas (só quantidade de linhas) =='
+\echo '== Tabelas arquivadas no schema arquivo (só quantidade de linhas) =='
 SELECT tabela, linhas FROM (
-              SELECT 'public.transacao' AS tabela, (SELECT count(*) FROM public.transacao) AS linhas
-    UNION ALL SELECT 'public.lista_compra', (SELECT count(*) FROM public.lista_compra)
-    UNION ALL SELECT 'public.rastreamento', (SELECT count(*) FROM public.rastreamento)
-    UNION ALL SELECT 'public.rastreamento_detalhe', (SELECT count(*) FROM public.rastreamento_detalhe)
-    UNION ALL SELECT 'public.geracao_mensal', (SELECT count(*) FROM public.geracao_mensal)
-    UNION ALL SELECT 'financa.banco', (SELECT count(*) FROM financa.banco)
-    UNION ALL SELECT 'financa.cartao', (SELECT count(*) FROM financa.cartao)
-    UNION ALL SELECT 'investimento.tb_carteira', (SELECT count(*) FROM investimento.tb_carteira)
-    UNION ALL SELECT 'investimento.tb_investimento_renda_fixa', (SELECT count(*) FROM investimento.tb_investimento_renda_fixa)
+              SELECT 'arquivo.transacao' AS tabela, (SELECT count(*) FROM arquivo.transacao) AS linhas
+    UNION ALL SELECT 'arquivo.lista_compra', (SELECT count(*) FROM arquivo.lista_compra)
+    UNION ALL SELECT 'arquivo.rastreamento', (SELECT count(*) FROM arquivo.rastreamento)
+    UNION ALL SELECT 'arquivo.rastreamento_detalhe', (SELECT count(*) FROM arquivo.rastreamento_detalhe)
+    UNION ALL SELECT 'arquivo.geracao_mensal', (SELECT count(*) FROM arquivo.geracao_mensal)
+    UNION ALL SELECT 'arquivo.banco', (SELECT count(*) FROM arquivo.banco)
+    UNION ALL SELECT 'arquivo.cartao', (SELECT count(*) FROM arquivo.cartao)
+    UNION ALL SELECT 'arquivo.tb_carteira', (SELECT count(*) FROM arquivo.tb_carteira)
+    UNION ALL SELECT 'arquivo.tb_investimento_renda_fixa', (SELECT count(*) FROM arquivo.tb_investimento_renda_fixa)
 ) t;
 
 \echo
