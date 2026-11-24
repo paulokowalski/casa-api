@@ -10,9 +10,6 @@ SELECT verificacao, quantidade FROM (
     UNION ALL SELECT 2, 'compras com cartao_id fora de tipo_lancamento',
            (SELECT count(*) FROM compra c WHERE c.cartao_id IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM tipo_lancamento t WHERE t.id = c.cartao_id))
-    UNION ALL SELECT 5, 'compras com nm_cartao diferente do nome do tipo de lançamento',
-           (SELECT count(*) FROM compra c JOIN tipo_lancamento t ON t.id = c.cartao_id
-             WHERE upper(trim(c.nm_cartao)) <> upper(trim(t.nome)))
     UNION ALL SELECT 6, 'nomes de tipo de lançamento repetidos (grupos)',
            (SELECT count(*) FROM (SELECT 1 FROM tipo_lancamento GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
     UNION ALL SELECT 10, 'nomes de pessoa repetidos (grupos)',
@@ -60,6 +57,17 @@ SELECT verificacao, quantidade FROM (
                  + (SELECT count(*) FROM crescimento.exame WHERE sha256 !~ '^[0-9a-f]{64}$'))
 ) v
 ORDER BY ordem;
+
+SELECT EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'compra' AND column_name = 'nm_cartao') AS tem_nm_cartao
+\gset
+\if :tem_nm_cartao
+\echo
+\echo '== Antes da V13: compras cujo nome de cartão gravado difere do cadastro (precisa dar 0) =='
+SELECT count(*) AS compras_com_nome_de_cartao_diferente
+FROM compra c JOIN tipo_lancamento t ON t.id = c.cartao_id
+WHERE upper(trim(c.nm_cartao)) <> upper(trim(t.nome));
+\endif
 
 \echo
 \echo '== Tabelas arquivadas no schema arquivo (só quantidade de linhas) =='

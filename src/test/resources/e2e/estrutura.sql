@@ -448,7 +448,6 @@ CREATE TABLE public.compra (
     vl_produto numeric(15,2) NOT NULL,
     dt_compra date NOT NULL,
     nr_parcelas integer NOT NULL,
-    nm_cartao character varying NOT NULL,
     dt_cadastrato timestamp without time zone DEFAULT now() NOT NULL,
     cartao_id uuid,
     categoria_id uuid,
@@ -1420,11 +1419,14 @@ BEGIN
     END IF;
 END $$;
 
-UPDATE public.compra c
-SET cartao_id = t.id
-FROM public.tipo_lancamento t
-WHERE c.cartao_id IS NULL
-  AND upper(trim(t.nome)) = upper(trim(c.nm_cartao));
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'compra' AND column_name = 'nm_cartao') THEN
+        EXECUTE 'UPDATE public.compra c SET cartao_id = t.id FROM public.tipo_lancamento t '
+             || 'WHERE c.cartao_id IS NULL AND upper(trim(t.nome)) = upper(trim(c.nm_cartao))';
+    END IF;
+END $$;
 
 ALTER TABLE public.compra VALIDATE CONSTRAINT compra_cartao_id_fkey;
 
@@ -1651,4 +1653,22 @@ BEGIN
     END LOOP;
 END $$;
 
+COMMIT;
+
+-- db/migration/V12__compras_nome_do_cartao_opcional.sql
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = 'compra' AND column_name = 'nm_cartao') THEN
+        EXECUTE 'ALTER TABLE public.compra ALTER COLUMN nm_cartao DROP NOT NULL';
+    END IF;
+END $$;
+COMMIT;
+
+-- db/migration/V13__compras_sem_nome_do_cartao.sql
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+ALTER TABLE public.compra DROP COLUMN IF EXISTS nm_cartao;
 COMMIT;

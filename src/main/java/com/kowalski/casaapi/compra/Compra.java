@@ -44,9 +44,6 @@ public class Compra {
     @JoinColumn(name = "pessoa_id", nullable = false)
     private Pessoa pessoa;
 
-    @Column(name = "nm_cartao")
-    private String nomeCartao;
-
     @Column(name = "dt_cadastrato")
     private LocalDateTime dataCadastro;
 
@@ -64,6 +61,10 @@ public class Compra {
     @JoinColumn(name = "categoria_id")
     private Categorias categoria;
 
+    public String nomeDoCartao() {
+        return tipoLancamento.getNome();
+    }
+
     public String nomeDaPessoa() {
         return pessoa.getNome().toUpperCase();
     }
@@ -78,7 +79,6 @@ public class Compra {
     public void alterar(DadosDaCompra dados) {
         this.nomeProduto = dados.nomeProduto().toUpperCase();
         this.tipoLancamento = dados.cartao();
-        this.nomeCartao = dados.cartao().getNome();
         this.categoria = dados.categoria();
         this.valorProduto = dados.valorProduto();
         this.pessoa = dados.pessoa();

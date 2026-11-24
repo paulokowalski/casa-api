@@ -51,7 +51,8 @@ public class FiltroRepository {
 
     public List<FiltroResponse> cartoes(String ano, String mes, String pessoa) {
         LocalDate inicio = Competencias.de(ano, mes);
-        return pares(" select distinct c.nm_cartao, c.nm_cartao from compra c " +
+        return pares(" select distinct t.nome, t.nome from compra c " +
+                        " join tipo_lancamento t on t.id = c.cartao_id " +
                         " join pessoa p on p.id = c.pessoa_id " +
                         " join compra_parcela cp on cp.compra_id = c.id " +
                         " where cp.dt_parcela >= :inicio and cp.dt_parcela < :fim " +

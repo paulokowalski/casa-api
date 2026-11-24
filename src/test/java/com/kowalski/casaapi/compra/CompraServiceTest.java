@@ -86,7 +86,7 @@ class CompraServiceTest {
         Compra compra = salvas(1).get(0);
         assertThat(compra.getNomeProduto()).isEqualTo("GELADEIRA");
         assertThat(compra.nomeDaPessoa()).isEqualTo("ANA");
-        assertThat(compra.getNomeCartao()).isEqualTo("NUBANK");
+        assertThat(compra.nomeDoCartao()).isEqualTo("NUBANK");
         assertThat(compra.getValorProduto()).isEqualByComparingTo("100.00");
         assertThat(compra.getParcelas()).extracting(CompraParcela::getNumeroParcela).containsExactly(1, 2, 3);
         assertThat(compra.getParcelas()).extracting(CompraParcela::getDataParcela).containsExactly(

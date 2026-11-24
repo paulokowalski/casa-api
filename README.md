@@ -95,6 +95,8 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V9__regras_de_consistencia.sql` | Regras no banco: competência no dia 1 (renda, fatura, conta e lançamento), lançamento pago se e só se tiver data de pagamento, número da parcela a partir de 1, cor da categoria em `#RRGGBB`, `ativo` da categoria obrigatório e `id` do carro único. Só acrescenta regras que os dados e a API já cumprem: roda a qualquer momento, sem deploy |
 | `V10__indices.sql` | Índices sem travar a escrita (`CONCURRENTLY`, por isso fora de transação): `geracao(data)`, que é lida por período, e as chaves `compra.cartao_id` e `conta.categoria_id`; apaga os repetidos `idx_categorias_nome` (coberto pelo único do nome), `idx_categorias_ativo` e `pessoa_email_key` (coberto por `uq_pessoa_email`). Roda a qualquer momento, sem deploy; se avisar índice inválido, apague-o com `DROP INDEX CONCURRENTLY` e rode de novo |
 | `V11__arquivo.sql` | Move para o schema `arquivo`, sem apagar nada, as tabelas que nenhum programa usa (`transacao`, `lista_compra`, `rastreamento`, `rastreamento_detalhe`, `geracao_mensal`, `financa.banco`, `financa.cartao`, `investimento.tb_carteira`, `investimento.tb_investimento_renda_fixa`) e apaga os schemas `financa` e `investimento` se ficarem vazios. Roda a qualquer momento, sem deploy. Para voltar uma tabela: `ALTER TABLE arquivo.<tabela> SET SCHEMA <schema de antes>;` (e `CREATE SCHEMA` antes, se for `financa` ou `investimento`) |
+| `V12__compras_nome_do_cartao_opcional.sql` | `compra.nm_cartao` passa a aceitar vazio: a versão nova da API não grava mais o nome do cartão na compra. **Antes** do deploy que passa a ler o nome do cadastro do cartão |
+| `V13__compras_sem_nome_do_cartao.sql` | Apaga `compra.nm_cartao`, sem volta: o nome do cartão vem sempre de `tipo_lancamento`. **Depois** desse deploy, e só quando a seção "Antes da V13" do `banco/diagnostico.sql` der 0 (uma compra com nome diferente está no cartão errado ou é de um cartão renomeado; corrija o cartão pela tela ou aceite o nome do cadastro) |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -440,6 +442,18 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 4.0.0 — 24/11/2026
+
+As compras deixam de guardar uma cópia do nome do cartão: o nome sai sempre do cadastro do cartão (tipo_lancamento), então um cartão renomeado aparece com o nome novo em todas as compras.
+
+- Removido o campo nomeCartao da entidade Compra. O nome do cartão vem agora de tipo_lancamento.nome, e o campo nomeCartao continua igual nas respostas de /v1/compras.
+- Filtros por cartão nas listagens de compras e parcelas e a lista de cartões dos filtros agora usam o nome do cadastro do cartão (join com tipo_lancamento) no lugar de compra.nm_cartao.
+- Nova migração V12__compras_nome_do_cartao_opcional.sql: tira o NOT NULL de compra.nm_cartao. Precisa ser aplicada à mão no servidor ANTES do deploy desta versão.
+- Nova migração V13__compras_sem_nome_do_cartao.sql (destrutiva, sem volta): apaga a coluna compra.nm_cartao. Deve ser aplicada à mão DEPOIS do deploy, e só quando a seção "Antes da V13" do banco/diagnostico.sql der 0.
+- V6__compras_consistencia.sql ajustada para só preencher cartao_id a partir de nm_cartao se a coluna ainda existir, para poder ser reaplicada depois da V13.
+- Diagnóstico (banco/diagnostico.sql): a verificação 5 (nome de cartão diferente do cadastro) virou uma seção separada "Antes da V13", que só roda enquanto a coluna nm_cartao existir.
+- Testes unitários e e2e atualizados: estrutura.sql e dados.sql já sem nm_cartao, e o e2e confere que o nome do cartão vem do cadastro.
 
 ### 3.0.4 — 24/11/2026
 
