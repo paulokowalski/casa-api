@@ -89,6 +89,25 @@ class MigrationsTest {
     }
 
     @Test
+    void obrigatoriedadeNaoValidadaVemDepoisDosUpdatesDaTabela() throws IOException {
+        Pattern obrigatoriedade = Pattern.compile("(?is)ALTER\\s+TABLE\\s+([\\w.]+)\\s+ADD\\s+CONSTRAINT\\s+\\w+\\s+NOT\\s+NULL\\s+\\w+\\s+NOT\\s+VALID");
+        List<String> problemas = new ArrayList<>();
+        for (Path p : scripts) {
+            String sql = semComentarios(Files.readString(p));
+            Matcher m = obrigatoriedade.matcher(sql);
+            while (m.find()) {
+                String tabelaAlterada = tabela(m.group(1));
+                Matcher update = Pattern.compile("(?i)UPDATE\\s+([\\w.]+)").matcher(sql.substring(m.end()));
+                while (update.find())
+                    if (tabela(update.group(1)).equals(tabelaAlterada))
+                        problemas.add(DB.relativize(p) + ": UPDATE em " + tabelaAlterada + " depois do NOT NULL NOT VALID");
+            }
+        }
+        assertThat(problemas).as("NOT NULL NOT VALID confere toda linha atualizada; um UPDATE depois dele no mesmo script falha nas linhas antigas ainda nulas")
+                .isEmpty();
+    }
+
+    @Test
     void readmeListaTodosOsScripts() throws IOException {
         String readme = Files.readString(Path.of("README.md"));
         List<String> faltando = scripts.stream()

@@ -12,7 +12,7 @@
 
 	<groupId>com.kowalski</groupId>
 	<artifactId>casa-api</artifactId>
-	<version>3.0.0</version>
+	<version>3.0.1</version>
 	<name>casa-api</name>
 
 	<properties>

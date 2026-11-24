@@ -437,6 +437,15 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 3.0.1 — 24/11/2026
+
+Corrige a migração V6 das compras para que ela não falhe em bancos que ainda têm compras antigas sem cartão.
+
+- Corrigida a migração V6__compras_consistencia.sql: a restrição compra_cartao_id_not_null (NOT NULL NOT VALID em compra.cartao_id) agora é criada no fim do script, depois de todos os UPDATE na tabela compra. Antes, os UPDATE seguintes podiam falhar nas linhas antigas que ainda tinham cartao_id nulo.
+- Atualizada a estrutura do banco de testes e2e (estrutura.sql) com a mesma ordem da V6.
+- Novo teste em MigrationsTest: falha quando um script tem UPDATE em uma tabela depois de um NOT NULL NOT VALID nessa mesma tabela.
+- No servidor: a V6 precisa ser aplicada com a versão corrigida se ainda não foi. Se a versão anterior já foi aplicada, vale o usuário conferir se o controle de migrações reclama da alteração do arquivo.
+
 ### 3.0.0 — 23/11/2026
 
 Agora cada compra fica ligada a uma pessoa cadastrada, não mais só ao nome digitado. O banco passa a garantir a consistência de compras, parcelas e cartões. Esta versão traz migrações destrutivas que precisam ser aplicadas à mão no servidor.

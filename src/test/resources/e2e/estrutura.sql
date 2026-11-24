@@ -1430,14 +1430,6 @@ ALTER TABLE public.compra VALIDATE CONSTRAINT compra_cartao_id_fkey;
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint
-                   WHERE conname = 'compra_cartao_id_not_null' AND conrelid = 'public.compra'::regclass) THEN
-        ALTER TABLE public.compra ADD CONSTRAINT compra_cartao_id_not_null NOT NULL cartao_id NOT VALID;
-    END IF;
-END $$;
-
-DO $$
-BEGIN
     IF EXISTS (SELECT 1 FROM public.pessoa GROUP BY upper(trim(nome)) HAVING count(*) > 1) THEN
         RAISE EXCEPTION 'Há pessoas com o mesmo nome; deixe os nomes únicos antes de aplicar este script';
     END IF;
@@ -1515,6 +1507,14 @@ ALTER TABLE public.compra_parcela VALIDATE CONSTRAINT ck_compra_parcela_numero;
 ALTER TABLE public.compra VALIDATE CONSTRAINT ck_compra_numero_parcelas;
 
 DROP INDEX IF EXISTS public.idx_compra_parcela_compra_id;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                   WHERE conname = 'compra_cartao_id_not_null' AND conrelid = 'public.compra'::regclass) THEN
+        ALTER TABLE public.compra ADD CONSTRAINT compra_cartao_id_not_null NOT NULL cartao_id NOT VALID;
+    END IF;
+END $$;
 
 COMMIT;
 
