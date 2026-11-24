@@ -98,6 +98,7 @@ PostgreSQL, com `ddl-auto: none` — o Hibernate não cria nem altera tabelas. O
 | `V12__compras_nome_do_cartao_opcional.sql` | `compra.nm_cartao` passa a aceitar vazio: a versão nova da API não grava mais o nome do cartão na compra. **Antes** do deploy que passa a ler o nome do cadastro do cartão |
 | `V13__compras_sem_nome_do_cartao.sql` | Apaga `compra.nm_cartao`, sem volta: o nome do cartão vem sempre de `tipo_lancamento`. **Depois** desse deploy, e só quando a seção "Antes da V13" do `banco/diagnostico.sql` der 0 (uma compra com nome diferente está no cartão errado ou é de um cartão renomeado; corrija o cartão pela tela ou aceite o nome do cadastro) |
 | `V14__categoria_em_uso_nao_sai.sql` | Regra única para categorias: não dá para excluir uma categoria usada por compra ou conta (`ON DELETE RESTRICT` nas duas chaves). Antes, excluir apagava a categoria das compras sem aviso e era recusado nas contas. Roda a qualquer momento, sem deploy (a API não exclui categorias) |
+| `V15__carro_mes_e_valor.sql` | `monitoramento.carro` ganha `mes` (date), calculada pelo banco a partir de `mes_referencia` (`MM/AAAA`), e `valor` passa a `numeric(12,2)`. O n8n continua gravando igual. **Antes** do deploy que ordena o histórico por `mes` |
 | `db/crescimento/V1__estrutura.sql` | Schema `crescimento` do módulo de crescimento das crianças (pasta própria, ver abaixo) |
 | `db/crescimento/V2__diario_e_album.sql` | Diário e álbum do módulo crescimento (`registro`, fotos ligadas a registros) |
 | `db/crescimento/V3__marcos_e_vacinas.sql` | Marcos atingidos e vacinas aplicadas do módulo crescimento |
@@ -443,6 +444,16 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 ## Histórico de versões
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
+
+### 4.0.2 — 24/11/2026
+
+O histórico de preços FIPE de um veículo agora sai em ordem cronológica confiável, e os valores são guardados com precisão de centavos.
+
+- Corrigida a ordenação do histórico em GET /v1/carros/{codigo}: agora usa a nova coluna de data `mes` (meses em formato inválido vão para o fim), e não mais o recorte do texto `mes_referencia`
+- Nova coluna gerada `mes` (date) em `monitoramento.carro`, calculada a partir de `mes_referencia` no formato MM/AAAA
+- Coluna `valor` de `monitoramento.carro` convertida para numeric(12,2), e a API passa a tratá-la como BigDecimal em vez de Double
+- Migração V15__carro_mes_e_valor.sql precisa ser aplicada no banco do servidor. Ela para com erro se algum valor não couber em numeric(12,2) e arredonda para 2 casas os valores que tiverem mais casas decimais
+- Atualizados o teste de contrato do endpoint de carros e a estrutura do banco usada nos testes e2e
 
 ### 4.0.1 — 24/11/2026
 
