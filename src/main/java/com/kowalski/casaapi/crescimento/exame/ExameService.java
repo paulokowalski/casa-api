@@ -25,11 +25,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Exames da criança: PDF ou imagem enviados pelos pais. Só membros da família veem; só responsáveis enviam, editam e
- * apagam. Os arquivos só saem por {@link #arquivo} com login (não há link público). Imagens são regravadas em JPEG,
- * endireitadas e sem metadados (a localização GPS some); PDFs são guardados como vieram.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -78,11 +73,6 @@ public class ExameService {
         }
     }
 
-    /**
-     * O exame já guardado com este mesmo arquivo. Usado quando dois envios iguais chegam juntos (clique duplo): o
-     * segundo esbarra na restrição única do banco depois da checagem de {@link #enviar}, e a resposta passa a ser o
-     * exame do primeiro, com {@code jaExistia=true}, em vez de erro.
-     */
     @Transactional(readOnly = true)
     public java.util.Optional<ExameResponse> jaEnviado(UUID criancaId, byte[] dados) {
         crianca(criancaId, false);
@@ -112,7 +102,6 @@ public class ExameService {
         apagarDepoisDeConfirmar(List.of(e.getChave()));
     }
 
-    /** Chamado ao excluir a criança (o acesso já foi conferido). */
     @Transactional
     public void excluirTodosDaCrianca(UUID criancaId) {
         List<Exame> lista = exames.findByCriancaIdOrderByDataDescCriadoEmDesc(criancaId);
@@ -120,7 +109,6 @@ public class ExameService {
         apagarDepoisDeConfirmar(lista.stream().map(Exame::getChave).toList());
     }
 
-    /** O arquivo do exame, para quem é da família (exige login). */
     @Transactional(readOnly = true)
     public ArquivoExame arquivo(UUID criancaId, UUID id) {
         Crianca c = crianca(criancaId, false);
@@ -128,7 +116,6 @@ public class ExameService {
         return new ArquivoExame(storage.ler(e.getChave()), e.getTipo(), e.getNomeArquivo());
     }
 
-    /** Pelo conteúdo, não pelo nome ou pelo tipo informado pelo navegador. */
     static TipoExame detectar(byte[] d) {
         if (d.length >= 5 && d[0] == '%' && d[1] == 'P' && d[2] == 'D' && d[3] == 'F' && d[4] == '-') return TipoExame.PDF;
         boolean jpeg = d.length >= 3 && (d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xD8 && (d[2] & 0xFF) == 0xFF;
@@ -137,7 +124,6 @@ public class ExameService {
         throw new FotoInvalidaException("Formato não suportado. Envie o exame em PDF, JPG ou PNG.");
     }
 
-    /** Só o nome (sem pastas nem caracteres de controle), com a extensão do que foi guardado. */
     static String nomeArquivo(String original, TipoExame tipo) {
         String n = original == null ? "" : original.replace('\\', '/');
         n = n.substring(n.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}\"]", "").strip();
@@ -182,7 +168,6 @@ public class ExameService {
                 .orElseThrow(() -> new NaoEncontradoException("Exame não encontrado"));
     }
 
-    /** Se a transação for desfeita depois de gravar o arquivo, ele não fica órfão no disco. */
     private void apagarSeDesfizer(String chave) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -193,7 +178,6 @@ public class ExameService {
         });
     }
 
-    /** Só apaga os arquivos quando a exclusão no banco foi confirmada. */
     private void apagarDepoisDeConfirmar(List<String> chaves) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             chaves.forEach(this::apagarArquivo);

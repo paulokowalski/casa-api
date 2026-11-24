@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.crescimento.exame;
 
-/** Formatos guardados. Imagens (JPG/PNG) são regravadas em JPEG, sem metadados. */
 public enum TipoExame {
     PDF("application/pdf", ".pdf"),
     JPEG("image/jpeg", ".jpg");

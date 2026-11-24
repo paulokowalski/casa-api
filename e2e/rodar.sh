@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Testes de ponta a ponta da casa-api (CasaApiE2ETest).
-#
-# Sobe numa rede Docker isolada um PostgreSQL 18 com a estrutura do banco (src/test/resources/e2e/estrutura.sql,
-# sem dados, + dados.sql) e um MariaDB vazio para o monitoramento, roda os testes E2E no Maven (a API sobe inteira
-# numa porta e é testada por HTTP) e apaga tudo no fim — passe ou falhe. Não toca nos bancos de produção.
-#
-# Uso, na raiz do projeto:  bash e2e/rodar.sh
-# O hook pre-commit (testar-commit) roda este script sozinho antes de cada commit.
 set -euo pipefail
 
 RAIZ=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,7 +15,7 @@ limpar() {
 }
 trap limpar EXIT
 
-esperar() { # esperar "descrição" comando... (até 90 s)
+esperar() {
   local d=$1; shift
   for _ in $(seq 1 90); do "$@" >/dev/null 2>&1 && return 0; sleep 1; done
   echo "E2E: $d não ficou pronto em 90 s" >&2
@@ -38,7 +30,6 @@ docker run -d --name "$MDB" --network "$REDE" -e MARIADB_ROOT_PASSWORD="$SENHA" 
   -e MARIADB_USER=casa_monitor -e MARIADB_PASSWORD="$SENHA" --tmpfs /var/lib/mysql mariadb:11.8 >/dev/null
 
 esperar "PostgreSQL" docker exec "$PG" pg_isready -U postgres -d casa -h 127.0.0.1
-# o pg_isready responde ainda durante a inicialização; confere com uma consulta de verdade
 esperar "PostgreSQL" docker exec "$PG" psql -U postgres -d casa -h 127.0.0.1 -tAc 'select 1'
 for f in estrutura.sql dados.sql; do
   docker exec -i "$PG" psql -q -U postgres -d casa -h 127.0.0.1 -v ON_ERROR_STOP=1 \

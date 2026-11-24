@@ -79,7 +79,6 @@ public class PassagensRepository {
                 rs.getObject("criado_em", OffsetDateTime.class)));
     }
 
-    /** Pontos do gráfico por trecho: cada busca, ou o menor preço de cada dia (fuso de São Paulo). */
     public Map<String, List<Ponto>> pontos(int dias, boolean porBusca) {
         String filtro = "ida >= CURRENT_DATE" + (dias > 0 ? " AND consultado_em >= now() - make_interval(days => :dias)" : "");
         String sql = porBusca

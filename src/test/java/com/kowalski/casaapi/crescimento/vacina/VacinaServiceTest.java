@@ -43,7 +43,7 @@ class VacinaServiceTest {
 
     @Test
     void situacoes() {
-        LocalDate hoje = LocalDate.of(2026, 11, 16); // 6 meses e 15 dias
+        LocalDate hoje = LocalDate.of(2026, 11, 16);
         VacinasResponse r = VacinaService.montar(crianca(), List.of(aplicada("bcg", NASC), aplicada("hepb", NASC),
                 aplicada("rota1", NASC.plusMonths(2)), aplicada("extra-abc", hoje)), hoje);
         Map<String, DoseResponse> d = doses(r);
@@ -75,6 +75,6 @@ class VacinaServiceTest {
         assertThat(ag.get(0).data()).isEqualTo(NASC);
         assertThat(ag).anyMatch(x -> x.tipo() == TipoCompromisso.CONSULTA && x.dias() == 15);
         assertThat(ag).anyMatch(x -> x.tipo() == TipoCompromisso.MESVERSARIO && x.referencias().equals(List.of("mes-7")));
-        assertThat(ag).noneMatch(x -> x.referencias().contains("fa1")); // 9 meses: fora dos 60 dias
+        assertThat(ag).noneMatch(x -> x.referencias().contains("fa1"));
     }
 }

@@ -11,9 +11,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 
-/**
- * Compara as medidas da criança com a OMS e gera os alertas. Não acessa banco: recebe tudo pronto.
- */
 @Component
 public class AvaliacaoCrescimento {
 
@@ -60,7 +57,6 @@ public class AvaliacaoCrescimento {
                 imc, m.getObservacao(), m.getCriadoPor());
     }
 
-    /** Pontos da criança num indicador (inclui a medida do nascimento do cadastro), em ordem de data. */
     public List<PontoCrianca> pontos(Crianca c, Indicador ind, List<Medicao> medicoes) {
         List<PontoCrianca> pts = new ArrayList<>();
         Double nasc = aoNascer(c, ind);
@@ -148,7 +144,6 @@ public class AvaliacaoCrescimento {
                 ultimas, ganho, desde, proximaConsulta, alertas);
     }
 
-    /** Entre a última pesagem e a anterior mais recente com pelo menos 21 dias de distância (ou a imediatamente anterior). */
     GanhoPeso ganho(Crianca c, List<Medicao> pesos) {
         if (pesos.size() < 2) return null;
         Medicao b = pesos.get(pesos.size() - 1);
@@ -166,7 +161,6 @@ public class AvaliacaoCrescimento {
         return new GanhoPeso(gramas, dias, arred(porDia, 1), esperado[0], esperado[1], situacao);
     }
 
-    /** Ganho de peso comum (g/dia) por idade, conforme a Caderneta da Criança e a SBP (valores de referência). */
     static int[] ganhoEsperado(int dias) {
         double meses = dias / DIAS_MES;
         if (meses < 3) return new int[]{25, 35};
@@ -183,7 +177,6 @@ public class AvaliacaoCrescimento {
         return Faixa.ACIMA;
     }
 
-    /** Linhas principais: P3, P15, P50, P85, P97. */
     static int canal(double p) {
         return p < 3 ? 0 : p < 15 ? 1 : p < 50 ? 2 : p < 85 ? 3 : p < 97 ? 4 : 5;
     }

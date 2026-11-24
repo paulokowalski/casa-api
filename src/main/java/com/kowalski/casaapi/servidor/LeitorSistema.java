@@ -26,17 +26,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Lê as métricas do servidor direto do kernel, sem depender de outro serviço:
- * <ul>
- *   <li>{@code /proc/stat}, {@code /proc/meminfo}, {@code /proc/loadavg}, {@code /proc/uptime} e
- *       {@code /proc/diskstats}: CPU, memória, carga e discos (no container já mostram o host inteiro);</li>
- *   <li>{@code /sys/class/thermal}: temperaturas;</li>
- *   <li>{@code /sys/class/net}: tráfego das interfaces físicas (precisa do /sys do host montado);</li>
- *   <li>espaço em disco dos caminhos configurados em {@code monitor.discos}.</li>
- * </ul>
- * Contadores acumulados (CPU, rede, disco) viram taxa comparando duas leituras: veja {@link Contadores}.
- */
 @Component
 public class LeitorSistema {
 
@@ -63,10 +52,7 @@ public class LeitorSistema {
         this.arquivoSmart = props.smartArquivo() == null ? null : Path.of(props.smartArquivo());
     }
 
-    /** Tempos de CPU em jiffies desde o boot. */
     public record CpuTempos(long total, long ocioso, long iowait) {
-
-        /** Percentual de uso entre {@code antes} e esta leitura. */
         public double usoPct(CpuTempos antes) {
             long dt = total - antes.total;
             return dt <= 0 ? 0 : limitar(100.0 * (dt - (ocioso - antes.ocioso)) / dt);
@@ -81,21 +67,12 @@ public class LeitorSistema {
     public record Trafego(long recebidos, long enviados) {
     }
 
-    /**
-     * Contadores de um disco inteiro no /proc/diskstats.
-     *
-     * @param operacoes leituras + escritas concluídas
-     * @param msEspera  tempo somado das operações (ms), fila incluída
-     * @param msOcupado tempo com alguma operação em andamento (ms)
-     */
     public record DiscoContadores(long operacoes, long msEspera, long msOcupado) {
     }
 
-    /** Ocupação e latência de um disco no intervalo. */
     public record DiscoAtividade(String disco, double ocupacaoPct, Double latenciaMs) {
     }
 
-    /** Contadores acumulados; a diferença entre duas leituras dá as taxas do intervalo. */
     public record Contadores(long nanos, CpuTempos cpu, List<CpuTempos> nucleos, Map<String, Trafego> rede,
                              long discoLidos, long discoEscritos, Map<String, DiscoContadores> discosIo,
                              long redeErros) {
@@ -109,7 +86,6 @@ public class LeitorSistema {
             return Math.max((nanos - antes.nanos) / 1e9, 0.001);
         }
 
-        /** Ocupação e latência média por operação de cada disco que existia nas duas leituras. */
         public List<DiscoAtividade> atividadeDiscos(Contadores antes) {
             double ms = segundosDesde(antes) * 1000;
             List<DiscoAtividade> lista = new ArrayList<>();
@@ -125,7 +101,6 @@ public class LeitorSistema {
             return lista;
         }
 
-        /** Latência média por operação somando todos os discos; nula sem operações no intervalo. */
         public Double latenciaDiscosMs(Contadores antes) {
             long ops = 0;
             long espera = 0;
@@ -141,28 +116,19 @@ public class LeitorSistema {
             return ops > 0 ? (double) espera / ops : null;
         }
 
-        /** Ocupação do disco mais ocupado (%); 100% = sempre com operação em andamento. */
         public Double ocupacaoMaxDiscosPct(Contadores antes) {
             return atividadeDiscos(antes).stream().map(DiscoAtividade::ocupacaoPct).max(Double::compare).orElse(null);
         }
 
-        /** Erros e pacotes descartados nas interfaces físicas no intervalo (zero se o contador zerou). */
         public long redeErrosDesde(Contadores antes) {
             return Math.max(redeErros - antes.redeErros, 0);
         }
     }
 
-    /**
-     * Pressão (PSI) nos últimos 10 s: % do tempo em que alguma tarefa (some) ou todas (full) esperaram pelo recurso.
-     * Nulos se o kernel não tem PSI.
-     */
     public record Pressao(Double cpu, Double memoria, Double memoriaTotal, Double io, Double ioTotal) {
     }
 
-    /** Um grupo de núcleos que muda de frequência junto (policy do cpufreq). */
     public record Cluster(String nome, List<Integer> nucleos, Long atualMhz, Long maxMhz, Long limiteMhz) {
-
-        /** Limite atual em % do máximo do hardware; abaixo de 100 o kernel está segurando a frequência (calor). */
         public Double limitePct() {
             return maxMhz == null || limiteMhz == null || maxMhz <= 0 ? null : limitar(100.0 * limiteMhz / maxMhz);
         }
@@ -171,13 +137,6 @@ public class LeitorSistema {
     public record Temperatura(String sensor, double celsius) {
     }
 
-    /**
-     * Espaço de um disco e, quando o arquivo do SMART tem o disco, a temperatura.
-     *
-     * @param dispositivo       major:minor do sistema de arquivos do caminho (ex.: "8:49")
-     * @param tipo              nvme, ssd ou hdd (do SMART); nulo sem SMART
-     * @param estadoTemperatura ativo, repouso (disco parado, não foi acordado para ler) ou sem_dados
-     */
     public record EspacoDisco(String nome, String caminho, long total, long usado, double pct, String dispositivo,
                               String modelo, String tipo, Double temperatura, String estadoTemperatura,
                               SaudeSmart saude) {
@@ -187,24 +146,19 @@ public class LeitorSistema {
         }
     }
 
-    /** Um disco no arquivo do SMART. */
     public record DiscoSmart(String dispositivo, String modelo, String tipo, Double temperatura, String estado,
                              List<String> dispositivos, SaudeSmart saude) {
     }
 
-    /** Uma montagem do host no arquivo do SMART: ponto, major:minor e espaço em bytes (como o df). */
     public record MontagemHost(String ponto, String dispositivo, long total, long usado, long disponivel) {
     }
 
-    /** Conteúdo do arquivo do SMART; listas vazias quando o arquivo não existe, está inválido ou velho demais. */
     public record ArquivoSmart(List<DiscoSmart> discos, List<MontagemHost> montagens) {
         static final ArquivoSmart VAZIO = new ArquivoSmart(List.of(), List.of());
     }
 
-    /** Leituras do SMART mais velhas que isso são ignoradas (o timer do host parou). */
     static final Duration SMART_VALIDADE = Duration.ofMinutes(5);
 
-    /** Valores que já são instantâneos (não precisam de duas leituras). */
     public record Instantaneo(long memTotal, long memDisponivel, long swapTotal, long swapLivre,
                               double load1, double load5, double load15, int processos, long uptimeSegundos,
                               List<Temperatura> temperaturas, List<EspacoDisco> discos, List<Long> frequenciasMhz,
@@ -217,7 +171,6 @@ public class LeitorSistema {
                     temperaturas, discos, frequenciasMhz, new Pressao(null, null, null, null, null), null, List.of());
         }
 
-        /** Menor limite entre os clusters (% do máximo); 100 = nenhum núcleo limitado. */
         public Double cpuLimitePct() {
             return clusters.stream().map(Cluster::limitePct).filter(java.util.Objects::nonNull)
                     .min(Double::compare).orElse(null);
@@ -243,7 +196,6 @@ public class LeitorSistema {
             return temperaturas.stream().map(Temperatura::celsius).max(Double::compare).orElse(null);
         }
 
-        /** Maior temperatura entre os sensores cujo nome contém algum dos trechos. */
         public Double temperatura(String... trechos) {
             return temperaturas.stream()
                     .filter(t -> {
@@ -294,16 +246,12 @@ public class LeitorSistema {
         return new Identificacao(host, modelo, textoOuNulo(proc.resolve("sys/kernel/osrelease")));
     }
 
-    // ---- parsers (estáticos para os testes) ----
-
-    /** Primeira posição: CPU total; depois, um item por núcleo, na ordem do arquivo. */
     static List<CpuTempos> parseStat(List<String> linhas) {
         List<CpuTempos> cpus = new ArrayList<>();
         for (String linha : linhas) {
             if (!linha.startsWith("cpu")) continue;
             String[] p = linha.trim().split("\\s+");
             long total = 0;
-            // user nice system idle iowait irq softirq steal (guest já está contado em user)
             for (int i = 1; i <= Math.min(8, p.length - 1); i++) total += Long.parseLong(p[i]);
             long idle = Long.parseLong(p[4]);
             long iowait = p.length > 5 ? Long.parseLong(p[5]) : 0;
@@ -313,7 +261,6 @@ public class LeitorSistema {
         return cpus;
     }
 
-    /** Valores em bytes (o arquivo vem em kB). */
     static Map<String, Long> parseMeminfo(List<String> linhas) {
         Map<String, Long> mem = new LinkedHashMap<>();
         for (String linha : linhas) {
@@ -326,7 +273,6 @@ public class LeitorSistema {
         return mem;
     }
 
-    /** Bytes lidos e escritos, somando só os discos inteiros (sem partições, zram e loop). */
     static long[] parseDiskstats(List<String> linhas) {
         long lidos = 0;
         long escritos = 0;
@@ -339,20 +285,17 @@ public class LeitorSistema {
         return new long[]{lidos, escritos};
     }
 
-    /** Contadores de operações e tempo de cada disco inteiro (sem partições, zram e loop). */
     static Map<String, DiscoContadores> parseDiskstatsPorDisco(List<String> linhas) {
         Map<String, DiscoContadores> discos = new LinkedHashMap<>();
         for (String linha : linhas) {
             String[] p = linha.trim().split("\\s+");
             if (p.length < 13 || !DISCO_INTEIRO.matcher(p[2]).matches()) continue;
-            // 3 leituras, 6 ms lendo, 7 escritas, 10 ms escrevendo, 12 ms com I/O em andamento
             discos.put(p[2], new DiscoContadores(Long.parseLong(p[3]) + Long.parseLong(p[7]),
                     Long.parseLong(p[6]) + Long.parseLong(p[10]), Long.parseLong(p[12])));
         }
         return discos;
     }
 
-    /** avg10 da linha "some" ou "full" de um arquivo do /proc/pressure; nulo se não houver. */
     static Double parsePressao(List<String> linhas, String tipo) {
         for (String linha : linhas) {
             if (!linha.startsWith(tipo + " ")) continue;
@@ -362,7 +305,6 @@ public class LeitorSistema {
         return null;
     }
 
-    /** "37@800000000Hz" (load do devfreq) vira 37. */
     static Double parseCargaDevfreq(String texto) {
         if (texto == null) return null;
         int i = texto.indexOf('@');
@@ -373,7 +315,6 @@ public class LeitorSistema {
         }
     }
 
-    /** "soc-thermal" vira "soc"; "bigcore0_thermal" vira "bigcore0". */
     static String nomeSensor(String tipo) {
         return tipo.trim().replaceAll("[-_ ]?thermal$", "");
     }
@@ -382,9 +323,6 @@ public class LeitorSistema {
         return Math.max(0, Math.min(100, pct));
     }
 
-    // ---- leitura ----
-
-    /** Interfaces físicas (com {@code device}): ignora lo, bridges, veth e VPN, que repetiriam o mesmo tráfego. */
     private Map<String, Trafego> lerRede() {
         Map<String, Trafego> rede = new LinkedHashMap<>();
         Path dir = sys.resolve("class/net");
@@ -398,7 +336,6 @@ public class LeitorSistema {
         return rede;
     }
 
-    /** Soma de erros e descartes (rx/tx) das interfaces físicas. */
     private long lerErrosRede() {
         long total = 0;
         Path dir = sys.resolve("class/net");
@@ -422,7 +359,6 @@ public class LeitorSistema {
                 parsePressao(io, "some"), parsePressao(io, "full"));
     }
 
-    /** Carga da GPU pelo devfreq (Mali do RK3588: {@code /sys/class/devfreq/*.gpu/load}). */
     private Double lerGpu() {
         Path dir = sys.resolve("class/devfreq");
         if (!Files.isDirectory(dir)) return null;
@@ -432,7 +368,6 @@ public class LeitorSistema {
         return null;
     }
 
-    /** Frequência atual, máxima do hardware e limite atual de cada policy do cpufreq. */
     private List<Cluster> lerClusters() {
         List<Cluster> lista = new ArrayList<>();
         Path dir = sys.resolve("devices/system/cpu/cpufreq");
@@ -448,7 +383,6 @@ public class LeitorSistema {
                     try {
                         nucleos.add(Integer.parseInt(n));
                     } catch (NumberFormatException e) {
-                        // ignora
                     }
                 }
             }
@@ -462,7 +396,6 @@ public class LeitorSistema {
         return khz == null ? null : khz / 1000;
     }
 
-    /** Momento do boot (linha btime do /proc/stat, segundos desde a época); nulo se não der para ler. */
     public Long bootEpoch() {
         for (String linha : linhasOuVazio(proc.resolve("stat"))) {
             if (linha.startsWith("btime ")) {
@@ -500,18 +433,6 @@ public class LeitorSistema {
         return temps;
     }
 
-    /**
-     * Espaço dos discos configurados.
-     * <p>
-     * Quando o arquivo do SMART traz as montagens do host, o caminho de cada disco é o ponto de montagem no host
-     * (ex.: {@code /mnt/media}) e espaço e dispositivo vêm de lá: a API não precisa enxergar os discos e nunca fica
-     * presa a uma montagem antiga (um bind mount no container continua apontando para o sistema de arquivos de
-     * quando o container subiu, mesmo depois de o disco cair e ser remontado no host). Disco desmontado não aparece.
-     * <p>
-     * Sem essas montagens (arquivo ausente ou velho), mede o caminho localmente. Caminhos que caem num sistema de
-     * arquivos já medido são ignorados: assim um disco externo desmontado (cuja pasta passa a ficar no disco do
-     * sistema) não aparece com os números do sistema.
-     */
     private List<EspacoDisco> lerDiscos() {
         ArquivoSmart arquivo = lerArquivoSmart(arquivoSmart, OffsetDateTime.now(relogio));
         List<DiscoSmart> smart = arquivo.discos();
@@ -522,7 +443,6 @@ public class LeitorSistema {
             if (m == null || m.total() <= 0) continue;
             long total = m.total(), usado = m.usado(), disponivel = m.disponivel();
             if (!medidos.add(m.dispositivo() != null ? m.dispositivo() : total + ":" + usado + ":" + disponivel)) continue;
-            // mesmo cálculo do df: o espaço reservado ao root não conta como disponível
             double pct = usado + disponivel > 0 ? limitar(100.0 * usado / (usado + disponivel)) : 0;
             String dispositivo = m.dispositivo();
             DiscoSmart s = dispositivo == null ? null : smart.stream()
@@ -535,7 +455,6 @@ public class LeitorSistema {
         return lista;
     }
 
-    /** A montagem do host cujo ponto é o caminho (barra no fim é ignorada), ou nulo se ele não está montado. */
     static MontagemHost montagem(List<MontagemHost> montagens, String caminho) {
         String alvo = semBarraFinal(caminho);
         return montagens.stream().filter(m -> semBarraFinal(m.ponto()).equals(alvo)).findFirst().orElse(null);
@@ -545,7 +464,6 @@ public class LeitorSistema {
         return p.length() > 1 && p.endsWith("/") ? p.substring(0, p.length() - 1) : p;
     }
 
-    /** Espaço e dispositivo do caminho medidos aqui mesmo (fora do servidor ou sem o arquivo do SMART). */
     private static MontagemHost medirLocal(String caminho) {
         File f = new File(caminho);
         long total = f.getTotalSpace();
@@ -553,7 +471,6 @@ public class LeitorSistema {
         return new MontagemHost(caminho, dispositivo(f.toPath()), total, total - f.getFreeSpace(), f.getUsableSpace());
     }
 
-    /** major:minor do sistema de arquivos onde o caminho está (o st_dev do stat), ou nulo se não der para saber. */
     static String dispositivo(Path caminho) {
         try {
             Object dev = Files.getAttribute(caminho, "unix:dev");
@@ -563,19 +480,16 @@ public class LeitorSistema {
         }
     }
 
-    /** Decodifica um dev_t do Linux (mesma regra das macros major()/minor() da glibc). */
     static String majorMinor(long dev) {
         long major = ((dev >>> 8) & 0xfffL) | ((dev >>> 32) & 0xfffff000L);
         long minor = (dev & 0xffL) | ((dev >>> 12) & 0xffffff00L);
         return major + ":" + minor;
     }
 
-    /** Discos do arquivo do SMART; lista vazia se o arquivo não existe, está inválido ou velho demais. */
     static List<DiscoSmart> lerSmart(Path arquivo, OffsetDateTime agora) {
         return lerArquivoSmart(arquivo, agora).discos();
     }
 
-    /** Discos e montagens do arquivo do SMART; vazio se o arquivo não existe, está inválido ou velho demais. */
     static ArquivoSmart lerArquivoSmart(Path arquivo, OffsetDateTime agora) {
         if (arquivo == null || !Files.isReadable(arquivo)) return ArquivoSmart.VAZIO;
         try {
@@ -608,7 +522,6 @@ public class LeitorSistema {
         }
     }
 
-    /** O bloco "saude" de um disco; campos ausentes ou inválidos ficam nulos. */
     static SaudeSmart lerSaude(Map<?, ?> s) {
         OffsetDateTime lidoEm;
         try {
@@ -623,7 +536,6 @@ public class LeitorSistema {
                     Long v = inteiro(valor);
                     if (v != null) atributos.put(Integer.parseInt(String.valueOf(id)), v);
                 } catch (NumberFormatException e) {
-                    // id que não é número: ignora
                 }
             });
         }

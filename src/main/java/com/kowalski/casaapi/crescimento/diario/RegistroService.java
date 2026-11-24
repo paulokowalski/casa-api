@@ -39,9 +39,6 @@ public class RegistroService {
     private final DiretorioUsuarios usuarios;
     private final Clock relogio;
 
-    // ---------------------------------------------------------------- consultas
-
-    /** Registros e medições avulsas, do mais recente ao mais antigo. {@code tipo} filtra (PESAGEM inclui as medições). */
     @Transactional(readOnly = true)
     public LinhaDoTempoResponse linhaDoTempo(UUID criancaId, TipoRegistro tipo, boolean soComFotos, int pagina, int tamanho) {
         if (pagina < 0) throw new IllegalArgumentException("A página começa em 0");
@@ -93,8 +90,6 @@ public class RegistroService {
         return resposta(c, daCrianca(criancaId, id));
     }
 
-    // ---------------------------------------------------------------- alterações
-
     @Transactional
     public RegistroResponse criar(UUID criancaId, RegistroInput dados) {
         Crianca c = criancas.carregar(criancaId, true);
@@ -113,7 +108,6 @@ public class RegistroService {
         excluir(c, daCrianca(criancaId, id));
     }
 
-    /** Apaga o registro com as fotos e as medidas dele. O acesso já foi conferido. */
     @Transactional
     public void excluir(Crianca c, Registro r) {
         fotos.excluirDoRegistro(c, r.getId());
@@ -123,9 +117,6 @@ public class RegistroService {
         medicoes.excluirDoRegistro(medicaoId);
     }
 
-    /**
-     * Cria ({@code existente == null}) ou altera um registro. O acesso de escrita já foi conferido por quem chama.
-     */
     @Transactional
     public RegistroResponse salvar(Crianca c, Registro existente, RegistroInput d) {
         if (d == null) throw new IllegalArgumentException("Informe os dados do registro");
@@ -190,7 +181,6 @@ public class RegistroService {
         return resposta(c, r);
     }
 
-    /** Registros do álbum por chave (para a tela do álbum). */
     @Transactional(readOnly = true)
     public Map<String, Registro> doAlbum(UUID criancaId) {
         Map<String, Registro> r = new LinkedHashMap<>();
@@ -198,8 +188,6 @@ public class RegistroService {
                 .sorted(Comparator.comparing(Registro::getData)).forEach(x -> r.put(x.getAlbumChave(), x));
         return r;
     }
-
-    // ---------------------------------------------------------------- montagem
 
     private RegistroResponse resposta(Crianca c, Registro r) {
         Medicao m = r.getMedicaoId() == null ? null : medicaoRepository.findById(r.getMedicaoId()).orElse(null);
@@ -220,7 +208,6 @@ public class RegistroService {
         return ids.isEmpty() ? Map.of() : usuarios.nomes(ids);
     }
 
-    /** Diferença de peso (gramas, dias) de cada medição para a pesagem anterior. */
     static Map<UUID, int[]> ganhos(List<Medicao> meds) {
         Map<UUID, int[]> r = new HashMap<>();
         Medicao ant = null;

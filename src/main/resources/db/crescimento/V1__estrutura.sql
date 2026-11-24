@@ -1,9 +1,3 @@
--- Módulo crescimento: acompanhamento do crescimento das crianças da família.
--- Fica num schema próprio e não referencia tabelas de outros módulos (o usuário é guardado só pelo id),
--- para poder ser levado para outro projeto exportando apenas este schema.
--- Aplicar à mão:
---   docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa -v ON_ERROR_STOP=1 < src/main/resources/db/crescimento/V1__estrutura.sql
-
 CREATE SCHEMA IF NOT EXISTS crescimento;
 
 CREATE TABLE IF NOT EXISTS crescimento.familia (
@@ -12,7 +6,6 @@ CREATE TABLE IF NOT EXISTS crescimento.familia (
     criado_em  timestamptz NOT NULL DEFAULT now()
 );
 
--- usuario_id: id do usuário no sistema de login (no casa, pessoa.id)
 CREATE TABLE IF NOT EXISTS crescimento.familia_membro (
     id         uuid PRIMARY KEY,
     familia_id uuid NOT NULL REFERENCES crescimento.familia (id) ON DELETE CASCADE,
@@ -54,8 +47,6 @@ CREATE TABLE IF NOT EXISTS crescimento.medicao (
 );
 CREATE INDEX IF NOT EXISTS ix_medicao_crianca_data ON crescimento.medicao (crianca_id, data);
 
--- Os arquivos ficam no armazenamento de fotos (hoje o disco); aqui só os metadados.
--- chave: prefixo dos arquivos no armazenamento, sem a variante (original, media, mini)
 CREATE TABLE IF NOT EXISTS crescimento.foto (
     id          uuid PRIMARY KEY,
     familia_id  uuid NOT NULL REFERENCES crescimento.familia (id) ON DELETE CASCADE,

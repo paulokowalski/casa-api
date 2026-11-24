@@ -11,11 +11,6 @@ import java.util.UUID;
 
 @Repository
 public interface CompraParcelaRepository extends JpaRepository<CompraParcela, UUID> {
-
-    // Período fechado no início e aberto no fim: [inicio, fim). Comparar a data direto
-    // permite usar o índice ix_compra_parcela_data (coluna data).
-    // A compra e a categoria vêm no mesmo SELECT (JOIN FETCH) para não disparar
-    // uma consulta extra por compra ao montar a resposta.
     @Query( " SELECT cp FROM CompraParcela cp " +
             " JOIN FETCH cp.compra c " +
             " JOIN FETCH c.pessoa p " +

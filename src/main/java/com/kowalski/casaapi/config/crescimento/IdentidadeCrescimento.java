@@ -12,10 +12,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Liga o módulo crescimento ao login do casa: o usuário do módulo é a pessoa logada.
- * Num produto separado, esta é a única classe a trocar (pelo login próprio do produto).
- */
 @Component
 @RequiredArgsConstructor
 public class IdentidadeCrescimento implements UsuarioAtual, DiretorioUsuarios {
@@ -40,7 +36,6 @@ public class IdentidadeCrescimento implements UsuarioAtual, DiretorioUsuarios {
         return pessoas.porId(id).map(Pessoa::isAtivo).orElse(false);
     }
 
-    /** No casa os nomes ficam em maiúsculas ("PAULO"); para mostrar, "Paulo". */
     static String nomeBonito(String nome) {
         if (nome == null || nome.isBlank()) return nome;
         StringBuilder sb = new StringBuilder();

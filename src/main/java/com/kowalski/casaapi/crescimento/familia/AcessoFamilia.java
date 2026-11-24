@@ -8,10 +8,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-/**
- * Regra de acesso de todo o módulo: só membros veem os dados da família e só responsáveis alteram.
- * Quem não é membro recebe "não encontrado", para não revelar que a família ou a criança existem.
- */
 @Component
 @RequiredArgsConstructor
 public class AcessoFamilia {

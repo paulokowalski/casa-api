@@ -28,8 +28,6 @@ import java.util.UUID;
 @RequestMapping(path = "/v1/crescimento", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Crescimento: fotos", description = "Fotos das crianças, guardadas em disco e servidas por links temporários")
 public class FotoController {
-
-    /** Caminho que não exige login (a assinatura do link autoriza). Usado na configuração de segurança. */
     public static final String CAMINHO_ARQUIVO = "/v1/crescimento/fotos/*/arquivo";
 
     private final FotoService service;

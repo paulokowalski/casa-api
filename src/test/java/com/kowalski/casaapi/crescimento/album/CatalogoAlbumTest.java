@@ -57,15 +57,12 @@ class CatalogoAlbumTest {
     @Test
     void chamadaDoMesversario() {
         Crianca c = crianca();
-        // faltam 3 dias para 3 meses
         AlbumDtos.Chamada ch = AlbumService.chamada(c, LocalDate.of(2026, 4, 7), Map.of(), Map.of());
         assertThat(ch.chave()).isEqualTo("mes-3");
         assertThat(ch.dias()).isEqualTo(3);
-        // 2 meses passou há 5 dias sem foto
         ch = AlbumService.chamada(c, LocalDate.of(2026, 3, 15), Map.of(), Map.of());
         assertThat(ch.chave()).isEqualTo("mes-2");
         assertThat(ch.dias()).isEqualTo(-5);
-        // com foto, não avisa (e o próximo está longe)
         Registro r = new Registro();
         r.setId(UUID.randomUUID());
         FotoResponse f = new FotoResponse(UUID.randomUUID(), c.getId(), 1, 1, null, null, null, r.getId(), false, null);

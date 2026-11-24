@@ -16,10 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Histórico do monitoramento no MariaDB (banco {@code casa_monitor}). As tabelas são criadas pela própria
- * API na subida ({@link #criarTabelas()}), sem migration manual.
- */
 @Repository
 public class ServidorRepository {
 
@@ -69,7 +65,6 @@ public class ServidorRepository {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """;
 
-    /** Colunas de temperatura acrescentadas depois; o ALTER é idempotente para tabelas já criadas. */
     private static final String COLUNAS_TEMPERATURA_DISCO = """
             ALTER TABLE amostra_disco
                 ADD COLUMN IF NOT EXISTS modelo      VARCHAR(120) NULL,
@@ -78,7 +73,6 @@ public class ServidorRepository {
                 ADD COLUMN IF NOT EXISTS estado      VARCHAR(12)  NULL
             """;
 
-    /** Pressão, GPU, limite da CPU, latência de disco e erros de rede, acrescentados depois. */
     private static final String COLUNAS_SISTEMA = """
             ALTER TABLE amostra_servidor
                 ADD COLUMN IF NOT EXISTS psi_cpu            DOUBLE NULL,
@@ -191,7 +185,6 @@ public class ServidorRepository {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-    /** Agregados de cada container no período, com imagem/estado/status da última amostra. */
     private static final String CONTAINERS_DO_DIA = """
             SELECT g.*, u.imagem, u.estado, u.status, u.saude
               FROM (SELECT nome, MAX(id) AS ultimo_id, COUNT(*) AS minutos,
@@ -225,7 +218,6 @@ public class ServidorRepository {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-    /** Agregados usados tanto no resumo do dia quanto na lista de dias. */
     private static final String AGREGADOS = """
             COUNT(*) AS amostras,
             MIN(cpu_pct) AS cpu_min, AVG(cpu_pct) AS cpu_med, MAX(cpu_pct) AS cpu_max,
@@ -257,7 +249,6 @@ public class ServidorRepository {
              ORDER BY minuto
             """;
 
-    /** Última medição do dia de cada disco, com a temperatura média e máxima do dia. */
     private static final String DISCOS_DO_DIA = """
             SELECT d.nome, d.caminho, d.total, d.usado, d.pct, d.modelo, d.tipo, d.temperatura, d.estado,
                    u.temp_med, u.temp_max
@@ -285,8 +276,6 @@ public class ServidorRepository {
         jdbc.execute(TABELA_EVENTO);
     }
 
-    // ---- host ----
-
     public void inserirHost(AmostraHost a) {
         jdbc.update("""
                         INSERT INTO amostra_host (coletado_em, internet_ok, internet_ms, gateway_ms, dns_ok, dns_ms,
@@ -301,7 +290,6 @@ public class ServidorRepository {
                 a.containersReinicios());
     }
 
-    /** Grava os eventos novos; os que já existem (mesma chave) são ignorados. Devolve quantos entraram. */
     public int inserirEventos(List<EventosHost.Evento> eventos) {
         if (eventos.isEmpty()) return 0;
         int[] r = jdbc.batchUpdate("INSERT IGNORE INTO evento_host (quando, tipo, chave, nivel, mensagem) VALUES (?, ?, ?, ?, ?)",
@@ -328,7 +316,6 @@ public class ServidorRepository {
         }, de, ate);
     }
 
-    /** Resumo do host no período; nulo sem amostras. */
     public ServidorHostDiaResponse.Resumo resumoHost(LocalDateTime de, LocalDateTime ate) {
         ServidorHostDiaResponse.Resumo r = jdbc.queryForObject(
                 "SELECT " + AGREGADOS_HOST + " FROM amostra_host WHERE coletado_em >= ? AND coletado_em < ?",
@@ -337,7 +324,6 @@ public class ServidorRepository {
         return completarHost(r, de, ate);
     }
 
-    /** Resumo do host por dia do período. */
     public Map<LocalDate, ServidorHostDiaResponse.Resumo> resumoHostPorDia(LocalDateTime de, LocalDateTime ate) {
         Map<LocalDate, ServidorHostDiaResponse.Resumo> porDia = new LinkedHashMap<>();
         jdbc.query("SELECT DATE(coletado_em) AS dia, " + AGREGADOS_HOST
@@ -492,7 +478,6 @@ public class ServidorRepository {
         return porNome.entrySet().stream().map(e -> new ServidorDiaResponse.SerieDisco(e.getKey(), e.getValue())).toList();
     }
 
-    /** Maior temperatura entre os discos em cada dia do período. */
     public Map<LocalDate, Double> temperaturaMaxDiscosPorDia(LocalDateTime de, LocalDateTime ate) {
         Map<LocalDate, Double> porDia = new LinkedHashMap<>();
         jdbc.query("SELECT DATE(coletado_em) AS dia, MAX(temperatura) AS t FROM amostra_disco"
@@ -504,7 +489,6 @@ public class ServidorRepository {
         return porDia;
     }
 
-    /** Um item por dia com amostras, do mais recente para o mais antigo. */
     public List<ServidorResumoDiaResponse> porDia(LocalDate de, LocalDate ate) {
         LocalDateTime inicio = de.atStartOfDay();
         LocalDateTime fim = ate.plusDays(1).atStartOfDay();
@@ -520,7 +504,6 @@ public class ServidorRepository {
                 }, inicio, fim);
     }
 
-    /** Apaga amostras antigas; devolve quantas linhas saíram. */
     public int apagarAntesDe(LocalDateTime limite) {
         return jdbc.update("DELETE FROM amostra_servidor WHERE coletado_em < ?", limite)
                 + jdbc.update("DELETE FROM amostra_disco WHERE coletado_em < ?", limite);

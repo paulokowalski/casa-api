@@ -11,12 +11,6 @@ import static com.kowalski.casaapi.servidor.LeitorHost.inteiro;
 import static com.kowalski.casaapi.servidor.LeitorHost.lista;
 import static com.kowalski.casaapi.servidor.LeitorHost.logico;
 
-/**
- * Uma linha de {@code amostra_host}: o que importa do status do host num minuto.
- *
- * @param backupIdadeSeg idade do snapshot mais antigo entre as cópias (a cópia mais atrasada manda)
- * @param servicosFalhos serviços/timers instalados que não estão ok, mais as unidades em falha do systemd
- */
 public record AmostraHost(LocalDateTime coletadoEm,
                           Boolean internetOk, Double internetMs, Double gatewayMs,
                           Boolean dnsOk, Double dnsMs, Boolean tailscaleOnline, Double npuPct,

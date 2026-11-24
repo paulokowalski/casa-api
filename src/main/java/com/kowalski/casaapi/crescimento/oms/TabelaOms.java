@@ -13,17 +13,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.OptionalDouble;
 
-/**
- * Padrões de crescimento da OMS (2006) pelo método LMS, com um valor por dia de vida até os 5 anos.
- * As tabelas vêm do pacote oficial "anthro" da OMS (resources/crescimento/oms).
- *
- * <p>Escore-z: {@code z = ((X/M)^L - 1) / (L·S)}; valor para um z: {@code X = M·(1 + L·S·z)^(1/L)}.
- * Nos indicadores de peso, acima de +3 ou abaixo de -3 a OMS usa a distância entre as linhas ±2 e ±3 DP.
- */
 @Component
 public class TabelaOms {
-
-    /** Escores-z das linhas de percentil usadas nos gráficos. */
     public static final double Z_P3 = -1.880794, Z_P15 = -1.036433, Z_P85 = 1.036433, Z_P97 = 1.880794;
 
     private record Lms(double l, double m, double s) {
@@ -42,7 +33,6 @@ public class TabelaOms {
         this.ultimoDia = ultimo;
     }
 
-    /** Último dia de vida coberto pelas tabelas (1826 = 5 anos). */
     public int ultimoDia() {
         return ultimoDia;
     }
@@ -51,7 +41,6 @@ public class TabelaOms {
         return dias >= 0 && dias <= ultimoDia;
     }
 
-    /** Escore-z da medida; vazio se a idade estiver fora das tabelas ou o valor for inválido. */
     public OptionalDouble z(Indicador ind, Sexo sexo, int dias, double valor) {
         if (!cobre(dias) || !(valor > 0)) return OptionalDouble.empty();
         Lms p = lms(ind, sexo, dias);
@@ -65,13 +54,11 @@ public class TabelaOms {
         return OptionalDouble.of(z);
     }
 
-    /** Valor da medida que corresponde ao escore-z, na idade dada (para desenhar as linhas de percentil). */
     public double valor(Indicador ind, Sexo sexo, int dias, double z) {
         if (!cobre(dias)) throw new IllegalArgumentException("Idade fora das tabelas da OMS: " + dias + " dias");
         return valorLms(lms(ind, sexo, dias), z);
     }
 
-    /** Percentil (0 a 100) de um escore-z. */
     public static double percentil(double z) {
         return 100 * Normal.cdf(z);
     }

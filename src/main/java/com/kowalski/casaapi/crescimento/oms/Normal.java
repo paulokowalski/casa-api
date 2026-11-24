@@ -1,12 +1,10 @@
 package com.kowalski.casaapi.crescimento.oms;
 
-/** Distribuição normal padrão. */
 final class Normal {
 
     private Normal() {
     }
 
-    /** Função de distribuição acumulada, via erf (Abramowitz e Stegun 7.1.26, erro < 1,5e-7). */
     static double cdf(double z) {
         double x = Math.abs(z) / Math.sqrt(2);
         double t = 1 / (1 + 0.3275911 * x);

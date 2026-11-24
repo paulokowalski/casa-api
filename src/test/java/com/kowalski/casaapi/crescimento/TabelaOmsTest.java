@@ -31,8 +31,6 @@ class TabelaOmsTest {
 
     @Test
     void batemComAsTabelasPublicadasPelaOms() {
-        // Tabelas de percentis da OMS (arredondadas a 0,1): menino ao nascer P3 2,5 kg, P97 4,3 kg;
-        // menina com 12 meses: comprimento mediano 74,0 cm; menino com 24 meses: peso mediano 12,2 kg
         assertThat(OMS.valor(Indicador.PESO, Sexo.M, 0, TabelaOms.Z_P3)).isCloseTo(2.5, within(0.06));
         assertThat(OMS.valor(Indicador.PESO, Sexo.M, 0, TabelaOms.Z_P97)).isCloseTo(4.3, within(0.06));
         assertThat(OMS.valor(Indicador.COMPRIMENTO, Sexo.F, 365, 0)).isCloseTo(74.0, within(0.1));

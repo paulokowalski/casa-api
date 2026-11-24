@@ -4,22 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
 
-/**
- * Configuração do monitoramento do servidor ({@code monitor.*} no application.yaml).
- *
- * @param procPath        onde está o /proc do host (no container o /proc já é o do host para CPU, memória e discos)
- * @param sysPath         onde está o /sys do host; precisa ser o do host para enxergar as interfaces de rede
- * @param hostnameArquivo arquivo com o nome do host
- * @param discos          discos a acompanhar, no formato {@code Nome=/caminho}. Com o arquivo do SMART (que traz as
- *                        montagens do host), o caminho é o ponto de montagem no host, ex.: {@code Mídia=/mnt/media};
- *                        sem ele, é qualquer arquivo ou pasta dentro do sistema de arquivos que se quer medir
- * @param dockerUrl       API do Docker (de preferência um proxy só-leitura); vazio desliga o monitoramento de containers
- * @param retencaoContainersDias por quantos dias guardar as amostras dos containers (uma por container por minuto)
- * @param smartArquivo    JSON com a temperatura dos discos, gravado no host pelo casa-monitor-smart (config/smart);
- *                        vazio desliga as temperaturas dos discos
- * @param hostArquivo     JSON com o status do host (backup, serviços, montagens, rede...), gravado pelo timer
- *                        casa-monitor-host (config/host); vazio desliga essa parte
- */
 @ConfigurationProperties(prefix = "monitor")
 public record MonitorProperties(Boolean habilitado,
                                 Integer retencaoDias,

@@ -19,7 +19,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
-/** Eventos da internet: troca de IP, períodos de perda de pacotes e testes de velocidade ruins. */
 class InternetServiceEventosTest {
 
     static final LocalDateTime T0 = LocalDateTime.of(2026, 11, 21, 12, 0);
@@ -44,7 +43,6 @@ class InternetServiceEventosTest {
         return new AmostraInternet(T0, online, ping, ping, ping, ping, dns, dns, dns, ip, null, null);
     }
 
-    /** Uma amostra por minuto a partir de T0, cada uma com a perda dada. */
     void minutos(double... perdas) {
         for (int i = 0; i < perdas.length; i++) service.eventosAmostra(T0.plusMinutes(i), amostra("1.1.1.1", true, perdas[i]), eventos);
     }
@@ -52,7 +50,7 @@ class InternetServiceEventosTest {
     @Test
     void ipPublicoQueMudaViraEvento() {
         service.eventosAmostra(T0, amostra("1.1.1.1", true, 0), eventos);
-        assertThat(eventos).isEmpty(); // primeiro valor só é guardado
+        assertThat(eventos).isEmpty();
         service.eventosAmostra(T0.plusMinutes(1), amostra("2.2.2.2", true, 0), eventos);
         assertThat(eventos).singleElement().satisfies(e -> {
             assertThat(e.mensagem()).isEqualTo("IP público mudou de 1.1.1.1 para 2.2.2.2");
@@ -74,7 +72,6 @@ class InternetServiceEventosTest {
 
     @Test
     void recuperacaoCurtaNaoEncerraEFimTemDuracaoEPico() {
-        // 3 min com perda (abre), 2 sem (não encerra), 2 com perda (pico 60), 3 sem (encerra)
         minutos(20, 30, 15, 0, 0, 60, 40, 0, 0, 0);
         assertThat(eventos).hasSize(2);
         var fim = eventos.get(1);
@@ -101,7 +98,7 @@ class InternetServiceEventosTest {
 
         eventos.clear();
         when(repository.downloadsAntes(any(), anyInt())).thenReturn(List.of(700.0, 650.0, 720.0, 680.0));
-        service.eventosTeste(teste(T0, true, 400.0, null), eventos); // mediana 700: 400 não é lento
+        service.eventosTeste(teste(T0, true, 400.0, null), eventos);
         assertThat(eventos).isEmpty();
         service.eventosTeste(teste(T0, true, 300.0, null), eventos);
         assertThat(eventos).singleElement().extracting(EventosHost.Evento::mensagem)

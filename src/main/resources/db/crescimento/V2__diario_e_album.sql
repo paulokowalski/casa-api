@@ -1,9 +1,3 @@
--- Módulo crescimento, passo 4: diário (momentos, consultas, pesagens com fotos) e álbum.
--- Um registro do álbum é um registro do diário com album_chave (ex.: 'nascimento', 'mes-3', 'ano-1',
--- 'primeira-sorriso', 'especial-<id>'); cada chave aparece no máximo uma vez por criança.
--- Aplicar à mão:
---   docker exec -i postgresql18-postgresql18-1 psql -U postgres -d casa -v ON_ERROR_STOP=1 < src/main/resources/db/crescimento/V2__diario_e_album.sql
-
 CREATE TABLE IF NOT EXISTS crescimento.registro (
     id               uuid PRIMARY KEY,
     crianca_id       uuid NOT NULL REFERENCES crescimento.crianca (id) ON DELETE CASCADE,
@@ -14,7 +8,6 @@ CREATE TABLE IF NOT EXISTS crescimento.registro (
     proxima_consulta date,
     album_chave      varchar(40),
     album_titulo     varchar(50),
-    -- medidas registradas junto (a medição também aparece na lista de medidas)
     medicao_id       uuid REFERENCES crescimento.medicao (id) ON DELETE SET NULL,
     criado_por       bigint,
     criado_em        timestamptz NOT NULL DEFAULT now(),

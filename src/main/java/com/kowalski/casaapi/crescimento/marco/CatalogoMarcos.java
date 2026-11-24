@@ -6,11 +6,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Marcos do desenvolvimento de 0 a 3 anos, por faixa de idade, conforme a Caderneta da Criança do Ministério da
- * Saúde (instrumento de vigilância do desenvolvimento, baseado no teste de Denver). Os ids são estáveis: ficam
- * gravados no banco. Ao mudar o catálogo, suba {@link #VERSAO} e nunca reaproveite um id com outro significado.
- */
 public final class CatalogoMarcos {
 
     public static final String VERSAO = "caderneta-ms-2024.1";
@@ -18,7 +13,6 @@ public final class CatalogoMarcos {
 
     public enum Area { MOTOR, SOCIAL, LINGUAGEM, COGNITIVO }
 
-    /** Faixa de idade em meses [inicio, fim). */
     public record Faixa(String id, String nome, int inicioMeses, int fimMeses, List<String> brincadeiras) {
     }
 
@@ -75,7 +69,6 @@ public final class CatalogoMarcos {
         return Optional.ofNullable(POR_ID.get(id));
     }
 
-    /** Faixa da idade em meses (fracionários); depois dos 3 anos, a última. */
     public static Faixa faixaDaIdade(double meses) {
         return FAIXAS.stream().filter(f -> meses < f.fimMeses()).findFirst().orElse(FAIXAS.get(FAIXAS.size() - 1));
     }

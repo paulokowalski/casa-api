@@ -17,13 +17,6 @@ import java.util.Map;
 import static com.kowalski.casaapi.comum.RelogioConfig.FUSO_DA_CASA;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Testes de ponta a ponta: a API inteira sobe numa porta de verdade, ligada a um PostgreSQL e a um MariaDB vazios
- * (containers descartáveis criados pelo {@code e2e/rodar.sh}), e os testes falam com ela só por HTTP, como o front.
- * <p>
- * Só rodam com {@code E2E=1} (o script define isso e os bancos). Fora dele ficam desligados, porque precisam dos
- * bancos. Rodar à mão: {@code bash e2e/rodar.sh} na raiz do projeto.
- */
 @EnabledIfEnvironmentVariable(named = "E2E", matches = "1")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class CasaApiE2ETest {
@@ -42,13 +35,10 @@ class CasaApiE2ETest {
     void preparar() {
         http = RestClient.builder()
                 .baseUrl("http://localhost:" + porta + "/casa-api")
-                // os testes conferem o status: 4xx/5xx não viram exceção
                 .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> {
                 })
                 .build();
     }
-
-    // ---- login e permissões ----
 
     @Test
     void adminEntraERecebeToken() {
@@ -73,8 +63,6 @@ class CasaApiE2ETest {
         assertThat(http.get().uri("/v1/servidor/ventilacao").retrieve().toBodilessEntity().getStatusCode().value())
                 .isEqualTo(401);
     }
-
-    // ---- crescimento: família, criança, medição e resumo (gravando de verdade no PostgreSQL) ----
 
     @Test
     void crescimentoDaFamiliaAteOResumoDaPesagem() {
@@ -121,8 +109,6 @@ class CasaApiE2ETest {
                 .header("Authorization", token()).retrieve().toBodilessEntity();
         assertThat(r.getStatusCode().value()).isIn(403, 404);
     }
-
-    // ---- ventilação: o Home Assistant grava com a chave de integração e o admin lê (MariaDB de verdade) ----
 
     @Test
     void ventilacaoGravadaPelaIntegracaoApareceParaOAdmin() {
@@ -282,8 +268,6 @@ class CasaApiE2ETest {
         assertThat(http.delete().uri("/v1/passagens/rotas/" + id).header("Authorization", token)
                 .retrieve().toBodilessEntity().getStatusCode().value()).isEqualTo(404);
     }
-
-    // ---- apoio ----
 
     @Test
     void compraParaNomeSemPessoaCadastradaDa400ENaoGrava() {

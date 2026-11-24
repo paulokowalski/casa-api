@@ -8,7 +8,5 @@ import java.time.ZoneId;
 @Configuration
 @EnableConfigurationProperties(CrescimentoProperties.class)
 public class CrescimentoConfig {
-
-    /** Fuso usado para "hoje" (idade da criança, alertas). */
     public static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 }

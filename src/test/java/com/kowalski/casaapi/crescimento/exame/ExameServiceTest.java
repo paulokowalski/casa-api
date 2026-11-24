@@ -103,7 +103,6 @@ class ExameServiceTest {
         verify(storage).gravar(endsWith(".jpg"), conteudo.capture());
         assertThat(ExameService.detectar(conteudo.getValue())).isEqualTo(TipoExame.JPEG);
         assertThat(conteudo.getValue()[0] & 0xFF).isEqualTo(0xFF);
-        // só a resolução cheia: as reduções das fotos não são geradas para exames
         verify(processador).processarOriginal(any());
         verify(processador, never()).processar(any());
     }

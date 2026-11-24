@@ -28,8 +28,6 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class AlbumService {
-
-    /** Mêsversários futuros aparecem até esta antecedência. */
     static final int DIAS_ANTECEDENCIA = 45;
 
     private static final SecureRandom ALEATORIO = new SecureRandom();
@@ -77,7 +75,6 @@ public class AlbumService {
                 chamada(c, hoje, regs, fs), mes, primeiras, especiais);
     }
 
-    /** Cria ou altera as fotos de um lugar do álbum. */
     @Transactional
     public RegistroResponse salvar(UUID criancaId, String chave, AlbumInput dados) {
         Crianca c = criancas.carregar(criancaId, true);
@@ -100,7 +97,6 @@ public class AlbumService {
         return registros.salvar(c, existente, in);
     }
 
-    /** Novo momento especial (o nome vem em albumTitulo). */
     @Transactional
     public RegistroResponse novoEspecial(UUID criancaId, AlbumInput dados) {
         byte[] b = new byte[5];
@@ -129,7 +125,6 @@ public class AlbumService {
                 f.isEmpty() ? null : f.get(f.size() - 1), f.size(), peso);
     }
 
-    /** Peso do próprio registro ou a pesagem mais recente até 21 dias antes. */
     static Double pesoEm(Registro r, List<Medicao> meds) {
         if (r.getMedicaoId() != null)
             for (Medicao m : meds) if (m.getId().equals(r.getMedicaoId()) && m.getPesoKg() != null) return m.getPesoKg();
@@ -139,7 +134,6 @@ public class AlbumService {
         return melhor == null ? null : melhor.getPesoKg();
     }
 
-    /** O mêsversário que passou há até 10 dias sem foto, o de hoje, ou o próximo em até 7 dias. */
     static Chamada chamada(Crianca c, LocalDate hoje, Map<String, Registro> regs, Map<UUID, List<FotoResponse>> fs) {
         List<Lugar> lugares = CatalogoAlbum.mesversarios(c.getNascimento(), hoje);
         Lugar recente = null;

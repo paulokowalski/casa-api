@@ -25,7 +25,6 @@ public class CriancaService {
     private final ExameService exames;
     private final Clock relogio;
 
-    /** Carrega a criança conferindo se o usuário é da família (e responsável, quando vai alterar). */
     @Transactional(readOnly = true)
     public Crianca carregar(UUID id, boolean escrita) {
         Crianca c = criancas.findById(id).orElseThrow(() -> new NaoEncontradoException("Criança não encontrada"));
@@ -67,7 +66,6 @@ public class CriancaService {
         return resposta(criancas.save(c), true);
     }
 
-    /** Apaga a criança com medidas, fotos e exames (inclusive os arquivos). */
     @Transactional
     public void excluir(UUID id) {
         Crianca c = carregar(id, true);

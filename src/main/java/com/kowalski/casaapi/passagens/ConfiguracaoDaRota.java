@@ -21,8 +21,6 @@ public final class ConfiguracaoDaRota {
     private ConfiguracaoDaRota() {
     }
 
-
-    /** Valida e devolve a configuração no formato gravado (o mesmo que a tela lê). */
     public static Map<String, Object> validar(RotaPassagemInput in, LocalDate hoje) {
         if (in == null) throw new IllegalArgumentException("Envie os dados da rota");
         String nome = in.nome() == null ? "" : in.nome().trim().replaceAll("\\s+", " ");

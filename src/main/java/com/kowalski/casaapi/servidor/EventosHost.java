@@ -26,18 +26,6 @@ import static com.kowalski.casaapi.servidor.LeitorHost.local;
 import static com.kowalski.casaapi.servidor.LeitorHost.logico;
 import static com.kowalski.casaapi.servidor.LeitorHost.texto;
 
-/**
- * Transforma leituras do status do host em eventos para o histórico ({@code evento_host}).
- * <p>
- * Dois tipos de evento:
- * <ul>
- *   <li><b>com data própria</b> (logins SSH, execuções do backup, linhas do kernel, boot): a chave é derivada do
- *       próprio fato, então reler o mesmo arquivo ou reiniciar a API não duplica nada ({@code INSERT IGNORE});</li>
- *   <li><b>mudanças de estado</b> (alerta novo/resolvido, serviço que falhou, disco desmontado, internet fora,
- *       container que reiniciou, aparelho começando ou parando de acessar o servidor pela VPN): comparam a leitura
- *       atual com a anterior guardada em memória. Depois de reiniciar a API a primeira leitura só serve de base.</li>
- * </ul>
- */
 public final class EventosHost {
 
     public static final String INFO = "info";
@@ -45,20 +33,15 @@ public final class EventosHost {
     public static final String ATENCAO = "atencao";
     public static final String ERRO = "erro";
 
-    /** Leituras seguidas sem internet antes de registrar a queda (um ping perdido não é queda). */
     static final int LEITURAS_PARA_QUEDA = 2;
 
-    /** Tempo sem tráfego com o servidor para considerar que o aparelho parou de acessar pela VPN. */
     static final Duration VPN_OCIOSO = Duration.ofMinutes(5);
-    /** Na primeira leitura (API recém-subida), handshake mais novo que isso = acesso já em andamento. */
     static final Duration VPN_HANDSHAKE_RECENTE = Duration.ofMinutes(3);
-    /** Aparelhos adicionados à tailnet há menos que isso geram o evento "aparelho novo". */
     static final Duration VPN_APARELHO_NOVO = Duration.ofDays(7);
 
     public record Evento(LocalDateTime quando, String tipo, String chave, String nivel, String mensagem) {
     }
 
-    /** O que precisa ser lembrado entre uma leitura e outra. */
     public static final class Estado {
         private Set<String> alertas;
         private Map<String, Boolean> servicos;
@@ -72,13 +55,12 @@ public final class EventosHost {
         private boolean inicializado;
     }
 
-    /** Contadores de um aparelho da tailnet e o acesso ao servidor em andamento (se houver). */
     private static final class AcessoVpn {
         private long recebidos;
         private long enviados;
         private String handshake;
         private boolean acessando;
-        private LocalDateTime inicio;          // nulo = já estava acessando quando a API subiu
+        private LocalDateTime inicio;
         private LocalDateTime ultimoTrafego;
         private long bytes;
     }
@@ -93,13 +75,10 @@ public final class EventosHost {
         return eventos;
     }
 
-    /** Boot do servidor (btime do /proc/stat). */
     public static Evento boot(long bootEpoch) {
         LocalDateTime quando = LocalDateTime.ofInstant(Instant.ofEpochSecond(bootEpoch), ZoneId.systemDefault());
         return new Evento(quando, "boot", "boot|" + bootEpoch, ATENCAO, "Servidor ligado (reinício)");
     }
-
-    // ---- eventos com data própria ----
 
     private static void comDataPropria(Map<String, Object> h, List<Evento> eventos) {
         for (Object l : lista(h.get("loginsSsh"))) {
@@ -135,8 +114,6 @@ public final class EventosHost {
             eventos.add(new Evento(quando, "kernel", "kernel|" + hash(linha), ERRO, "Kernel: " + msg));
         }
     }
-
-    // ---- mudanças de estado ----
 
     private static void mudancas(LocalDateTime agora, Map<String, Object> h, Estado e, List<Evento> eventos) {
         String minuto = agora.truncatedTo(ChronoUnit.MINUTES).toString();
@@ -207,7 +184,6 @@ public final class EventosHost {
 
         acessosVpn(agora, minuto, h, e, eventos);
 
-        // Internet: só registra a queda depois de leituras seguidas sem resposta
         if (Boolean.FALSE.equals(internet)) {
             e.leiturasSemInternet++;
             if (e.leiturasSemInternet == LEITURAS_PARA_QUEDA) {
@@ -233,14 +209,9 @@ public final class EventosHost {
         e.inicializado = true;
     }
 
-    /**
-     * Quem acessa o servidor pela VPN. "Online" no Tailscale é só estar conectado à tailnet; acessar é trocar
-     * tráfego com este servidor, que aparece nos bytes e no último handshake WireGuard do aparelho. O acesso começa
-     * na primeira leitura com tráfego e termina depois de {@link #VPN_OCIOSO} sem tráfego.
-     */
     private static void acessosVpn(LocalDateTime agora, String minuto, Map<String, Object> h, Estado e, List<Evento> eventos) {
         Object ts = em(h, "rede", "tailscale");
-        if (!(em(ts, "aparelhos") instanceof List<?> aparelhos)) return; // sem leitura: mantém o que sabia
+        if (!(em(ts, "aparelhos") instanceof List<?> aparelhos)) return;
         String eu = texto(em(ts, "usuario"));
         Map<String, AcessoVpn> atual = new HashMap<>();
         for (Object a : aparelhos) {
@@ -260,7 +231,6 @@ public final class EventosHost {
             at.handshake = texto(em(a, "ultimoHandshake"));
             AcessoVpn ant = e.vpn.get(id);
             if (ant == null && !e.inicializado) {
-                // base: um acesso que já estava acontecendo fica com início desconhecido, sem evento de início
                 LocalDateTime hs = local(at.handshake);
                 if (hs != null && !hs.isBefore(agora.minus(VPN_HANDSHAKE_RECENTE))) {
                     at.acessando = true;
@@ -269,13 +239,12 @@ public final class EventosHost {
                 atual.put(id, at);
                 continue;
             }
-            if (ant == null) ant = new AcessoVpn(); // aparelho que entrou agora na tailnet: contadores partem do zero
+            if (ant == null) ant = new AcessoVpn();
             at.acessando = ant.acessando;
             at.inicio = ant.inicio;
             at.ultimoTrafego = ant.ultimoTrafego;
             at.bytes = ant.bytes;
 
-            // contador menor que o anterior = o Tailscale reiniciou o par (ex.: ficou ocioso); conta do zero
             long delta = (at.recebidos >= ant.recebidos ? at.recebidos - ant.recebidos : at.recebidos)
                     + (at.enviados >= ant.enviados ? at.enviados - ant.enviados : at.enviados);
             boolean trafego = delta > 0 || (at.handshake != null && !at.handshake.equals(ant.handshake));
@@ -305,7 +274,6 @@ public final class EventosHost {
         e.vpn = atual;
     }
 
-    /** "ipad157 (iOS · 100.71.41.49)", com o dono quando o aparelho é de outra conta. */
     private static String descricaoAparelho(Object a, String eu) {
         String nome = Objects.toString(texto(em(a, "nome")), "aparelho sem nome");
         List<String> partes = new ArrayList<>();

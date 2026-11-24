@@ -1,7 +1,6 @@
 package com.kowalski.casaapi.internet;
 
 import com.kowalski.casaapi.servidor.ServidorService;
-import com.kowalski.casaapi.servidor.LeitorHost;
 import com.kowalski.casaapi.servidor.EventosHost;
 import com.kowalski.casaapi.comum.MonitorIndisponivelException;
 import com.kowalski.casaapi.config.monitor.MonitorProperties;
@@ -30,21 +29,13 @@ import static com.kowalski.casaapi.servidor.LeitorHost.local;
 import static com.kowalski.casaapi.servidor.LeitorHost.logico;
 import static com.kowalski.casaapi.servidor.LeitorHost.texto;
 
-/**
- * Internet da casa: a cada minuto grava em {@code amostra_internet} o que o timer casa-monitor-internet mediu
- * (ping, perda, jitter, DNS, IP público) e em {@code teste_velocidade} os testes novos do casa-monitor-velocidade.
- * Gera eventos (evento_host, tipo internet) quando o IP público muda, quando há perda de pacotes seguida e quando
- * um teste de velocidade falha ou sai bem abaixo do normal.
- */
 @Slf4j
 @Service
 public class InternetService {
 
     static final int MAX_DIAS_CONSULTA = 366;
-    /** Minutos seguidos com perda para registrar (e sem perda para encerrar) um período de perda de pacotes. */
     static final int MINUTOS_PERDA = 3;
     static final double PERDA_MINIMA_PCT = 10;
-    /** Download abaixo desta fração da mediana dos últimos testes vira evento. */
     static final double FRACAO_LENTO = 0.5;
     static final int TESTES_COMPARAR = 10;
 
@@ -56,7 +47,6 @@ public class InternetService {
 
     private volatile boolean tabelasProntas;
     private String ultimoLidoEm;
-    /** Teste de velocidade mais novo já gravado: o velocidade.json só muda a cada 4 h, então não regrava a cada minuto. */
     private LocalDateTime ultimoTesteGravado;
     private String ip;
     private boolean ipCarregado;
@@ -74,7 +64,6 @@ public class InternetService {
         this.relogio = relogio;
     }
 
-    /** O host grava aos 20 s de cada minuto; lê aos 40 s. */
     @Scheduled(cron = "40 * * * * *")
     public void coletar() {
         coletar(LocalDateTime.now(relogio).truncatedTo(ChronoUnit.MINUTES), relogio.instant());
@@ -103,7 +92,7 @@ public class InternetService {
                 }
             }
             servidorService.registrarEventos(eventos);
-            if (maisNovo != null) ultimoTesteGravado = maisNovo; // só depois de gravar: se falhar, tenta de novo
+            if (maisNovo != null) ultimoTesteGravado = maisNovo;
         } catch (RuntimeException e) {
             log.warn("Monitoramento: falha na coleta da internet das {}: {}", agora.toLocalTime(), e.getMessage());
         }
@@ -121,7 +110,7 @@ public class InternetService {
         }
 
         Double perda = a.perdaInternet();
-        if (Boolean.FALSE.equals(a.online()) || perda == null) return; // queda de internet já tem evento próprio
+        if (Boolean.FALSE.equals(a.online()) || perda == null) return;
         if (perda >= PERDA_MINIMA_PCT) {
             minutosComPerda++;
             minutosSemPerda = 0;
@@ -181,7 +170,6 @@ public class InternetService {
         }
     }
 
-    /** Leitura atual (internet.json + último teste de velocidade); 503 se o arquivo não existe. */
     public Map<String, Object> agora() {
         if (!leitor.habilitado()) {
             throw new MonitorIndisponivelException("Internet desligada (MONITOR_HOST_ARQUIVO vazio)", null);

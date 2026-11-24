@@ -12,7 +12,5 @@ public interface FamiliaMembroRepository extends JpaRepository<FamiliaMembro, UU
 
     List<FamiliaMembro> findByFamiliaIdOrderByCriadoEm(UUID familiaId);
 
-    List<FamiliaMembro> findByUsuarioId(Long usuarioId);
-
     long countByFamiliaIdAndPapel(UUID familiaId, PapelFamilia papel);
 }

@@ -15,10 +15,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Ventilação do servidor no MariaDB {@code casa_monitor}: uma linha por minuto com o que o Home Assistant enviou
- * (estado da tomada das ventoinhas, temperaturas e limites). Tabela criada pela API na subida.
- */
 @Repository
 public class VentilacaoRepository {
 
@@ -43,7 +39,6 @@ public class VentilacaoRepository {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """;
 
-    /** Resumo por dia; "ligou" = minuto ligado cujo minuto gravado anterior não estava ligado. */
     private static final String POR_DIA = """
             SELECT DATE(coletado_em) AS dia, COUNT(*) AS minutos, COALESCE(SUM(tomada = 'on'), 0) AS ligada,
                    COALESCE(SUM(tomada = 'on' AND COALESCE(anterior, '') <> 'on'), 0) AS ligou,
@@ -67,7 +62,6 @@ public class VentilacaoRepository {
         jdbc.execute(TABELA);
     }
 
-    /** Grava a leitura no minuto; outra leitura no mesmo minuto (ex.: a tomada mudou) substitui a anterior. */
     public void gravar(LocalDateTime minuto, LocalDateTime recebidoEm, Leitura l) {
         jdbc.update("""
                         INSERT INTO amostra_ventilacao (coletado_em, recebido_em, tomada, precisa, automatica, soc, hds, nvme,
@@ -94,7 +88,6 @@ public class VentilacaoRepository {
     public record Ultima(LocalDateTime minuto, LocalDateTime recebidoEm, Leitura leitura) {
     }
 
-    /** Primeiro minuto do trecho atual com a tomada em {@code estado} (até {@code ate}). */
     public LocalDateTime desde(String estado, LocalDateTime ate) {
         LocalDateTime outro = jdbc.queryForObject(
                 "SELECT MAX(coletado_em) FROM amostra_ventilacao WHERE tomada <> ? AND coletado_em <= ?",
@@ -105,7 +98,6 @@ public class VentilacaoRepository {
                 LocalDateTime.class, outro);
     }
 
-    /** Minutos gravados no período, em ordem: [minuto, leitura]. */
     public List<Minuto> minutos(LocalDateTime de, LocalDateTime ate) {
         return jdbc.query("SELECT * FROM amostra_ventilacao WHERE coletado_em >= ? AND coletado_em < ? ORDER BY coletado_em",
                 (rs, i) -> new Minuto(rs.getObject("coletado_em", LocalDateTime.class), leitura(rs)), de, ate);

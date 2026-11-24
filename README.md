@@ -463,6 +463,15 @@ roda esse script antes de cada commit, e o casa usa a mesma estrutura nos testes
 
 Cada commit gera uma versão (major.minor.patch). A mais recente fica no topo.
 
+### 4.1.2 — 24/11/2026
+
+Limpeza interna do código, sem mudança de comportamento para quem usa o sistema: foram removidos comentários e código sem uso.
+
+- Removidos os comentários do código Java, dos testes, do application.yaml, do Dockerfile, do HAProxy e dos scripts e timers de monitoramento do host (internet, velocidade, SMART, host) e do e2e
+- Removidos imports sem uso nos testes e o método findByUsuarioId, que não era usado, de FamiliaMembroRepository
+- Removidas as linhas de cabeçalho com # das tabelas da OMS (peso.tsv, comprimento.tsv, perimetro.tsv)
+- Removidos os comentários das migrações já existentes (db/crescimento V1, V2, V3, V6 e V7; db/migration V4 e V5; db/passagens V1 e V2). Isso muda o checksum do Flyway: vale conferir se a API sobe nos bancos onde essas versões já foram aplicadas, ou se vai ser preciso rodar flyway repair no servidor
+
 ### 4.1.1 — 24/11/2026
 
 Colunas do banco renomeadas para nomes por extenso e padronizados (como criado_em), sem mudar os endpoints nem o JSON da API.

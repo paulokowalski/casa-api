@@ -15,13 +15,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Lê os containers pela API do Docker. Usa só {@code GET /containers/json} e
- * {@code GET /containers/{id}/stats?one-shot=true}, que o proxy só-leitura libera (config/docker-proxy).
- * <p>
- * As estatísticas são contadores acumulados (CPU em nanossegundos, bytes de rede e disco): a taxa sai da
- * diferença entre duas leituras, como no {@link LeitorSistema}.
- */
 @Component
 public class LeitorContainers {
 
@@ -41,12 +34,10 @@ public class LeitorContainers {
         this.http = RestClient.builder().baseUrl(props.dockerUrl()).requestFactory(fabrica).build();
     }
 
-    /** Contadores de um container em execução. Campos nulos: o Docker não informou (ex.: rede do host). */
     public record Contadores(long cpuNs, long sistemaNs, Long memUsada, Long memLimite,
                              Long redeRecebidos, Long redeEnviados, Long discoLidos, Long discoEscritos, Integer processos) {
     }
 
-    /** Um container; {@code contadores} é nulo quando ele não está rodando ou as estatísticas falharam. */
     public record Container(String id, String nome, String imagem, String estado, String status, String saude,
                             Contadores contadores) {
 
@@ -66,7 +57,6 @@ public class LeitorContainers {
         return http != null;
     }
 
-    /** Lista todos os containers (inclusive parados) com os contadores dos que estão rodando. */
     public Leitura ler() {
         if (http == null) return new Leitura(System.nanoTime(), List.of());
         List<Map<String, Object>> lista = http.get().uri("/containers/json?all=true").retrieve().body(LISTA);
@@ -80,7 +70,6 @@ public class LeitorContainers {
                     contadores = parseStats(http.get().uri("/containers/{id}/stats?stream=false&one-shot=true", id)
                             .retrieve().body(OBJETO));
                 } catch (RestClientException e) {
-                    // o container pode ter parado entre a lista e as estatísticas
                 }
             }
             String status = texto(c.get("Status"));
@@ -91,8 +80,6 @@ public class LeitorContainers {
         return new Leitura(System.nanoTime(), containers);
     }
 
-    // ---- parsers (estáticos para os testes) ----
-
     @SuppressWarnings("unchecked")
     static Contadores parseStats(Map<String, Object> s) {
         if (s == null) return null;
@@ -102,7 +89,6 @@ public class LeitorContainers {
 
         Long uso = longo(caminho(s, "memory_stats", "usage"));
         Long limite = longo(caminho(s, "memory_stats", "limit"));
-        // mesmo cálculo do "docker stats": o cache de arquivos inativo pode ser liberado e não conta como uso
         Long inativo = longo(caminho(s, "memory_stats", "stats", "inactive_file"));
         if (inativo == null) inativo = longo(caminho(s, "memory_stats", "stats", "total_inactive_file"));
         Long memUsada = uso == null ? null : Math.max(uso - (inativo == null ? 0 : inativo), 0);
@@ -170,7 +156,6 @@ public class LeitorContainers {
             new String[]{"\\b(\\d+) years\\b", "$1 anos"},
             new String[]{"\\ban? (hour|minute)\\b", "1 $1"});
 
-    /** "Up 44 hours (healthy)" → "ligado há 44 horas"; "Exited (0) 3 days ago" → "parado (código 0) há 3 dias". */
     static String traduzirStatus(String status) {
         if (status == null) return null;
         String s = status.trim();

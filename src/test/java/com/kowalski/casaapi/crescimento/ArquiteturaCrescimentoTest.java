@@ -11,10 +11,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * O módulo crescimento precisa poder virar um projeto separado: nenhum arquivo dele pode usar classes de outros
- * pacotes do casa-api. A ligação com o login é feita por interfaces em crescimento.identidade, implementadas fora.
- */
 class ArquiteturaCrescimentoTest {
 
     private static final Path MODULO = Path.of("src/main/java/com/kowalski/casaapi/crescimento");
@@ -51,10 +47,6 @@ class ArquiteturaCrescimentoTest {
         }
     }
 
-    /**
-     * Regra da família: nenhuma IA tem acesso aos dados das crianças. O módulo não pode ter pacote de IA nem abrir
-     * conexões para fora (cliente HTTP, socket), nem citar serviços de IA. Ele só responde ao app, com login.
-     */
     @Test
     void nenhumaIaRecebeDadosDasCriancas() throws IOException {
         assertThat(MODULO.resolve("ia")).as("o módulo crescimento não pode ter pacote de IA").doesNotExist();

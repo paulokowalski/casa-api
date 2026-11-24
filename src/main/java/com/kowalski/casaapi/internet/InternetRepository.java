@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.internet;
 
-import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse;
 import com.kowalski.casaapi.servidor.ServidorEstatisticasResponse.Faixa;
 import com.kowalski.casaapi.config.monitor.MonitorConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Histórico da internet da casa no MariaDB {@code casa_monitor}; tabelas criadas pela API na subida. */
 @Repository
 public class InternetRepository {
 
@@ -116,7 +114,6 @@ public class InternetRepository {
                 a.piholeBloqueadasPct(), a.piholeConsultas24h());
     }
 
-    /** Grava os testes novos (os já gravados, mesmo horário, são ignorados). Devolve os que entraram. */
     public List<InternetResponse.TesteVelocidade> inserirTestes(List<InternetResponse.TesteVelocidade> testes) {
         return testes.stream().filter(t -> jdbc.update("""
                         INSERT IGNORE INTO teste_velocidade (testado_em, ok, download_mbps, upload_mbps, latencia_ms,
@@ -133,7 +130,6 @@ public class InternetRepository {
         return r.isEmpty() ? null : r.get(0);
     }
 
-    /** Download dos últimos testes que deram certo antes de um horário (para comparar o novo). */
     public List<Double> downloadsAntes(LocalDateTime antes, int quantos) {
         return jdbc.queryForList("SELECT download_mbps FROM teste_velocidade WHERE ok AND testado_em < ?"
                 + " ORDER BY testado_em DESC LIMIT ?", Double.class, antes, quantos);

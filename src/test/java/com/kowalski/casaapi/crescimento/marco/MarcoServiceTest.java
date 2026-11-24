@@ -28,7 +28,7 @@ class MarcoServiceTest {
     @Test
     void faseAtualEAtencao() {
         LocalDate hoje = LocalDate.of(2026, 11, 16);
-        Crianca c = crianca(hoje.minusMonths(7), 39.0); // 7 meses: faixa 6-9
+        Crianca c = crianca(hoje.minusMonths(7), 39.0);
         MarcoAtingido m = new MarcoAtingido();
         m.setMarcoId("m03d");
         m.setAtingidoEm(hoje.minusMonths(2));
@@ -46,7 +46,6 @@ class MarcoServiceTest {
     @Test
     void prematuroUsaIdadeCorrigida() {
         LocalDate hoje = LocalDate.of(2026, 11, 16);
-        // 4 meses de idade real (123 dias), nasceu com 31 semanas: 63 dias a menos -> 60 dias, fase de 1 a 2 meses
         MarcosResponse r = MarcoService.montar(crianca(hoje.minusMonths(4), 31.0), List.of(), hoje);
         assertThat(r.idadeCorrigida()).isTrue();
         assertThat(r.idadeDias()).isEqualTo(60);

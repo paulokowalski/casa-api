@@ -24,10 +24,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
-/**
- * Lê a foto enviada, endireita pela orientação do EXIF e grava as variantes em JPEG.
- * A regravação descarta todos os metadados (inclusive a localização GPS). Uma foto por vez, para caber na memória.
- */
 @Component
 public class ProcessadorImagem {
 
@@ -50,7 +46,7 @@ public class ProcessadorImagem {
             BufferedImage img = orientar(ler(dados), exif.orientacao());
             Map<Variante, byte[]> arquivos = new EnumMap<>(Variante.class);
             BufferedImage atual = img;
-            for (Variante v : Variante.values()) { // em ordem decrescente de tamanho: cada uma reduz a anterior
+            for (Variante v : Variante.values()) {
                 if (v.maiorLado() > 0) atual = reduzir(atual, v.maiorLado());
                 arquivos.put(v, jpeg(atual, v.qualidade()));
             }
@@ -58,10 +54,6 @@ public class ProcessadorImagem {
         });
     }
 
-    /**
-     * Só a resolução cheia ({@link Variante#ORIGINAL}), endireitada e sem metadados, para quem não usa as reduções
-     * (exames). Evita gerar e descartar as outras variantes com a vez das fotos ocupada.
-     */
     public byte[] processarOriginal(byte[] dados) {
         return umaDeCadaVez(dados, () ->
                 jpeg(orientar(ler(dados), lerExif(dados).orientacao()), Variante.ORIGINAL.qualidade()));
@@ -109,7 +101,6 @@ public class ProcessadorImagem {
         }
     }
 
-    /** JPEG não tem canal alfa: fundo branco. Imagens já em RGB passam direto. */
     private static BufferedImage semTransparencia(BufferedImage img) {
         int t = img.getType();
         if (t == BufferedImage.TYPE_3BYTE_BGR || t == BufferedImage.TYPE_INT_RGB) return img;
@@ -122,7 +113,6 @@ public class ProcessadorImagem {
         return rgb;
     }
 
-    /** Aplica a orientação EXIF (1 a 8) aos pixels. */
     static BufferedImage orientar(BufferedImage img, int orientacao) {
         int w = img.getWidth(), h = img.getHeight();
         AffineTransform t = switch (orientacao) {
@@ -144,7 +134,6 @@ public class ProcessadorImagem {
         return destino;
     }
 
-    /** Reduz para o maior lado caber em {@code maiorLado}, em etapas de metade (melhor qualidade). */
     static BufferedImage reduzir(BufferedImage img, int maiorLado) {
         int w = img.getWidth(), h = img.getHeight();
         if (Math.max(w, h) <= maiorLado) return img;
@@ -185,7 +174,6 @@ public class ProcessadorImagem {
     record Exif(int orientacao, LocalDateTime tiradaEm) {
     }
 
-    /** Orientação e data em que a foto foi tirada; EXIF ausente ou estragado não impede o envio. */
     static Exif lerExif(byte[] dados) {
         int orientacao = 1;
         LocalDateTime data = null;
@@ -199,7 +187,6 @@ public class ProcessadorImagem {
             if (txt == null && ifd0 != null) txt = ifd0.getString(ExifIFD0Directory.TAG_DATETIME);
             if (txt != null) data = LocalDateTime.parse(txt.trim(), EXIF_DATA);
         } catch (Exception e) {
-            // sem EXIF legível
         }
         return new Exif(orientacao >= 1 && orientacao <= 8 ? orientacao : 1, data);
     }

@@ -2,7 +2,6 @@ package com.kowalski.casaapi.servidor;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** Histórico do status do host (amostra_host, uma por minuto). */
 public final class ServidorHostDiaResponse {
 
     private ServidorHostDiaResponse() {

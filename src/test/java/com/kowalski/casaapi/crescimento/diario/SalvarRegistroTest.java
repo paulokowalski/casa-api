@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** Regras de {@link RegistroService#salvar} que decidem o que acontece com as fotos e com o álbum. */
 class SalvarRegistroTest {
 
     static final LocalDate HOJE = LocalDate.of(2026, 11, 22);
@@ -101,7 +100,6 @@ class SalvarRegistroTest {
         verify(registros, never()).saveAndFlush(any());
         verify(fotos, never()).definirFotosDoRegistro(any(), any(), any());
 
-        // o próprio registro do lugar pode ser alterado
         service.salvar(crianca, outro, momento(null, "mes-3", List.of(UUID.randomUUID())));
         verify(fotos).definirFotosDoRegistro(eq(crianca), eq(outro.getId()), anyList());
     }

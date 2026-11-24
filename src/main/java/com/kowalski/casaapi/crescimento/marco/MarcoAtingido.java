@@ -20,7 +20,6 @@ public class MarcoAtingido {
     @Column(nullable = false)
     private UUID criancaId;
 
-    /** Id do {@link CatalogoMarcos}. */
     @Column(nullable = false, length = 20)
     private String marcoId;
 

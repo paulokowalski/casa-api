@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Histórico da internet da casa (amostra_internet a cada minuto, teste_velocidade a cada 4 horas). */
 public final class InternetResponse {
 
     private InternetResponse() {
