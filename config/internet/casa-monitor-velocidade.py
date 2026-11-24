@@ -21,11 +21,8 @@ HOST = "speed.cloudflare.com"
 DOWN_CONEXOES, DOWN_BYTES = 6, 25_000_000
 UP_CONEXOES, UP_BYTES = 4, 25_000_000
 TEMPO_MAX = 30
-# depois do prazo, quanto esperar as conexões pararem; se alguma não parar, o teste é marcado incompleto
 FOLGA_PARAR = 5
-# latência sem carga: prazo da fase inteira e de cada requisição (com a rede ruim, o teste ainda termina e grava o erro)
 PRAZO_LATENCIA, TIMEOUT_LATENCIA = 15, 5
-# latência durante o download: só nos primeiros segundos da medição
 PRAZO_LATENCIA_CARGA = 10
 GUARDAR = 60
 CAB = {"User-Agent": "casa-monitor/1", "Referer": "https://speed.cloudflare.com/"}
@@ -74,7 +71,7 @@ def baixar(total, erros, parar):
             if not b:
                 break
             total.append(len(b))
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         if not parar.is_set():
             erros.append(str(e))
     finally:
@@ -100,7 +97,7 @@ def enviar(total, erros, parar):
         c.getresponse().read()
     except Interrompido:
         pass
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         if not parar.is_set():
             erros.append(str(e))
     finally:
@@ -122,7 +119,7 @@ def medir(funcao, conexoes, sob_carga=None):
         time.sleep(0.5)
         try:
             sob_carga.extend(latencias(8, PRAZO_LATENCIA_CARGA))
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
     for t in threads:
         t.join(max(0.0, prazo - time.perf_counter()))
@@ -156,7 +153,7 @@ def main():
         teste["ok"] = teste["downloadMbps"] > 0 and teste["uploadMbps"] > 0
         if falhas:
             teste["erro"] = f"{len(falhas)} conexão(ões) falharam: {falhas[0][:150]}"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         teste["erro"] = str(e)[:200]
 
     try:

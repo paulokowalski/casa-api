@@ -1,7 +1,3 @@
-# Padrões de crescimento da OMS (2006), tabela LMS por dia de vida. Fonte: github.com/WorldHealthOrganization/anthro (lenanthro.txt). Colunas: sexo(1=M,2=F) idade_dias L M S
-# Até 730 dias (2 anos) os valores são de comprimento DEITADO; de 731 dias em diante, de estatura EM PÉ (por isso a
-# mediana cai ~0,7 cm aos 2 anos). O módulo assume a posição padrão da OMS para a idade (deitado antes dos 2 anos,
-# em pé depois), que é como a Caderneta da Criança orienta medir; a posição da medida não é registrada.
 1	0	1	49.8842	0.03795
 1	1	1	50.0601	0.03785
 1	2	1	50.2359	0.03775

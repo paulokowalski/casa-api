@@ -20,11 +20,9 @@ public class VacinaAplicada {
     @Column(nullable = false)
     private UUID criancaId;
 
-    /** Id do {@link CatalogoVacinas} ou "extra-..." para vacinas fora do calendário. */
     @Column(nullable = false, length = 40)
     private String vacinaId;
 
-    /** Só nas extras. */
     @Column(length = 80)
     private String nome;
 

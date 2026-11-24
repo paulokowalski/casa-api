@@ -15,23 +15,15 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Aba Passagens: lê o schema {@code passagens} do Postgres, preenchido pelo robô de passagens
- * (/opt/projetos/robo-passagens) depois de cada rodada. A API só lê.
- */
 @Service
 @RequiredArgsConstructor
 public class PassagensService {
-
-    /** Acima disto o gráfico mostra o menor preço de cada dia, em vez de um ponto por busca. */
     static final int DIAS_POR_BUSCA = 31;
-    /** Folga além de duas rodadas do robô antes de considerar que ele parou. */
     static final Duration FOLGA = Duration.ofMinutes(30);
 
     private final PassagensRepository repository;
     private final Clock relogio;
 
-    /** @param dias período dos pontos do gráfico; 0 = todo o histórico */
     public PassagensResponse listar(int dias) {
         try {
             return montar(Math.max(0, dias));

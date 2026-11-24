@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.crescimento.oms;
 
-/** Medidas com padrão de crescimento da OMS (0 a 5 anos). */
 public enum Indicador {
     PESO("Peso", "kg", "peso.tsv", true),
     COMPRIMENTO("Comprimento", "cm", "comprimento.tsv", false),
@@ -30,7 +29,6 @@ public enum Indicador {
         return arquivo;
     }
 
-    /** A OMS ajusta o escore-z além de ±3 nos indicadores de peso (a distribuição tem cauda assimétrica). */
     boolean zRestrito() {
         return zRestrito;
     }

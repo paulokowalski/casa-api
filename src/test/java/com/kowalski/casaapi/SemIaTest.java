@@ -11,10 +11,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Regra do sistema: dados pessoais nunca vão para IA. Nenhum código da API (de nenhuma tela) pode chamar ou citar
- * serviços de IA.
- */
 class SemIaTest {
 
     private static final Pattern IA = Pattern.compile(

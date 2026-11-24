@@ -16,15 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Lê o status do host gravado a cada minuto pelo timer {@code casa-monitor-host} (backup, serviços, montagens,
- * alertas do monitor, kernel, atualizações, rede, logins SSH, NPU e Docker). A API não tem acesso a nada disso
- * de dentro do container; só lê o JSON, montado só-leitura.
- */
 @Component
 public class LeitorHost {
-
-    /** O timer roda a cada minuto; acima disso o host parou de atualizar. */
     static final Duration VALIDADE = Duration.ofMinutes(5);
 
     private final Path arquivo;
@@ -39,7 +32,6 @@ public class LeitorHost {
         return arquivo != null;
     }
 
-    /** O JSON do host como mapa, ou nulo se o arquivo não existe ou é inválido. */
     public Map<String, Object> ler() {
         if (arquivo == null || !Files.isReadable(arquivo)) return null;
         try {
@@ -51,7 +43,6 @@ public class LeitorHost {
         }
     }
 
-    /** O JSON com {@code desatualizado} (arquivo com mais de 5 minutos), para a tela. */
     public Map<String, Object> lerParaTela() {
         Map<String, Object> json = ler();
         if (json == null) return null;
@@ -64,8 +55,6 @@ public class LeitorHost {
         OffsetDateTime lido = data(json.get("lidoEm"));
         return lido == null || lido.toInstant().isBefore(agora.minus(VALIDADE));
     }
-
-    // ---- navegação no JSON ----
 
     public static Object em(Object raiz, String... caminho) {
         Object atual = raiz;
@@ -105,7 +94,6 @@ public class LeitorHost {
         }
     }
 
-    /** Data do JSON no fuso do servidor (o banco guarda DATETIME local). */
     public static LocalDateTime local(Object o) {
         OffsetDateTime d = data(o);
         return d == null ? null : d.atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();

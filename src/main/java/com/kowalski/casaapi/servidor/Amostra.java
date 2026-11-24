@@ -2,7 +2,6 @@ package com.kowalski.casaapi.servidor;
 
 import java.time.LocalDateTime;
 
-/** Uma linha de {@code amostra_servidor}: médias do minuto que terminou em {@code coletadoEm}. */
 public record Amostra(LocalDateTime coletadoEm, int intervaloSeg,
                       double cpuPct, double iowaitPct,
                       double load1, double load5, double load15, int processos,
@@ -13,8 +12,6 @@ public record Amostra(LocalDateTime coletadoEm, int intervaloSeg,
                       double discoLeituraBps, double discoEscritaBps,
                       Double psiCpu, Double psiMemoria, Double psiIo, Double gpuPct, Double cpuLimitePct,
                       Double discoLatenciaMs, Double discoOcupacaoPct, long redeErros) {
-
-    /** Calcula a amostra a partir de duas leituras dos contadores e dos valores instantâneos. */
     public static Amostra de(LocalDateTime coletadoEm, LeitorSistema.Contadores antes, LeitorSistema.Contadores atual,
                              LeitorSistema.Instantaneo inst) {
         double seg = atual.segundosDesde(antes);

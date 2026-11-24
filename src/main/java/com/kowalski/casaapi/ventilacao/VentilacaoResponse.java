@@ -6,13 +6,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Ventilação do servidor (ventoinhas na tomada do Home Assistant). */
 public final class VentilacaoResponse {
 
     private VentilacaoResponse() {
     }
 
-    /** Limite de uma temperatura: liga a partir de {@code liga}, desliga abaixo de {@code desliga}. */
     public record Limite(Double liga, Double desliga) {
     }
 

@@ -30,7 +30,6 @@ public class Crianca {
     @Column(nullable = false, length = 1)
     private Sexo sexo;
 
-    /** Semanas de gestação ao nascer; abaixo de 37 usa a idade corrigida nas curvas até os 2 anos. */
     private Double idadeGestacionalSemanas;
 
     private Double pesoNascerKg;
@@ -39,7 +38,6 @@ public class Crianca {
 
     private Double perimetroNascerCm;
 
-    /** Foto de perfil (uma das fotos da criança). */
     private UUID fotoId;
 
     @Column(nullable = false)

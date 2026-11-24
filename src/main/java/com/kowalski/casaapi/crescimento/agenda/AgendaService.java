@@ -19,7 +19,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.*;
 
-/** O que vem pela frente: vacinas (e as atrasadas), a próxima consulta e o próximo mêsversário. */
 @Service
 @RequiredArgsConstructor
 public class AgendaService {

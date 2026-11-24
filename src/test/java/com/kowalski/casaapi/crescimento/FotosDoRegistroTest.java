@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** {@link FotoService#definirFotosDoRegistro}: a parte que apaga fotos ao salvar um registro. */
 class FotosDoRegistroTest {
 
     final FotoRepository fotos = mock(FotoRepository.class);

@@ -20,19 +20,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
-/**
- * Ventilação do servidor: o Home Assistant envia a cada minuto (e quando a tomada muda) o estado da tomada das
- * ventoinhas, as temperaturas que ele usa para decidir e os limites de ligar/desligar. A API guarda uma linha por
- * minuto em {@code amostra_ventilacao}; o tempo ligado é a contagem de minutos com a tomada ligada.
- */
 @Slf4j
 @Service
 public class VentilacaoService {
 
     static final int MAX_DIAS_CONSULTA = 366;
-    /** O HA envia a cada minuto: passou disso, a leitura está parada. */
     static final Duration DESATUALIZADO = Duration.ofMinutes(3);
-    /** Minutos sem leitura que ainda contam como o mesmo período ligado. */
     static final int FOLGA_PERIODO_MIN = 2;
     static final Set<String> ESTADOS = Set.of("on", "off", "unavailable", "unknown");
     private static final String LIGADA = "on";
@@ -106,7 +99,6 @@ public class VentilacaoService {
         }
     }
 
-    /** Junta os minutos ligados seguidos (tolerando {@link #FOLGA_PERIODO_MIN} minutos sem leitura). */
     static List<VentilacaoResponse.Periodo> periodos(List<VentilacaoRepository.Minuto> minutos) {
         List<VentilacaoResponse.Periodo> r = new ArrayList<>();
         LocalDateTime inicio = null;
@@ -129,7 +121,6 @@ public class VentilacaoService {
         return r;
     }
 
-    /** Um ponto por minuto gravado; HDs = 0 (todos em repouso) vira vazio para não derrubar a linha. */
     static List<VentilacaoResponse.Ponto> pontos(List<VentilacaoRepository.Minuto> minutos) {
         return minutos.stream().map(m -> {
             Leitura l = m.leitura();

@@ -9,7 +9,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Casos montados com as leituras reais dos discos do servidor. */
 class AvaliacaoDiscoTest {
 
     private static SaudeSmart hd(Boolean aprovado, Double maxVida, Double limite, Double absoluto, Long vezesAcima,
@@ -37,10 +36,10 @@ class AvaliacaoDiscoTest {
         var r = AvaliacaoDisco.avaliar(s, 54.0);
 
         assertThat(r.situacao()).isEqualTo(Situacao.CRITICA);
-        assertThat(r.alertas().get(0).nivel()).isEqualTo(Nivel.CRITICO);       // o mais grave primeiro
+        assertThat(r.alertas().get(0).nivel()).isEqualTo(Nivel.CRITICO);
         assertThat(r.alertas().get(0).mensagem()).contains("56.928");
         assertThat(r.alertas()).extracting(AvaliacaoDisco.Alerta::nivel)
-                .contains(Nivel.ATENCAO, Nivel.INFO);                            // temperatura passada e CRC
+                .contains(Nivel.ATENCAO, Nivel.INFO);
         assertThat(r.alertas().get(r.alertas().size() - 1).mensagem()).contains("cabo");
     }
 
@@ -68,7 +67,7 @@ class AvaliacaoDiscoTest {
         assertThat(AvaliacaoDisco.avaliar(s, 54.0).situacao()).isEqualTo(Situacao.BOA);
         assertThat(AvaliacaoDisco.avaliar(s, 56.0).situacao()).isEqualTo(Situacao.ATENCAO);
         assertThat(AvaliacaoDisco.avaliar(s, 60.0).situacao()).isEqualTo(Situacao.CRITICA);
-        assertThat(AvaliacaoDisco.avaliar(s, null).situacao()).isEqualTo(Situacao.BOA); // em repouso
+        assertThat(AvaliacaoDisco.avaliar(s, null).situacao()).isEqualTo(Situacao.BOA);
     }
 
     @Test
@@ -82,7 +81,7 @@ class AvaliacaoDiscoTest {
     void nvmeDoServidor() {
         var n = new SaudeSmart.Nvme(0L, 100L, 10L, 5L, 0L, 0L, 426L, 23L, 0L, 11_526_673_920_000L, 8_169_288_192_000L);
         var r = AvaliacaoDisco.avaliar(nvme(n), 45.0);
-        assertThat(r.situacao()).isEqualTo(Situacao.ATENCAO); // 23 minutos acima da temperatura de aviso
+        assertThat(r.situacao()).isEqualTo(Situacao.ATENCAO);
         assertThat(r.alertas()).extracting(AvaliacaoDisco.Alerta::nivel).containsExactly(Nivel.ATENCAO, Nivel.INFO);
     }
 

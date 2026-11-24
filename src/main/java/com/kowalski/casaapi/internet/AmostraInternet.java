@@ -1,6 +1,5 @@
 package com.kowalski.casaapi.internet;
 
-import com.kowalski.casaapi.servidor.LeitorHost;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -11,7 +10,6 @@ import static com.kowalski.casaapi.servidor.LeitorHost.lista;
 import static com.kowalski.casaapi.servidor.LeitorHost.logico;
 import static com.kowalski.casaapi.servidor.LeitorHost.texto;
 
-/** Uma linha de {@code amostra_internet}: a internet da casa num minuto (do internet.json). */
 public record AmostraInternet(LocalDateTime coletadoEm, Boolean online,
                               Ping roteador, Ping modem, Ping cloudflare, Ping google,
                               Dns pihole, Dns dnsCloudflare, Dns dnsGoogle,
@@ -50,7 +48,6 @@ public record AmostraInternet(LocalDateTime coletadoEm, Boolean online,
         return new Dns(logico(em(d, "ok")), decimal(em(d, "tempoMs")));
     }
 
-    /** Perda de pacotes até a internet: a menor entre Cloudflare e Google (os dois perdendo = problema da casa). */
     public Double perdaInternet() {
         if (cloudflare.perdaPct() == null) return google.perdaPct();
         if (google.perdaPct() == null) return cloudflare.perdaPct();

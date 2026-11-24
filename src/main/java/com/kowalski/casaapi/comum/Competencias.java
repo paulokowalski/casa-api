@@ -33,7 +33,6 @@ public final class Competencias {
         return LocalDate.of(ano, mes, 1);
     }
 
-    /** Primeiro dia do mês a partir de ano e mês em texto ("2026" e "7" ou "07"). */
     public static LocalDate de(String ano, String mes) {
         Assert.hasText(ano, "O ano é obrigatório");
         Assert.hasText(mes, "O mês é obrigatório");
@@ -44,7 +43,6 @@ public final class Competencias {
         }
     }
 
-    /** Primeiro dia do ano a partir do ano em texto. */
     public static LocalDate inicioDoAno(String ano) {
         return de(ano, "1");
     }

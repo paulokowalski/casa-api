@@ -6,11 +6,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Calendário Nacional de Vacinação (PNI/SUS) da criança até 4 anos. Os ids são estáveis (gravados no banco). Ao
- * atualizar o calendário, suba {@link #VERSAO}; não reaproveite um id com outro significado.
- * As datas seguem a idade real (também para prematuros).
- */
 public final class CatalogoVacinas {
 
     public static final String VERSAO = "pni-2025.07";
@@ -18,10 +13,6 @@ public final class CatalogoVacinas {
             + "(desde julho de 2025). Confira sempre com a caderneta e a unidade de saúde: o esquema pode mudar por estado, campanha "
             + "ou indicação médica. A vacina da gripe é anual.";
 
-    /**
-     * Uma dose. {@code meses}: idade recomendada. {@code prazoMaximoDias}: idade máxima para aplicar (só rotavírus);
-     * null = sem limite rígido (dose atrasada ainda pode ser aplicada).
-     */
     public record Dose(String id, String vacina, String dose, int meses, Integer prazoMaximoDias) {
     }
 

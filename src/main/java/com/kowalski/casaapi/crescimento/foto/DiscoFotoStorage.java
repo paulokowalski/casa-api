@@ -14,10 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.regex.Pattern;
 
-/**
- * Fotos numa pasta do disco. A pasta precisa ter o arquivo {@value #SENTINELA}: se ele não estiver lá, o disco
- * provavelmente caiu ou não montou, e gravar ali poria as fotos no lugar errado — então tudo falha com 503.
- */
 @Slf4j
 @Component
 public class DiscoFotoStorage implements FotoStorage {

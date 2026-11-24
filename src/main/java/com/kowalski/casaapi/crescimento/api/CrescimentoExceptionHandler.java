@@ -13,10 +13,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-/**
- * Erros próprios do módulo. Tem precedência sobre o tratador geral da aplicação, que continua cuidando dos
- * erros comuns (validação, JSON inválido, login).
- */
 @Slf4j
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice

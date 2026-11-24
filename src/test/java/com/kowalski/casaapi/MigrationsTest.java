@@ -13,17 +13,6 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * As migrations ({@code src/main/resources/db/**}) são aplicadas à mão no servidor, então três coisas costumam ser
- * esquecidas e este teste confere antes do commit:
- * <ol>
- *   <li>o script pode ser reaplicado sem erro ({@code IF [NOT] EXISTS}, ou dentro de um bloco {@code DO $$});</li>
- *   <li>o README lista o script na tabela de migrations;</li>
- *   <li>o banco dos testes e2e ({@code src/test/resources/e2e/estrutura.sql}) tem o resultado de todas as migrations:
- *       as tabelas e colunas criadas existem e as apagadas não existem.</li>
- * </ol>
- * Só lê arquivos do repositório (nenhum banco).
- */
 class MigrationsTest {
 
     private static final Path DB = Path.of("src/main/resources/db");
@@ -46,7 +35,6 @@ class MigrationsTest {
     @BeforeAll
     static void carregar() throws IOException {
         try (Stream<Path> s = Files.walk(DB)) {
-            // por pasta e pelo número da versão (V10 depois de V9)
             scripts = s.filter(p -> VERSAO.matcher(p.getFileName().toString()).matches())
                     .sorted(Comparator.comparing((Path p) -> p.getParent().toString())
                             .thenComparingInt(MigrationsTest::versao))
@@ -60,7 +48,6 @@ class MigrationsTest {
         return m.matches() ? Integer.parseInt(m.group(1)) : 0;
     }
 
-    /** Tira comentários de linha ({@code -- ...}) para não confundir com comandos. */
     static String semComentarios(String sql) {
         return sql.replaceAll("(?m)--.*$", "");
     }
@@ -114,7 +101,6 @@ class MigrationsTest {
                 .map(p -> DB.relativize(p).toString())
                 .filter(rel -> {
                     String nome = Path.of(rel).getFileName().toString();
-                    // os de db/migration aparecem só pelo nome; os das outras pastas, como db/<pasta>/<nome>
                     return rel.startsWith("migration/") ? !readme.contains(nome) : !readme.contains("db/" + rel);
                 }).toList();
         assertThat(faltando).as("migrations que faltam na tabela do README (seção Banco de dados e migrations)").isEmpty();
@@ -122,12 +108,11 @@ class MigrationsTest {
 
     @Test
     void bancoDosTestesE2eTemOResultadoDasMigrations() throws IOException {
-        Map<String, Set<String>> esperado = new LinkedHashMap<>(); // tabela -> colunas adicionadas
+        Map<String, Set<String>> esperado = new LinkedHashMap<>();
         Set<String> apagadas = new LinkedHashSet<>();
         Map<String, Set<String>> colunasApagadas = new HashMap<>();
         for (Path p : scripts) {
             String sql = semComentarios(Files.readString(p));
-            // na ordem em que aparecem no script
             List<int[]> posicoes = new ArrayList<>();
             Matcher m;
             for (m = CRIA_TABELA.matcher(sql); m.find(); ) posicoes.add(new int[]{m.start(), 0});
@@ -187,11 +172,6 @@ class MigrationsTest {
                 .isEmpty();
     }
 
-    /**
-     * Tabela -> texto das colunas, no formato do pg_dump ({@code CREATE TABLE x (...\n);}) e no das migrations
-     * ({@code CREATE TABLE IF NOT EXISTS}, acrescentado à mão). A busca e o recorte usam o mesmo texto sem comentários;
-     * senão as posições não batem.
-     */
     static Map<String, String> tabelasDoE2e(String sqlOriginal) {
         String sql = semComentarios(sqlOriginal);
         Map<String, String> e2e = new HashMap<>();
@@ -225,7 +205,6 @@ class MigrationsTest {
         assertThat(e2e.get("public.conta")).contains("nome").doesNotContain("titulo");
     }
 
-    /** O texto entre o parêntese que abre depois de {@code inicio} e o que fecha. */
     private static String corpo(String sql, int inicio) {
         int abre = sql.indexOf('(', inicio);
         if (abre < 0) return "";

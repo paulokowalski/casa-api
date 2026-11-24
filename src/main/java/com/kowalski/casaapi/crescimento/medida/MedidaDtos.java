@@ -21,7 +21,6 @@ public final class MedidaDtos {
                                @Schema(example = "Pesagem na UBS") String observacao) {
     }
 
-    /** Onde a medida cai em relação às linhas de percentil da OMS. */
     public enum Faixa {
         @Schema(description = "abaixo do P3") ABAIXO,
         @Schema(description = "entre P3 e P15") LIMITE_INFERIOR,

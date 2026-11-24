@@ -1,9 +1,5 @@
--- Índices para as consultas de compras/parcelas.
-
--- Busca das parcelas de uma compra (FK sem índice: cada busca lia a tabela inteira).
 CREATE INDEX IF NOT EXISTS idx_compra_parcela_compra_id ON compra_parcela (compra_id);
 
--- Filtros por data da parcela.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns
@@ -12,7 +8,6 @@ BEGIN
     END IF;
 END $$;
 
--- Filtros por pessoa (as consultas comparam com upper()).
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns

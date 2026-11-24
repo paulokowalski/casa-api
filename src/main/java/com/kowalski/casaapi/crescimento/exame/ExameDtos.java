@@ -16,7 +16,6 @@ public final class ExameDtos {
                                 String nomeArquivo, TipoExame tipo, long bytes, Instant criadoEm, boolean jaExistia) {
     }
 
-    /** Arquivo para a resposta HTTP. */
     public record ArquivoExame(org.springframework.core.io.Resource conteudo, TipoExame tipo, String nomeArquivo) {
     }
 }

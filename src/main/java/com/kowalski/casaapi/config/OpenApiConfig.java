@@ -21,10 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Documentação OpenAPI da API. A interface fica em {@code /casa-api/swagger-ui.html}
- * e o JSON em {@code /casa-api/v3/api-docs}. Pode ser desligada com {@code SWAGGER_ENABLED=false}.
- */
 @Configuration
 public class OpenApiConfig {
 
@@ -33,7 +29,6 @@ public class OpenApiConfig {
 
     private static final String ERRO = "ErroResponse";
 
-    /** Respostas de erro que qualquer endpoint pode devolver (ver ApiExceptionHandler e ErroSegurancaJson). */
     private static final Map<String, String> ERROS_PADRAO = new LinkedHashMap<>();
 
     static {
@@ -62,7 +57,6 @@ public class OpenApiConfig {
                                 próprios — pedir dados de outra pessoa responde 403.
 
                                 **Erros:** sempre no formato `{"mensagem": "..."}`."""))
-                // Relativo ao host: funciona tanto direto na API (:8080) quanto pelo nginx do front (:3000).
                 .servers(List.of(new Server().url("/casa-api").description("Esta instância")))
                 .components(new Components()
                         .addSecuritySchemes(JWT, new SecurityScheme()
@@ -91,7 +85,6 @@ public class OpenApiConfig {
                         respostas.addApiResponse(codigo, new ApiResponse().description(descricao).content(corpo));
                     }
                 });
-                // Erros declarados nos controllers herdam o tipo de retorno do método; todo erro é ErroResponse.
                 respostas.forEach((codigo, resposta) -> {
                     if (codigo.startsWith("4") || codigo.startsWith("5")) resposta.setContent(corpo);
                 });

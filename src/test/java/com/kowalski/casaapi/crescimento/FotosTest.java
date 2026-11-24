@@ -56,9 +56,7 @@ class FotosTest {
         assertThat(media.getHeight()).isEqualTo(1067);
         assertThat(mini.getWidth()).isEqualTo(480);
         assertThat(mini.getHeight()).isEqualTo(320);
-        // parte transparente vira branca
         assertThat(new Color(mini.getRGB(470, 10)).getRed()).isGreaterThan(240);
-        // JPEG gravado do zero: sem bloco EXIF (nem GPS)
         assertThat(new String(r.arquivos().get(Variante.ORIGINAL), StandardCharsets.ISO_8859_1)).doesNotContain("Exif");
     }
 
@@ -83,7 +81,7 @@ class FotosTest {
         UUID id = UUID.randomUUID();
         LinkAssinado.Assinatura a = links.assinar(id, Variante.MINI);
         assertThat(a.exp() - agora.getEpochSecond()).isBetween(6 * 3600L, 12 * 3600L);
-        assertThat(links.assinar(id, Variante.MINI)).isEqualTo(a); // mesmo link: cache do navegador
+        assertThat(links.assinar(id, Variante.MINI)).isEqualTo(a);
         assertThat(links.valido(id, Variante.MINI, a.exp(), a.sig())).isTrue();
         assertThat(links.valido(id, Variante.ORIGINAL, a.exp(), a.sig())).isFalse();
         assertThat(links.valido(UUID.randomUUID(), Variante.MINI, a.exp(), a.sig())).isFalse();

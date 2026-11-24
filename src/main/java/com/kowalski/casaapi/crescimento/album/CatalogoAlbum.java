@@ -8,19 +8,10 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Os lugares do álbum. As chaves são estáveis (gravadas no banco e usadas pelos apps):
- * <ul>
- *     <li>{@code nascimento}, {@code mes-1} a {@code mes-11}, {@code mes-18}, {@code ano-1} a {@code ano-18}: mêsversários;</li>
- *     <li>{@code primeira-<id>}: primeiras vezes do catálogo abaixo;</li>
- *     <li>{@code especial-<id>}: momentos que os pais nomeiam (batizado, primeira praia...).</li>
- * </ul>
- */
 public final class CatalogoAlbum {
 
     public enum TipoLugar { MESVERSARIO, PRIMEIRA_VEZ, ESPECIAL }
 
-    /** Um lugar do álbum. Nos mêsversários, {@code meses} é a idade (0 = nascimento); nos demais, null. */
     public record Lugar(String chave, TipoLugar tipo, String titulo, String numero, String unidade, Integer meses) {
         public LocalDate data(LocalDate nascimento) {
             return meses == null ? null : nascimento.plusMonths(meses);
@@ -57,10 +48,6 @@ public final class CatalogoAlbum {
         return new Lugar("ano-" + a, TipoLugar.MESVERSARIO, a + (a == 1 ? " ano" : " anos"), String.valueOf(a), a == 1 ? "ano" : "anos", a * 12);
     }
 
-    /**
-     * Mêsversários até a idade atual e o próximo: nascimento, 1 a 11 meses, 1 ano, 1 ano e meio (depois dos 11
-     * meses) e cada aniversário até o seguinte ao atual.
-     */
     public static List<Lugar> mesversarios(LocalDate nascimento, LocalDate hoje) {
         int meses = Idade.mesesCompletos(nascimento, hoje);
         List<Lugar> r = new ArrayList<>();
@@ -72,7 +59,6 @@ public final class CatalogoAlbum {
         return r;
     }
 
-    /** O lugar da chave, se ela for válida; especiais usam o título dado pelos pais. */
     public static Optional<Lugar> lugar(String chave, String tituloEspecial) {
         if (chave == null) return Optional.empty();
         if (chave.equals("nascimento")) return Optional.of(nascimento());
@@ -94,7 +80,6 @@ public final class CatalogoAlbum {
         return Optional.empty();
     }
 
-    /** Texto da etiqueta no diário: "Nascimento", "Mêsversário · 3 meses", "Primeiro sorriso". */
     public static String rotulo(Lugar l) {
         if (l.tipo() == TipoLugar.MESVERSARIO) return l.meses() == 0 ? "Nascimento" : "Mêsversário · " + l.titulo();
         return l.titulo();

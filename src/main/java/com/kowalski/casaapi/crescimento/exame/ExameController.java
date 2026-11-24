@@ -44,7 +44,6 @@ public class ExameController {
         try {
             return service.enviar(criancaId, dados, arquivo.getOriginalFilename(), new ExameInput(titulo, data, observacao));
         } catch (DataIntegrityViolationException e) {
-            // o mesmo arquivo chegou duas vezes ao mesmo tempo: devolve o que foi guardado pelo outro envio
             return service.jaEnviado(criancaId, dados).orElseThrow(() -> e);
         }
     }

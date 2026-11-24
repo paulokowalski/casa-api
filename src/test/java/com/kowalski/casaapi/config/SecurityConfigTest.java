@@ -231,14 +231,12 @@ class SecurityConfigTest {
 
     @Test
     void documentacaoSwaggerEPublica() throws Exception {
-        // Neste teste de fatia o springdoc não sobe: o importante é a segurança não barrar (não ser 401/403).
         for (String rota : new String[]{"/v3/api-docs", "/swagger-ui.html", "/swagger-ui/index.html"}) {
             int status = mvc.perform(get(rota)).andReturn().getResponse().getStatus();
             assertThat(status).as(rota).isNotIn(401, 403);
         }
     }
 
-    /** O arquivo do exame só sai com login (a liberação sem login dos arquivos de foto não pode pegar esta rota). */
     @Test
     void arquivoDoExameExigeLogin() throws Exception {
         String rota = "/v1/crescimento/criancas/" + java.util.UUID.randomUUID() + "/exames/" + java.util.UUID.randomUUID() + "/arquivo";
@@ -251,7 +249,6 @@ class SecurityConfigTest {
     @Test
     void passagensSoParaAdmin() throws Exception {
         String rota = "{\"nome\":\"Teste\"}";
-        // ADMIN lê, cria, edita e remove
         mvc.perform(get("/v1/passagens").header("Authorization", bearer(3L))).andExpect(status().is2xxSuccessful());
         mvc.perform(post("/v1/passagens/rotas").header("Authorization", bearer(3L))
                 .contentType(MediaType.APPLICATION_JSON).content(rota)).andExpect(status().is2xxSuccessful());
@@ -260,7 +257,6 @@ class SecurityConfigTest {
         mvc.perform(delete("/v1/passagens/rotas/1?historico=true").header("Authorization", bearer(3L)))
                 .andExpect(status().is2xxSuccessful());
 
-        // USUARIO e a chave de integração não fazem nada
         for (var cabecalho : java.util.List.of(new String[]{"Authorization", bearer(1L)},
                 new String[]{"X-API-KEY", "chave-integracao"})) {
             mvc.perform(get("/v1/passagens").header(cabecalho[0], cabecalho[1])).andExpect(status().isForbidden());

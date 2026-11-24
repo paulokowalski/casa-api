@@ -11,8 +11,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 class LeitorContainersTest {
-
-    /** Formato real de GET /containers/{id}/stats?one-shot=true (cgroup v2), resumido. */
     private static Map<String, Object> stats(long cpu, long sistema, Map<String, Object> redes) {
         return Map.of(
                 "cpu_stats", Map.of("cpu_usage", Map.of("total_usage", cpu), "system_cpu_usage", sistema, "online_cpus", 8),
@@ -34,9 +32,9 @@ class LeitorContainersTest {
 
         assertThat(c.cpuNs()).isEqualTo(89_778_462_000L);
         assertThat(c.sistemaNs()).isEqualTo(1_241_040_160_000_000L);
-        assertThat(c.memUsada()).isEqualTo(532_889_600L - 135_168L); // sem o cache inativo, como o "docker stats"
+        assertThat(c.memUsada()).isEqualTo(532_889_600L - 135_168L);
         assertThat(c.memLimite()).isEqualTo(16_482_402_304L);
-        assertThat(c.redeRecebidos()).isEqualTo(46_175L + 8_784L);   // soma das redes do container
+        assertThat(c.redeRecebidos()).isEqualTo(46_175L + 8_784L);
         assertThat(c.redeEnviados()).isEqualTo(53_970L + 22_498L);
         assertThat(c.discoLidos()).isEqualTo(13_516_800L);
         assertThat(c.discoEscritos()).isEqualTo(1_253_376L + 1_000L);
@@ -96,9 +94,9 @@ class LeitorContainersTest {
                 rodando("b", "reiniciado", 9_000, 100_000, 5_000, 0),
                 new LeitorContainers.Container("c", "parado", "img", "exited", "Exited (0) 3 days ago", null, null)));
         var depois = new LeitorContainers.Leitura(60_000_000_000L, List.of(
-                rodando("a", "jellyfin", 11_000, 200_000, 60_000, 120_000),   // 10.000 de 100.000 ns do servidor
-                rodando("b", "reiniciado", 500, 200_000, 100, 0),             // contadores zeraram
-                rodando("d", "novo", 50, 200_000, 10, 0),                     // sem leitura anterior
+                rodando("a", "jellyfin", 11_000, 200_000, 60_000, 120_000),
+                rodando("b", "reiniciado", 500, 200_000, 100, 0),
+                rodando("d", "novo", 50, 200_000, 10, 0),
                 new LeitorContainers.Container("c", "parado", "img", "exited", "Exited (0) 3 days ago", null, null)));
 
         var amostras = AmostraContainer.de(LocalDateTime.of(2026, 11, 15, 12, 0), antes, depois);
@@ -115,7 +113,7 @@ class LeitorContainersTest {
         var reiniciado = amostras.get(1);
         assertThat(reiniciado.cpuPct()).isNull();
         assertThat(reiniciado.redeRxBps()).isNull();
-        assertThat(reiniciado.memUsada()).isEqualTo(100L); // memória é instantânea, não depende da anterior
+        assertThat(reiniciado.memUsada()).isEqualTo(100L);
 
         assertThat(amostras.get(2).cpuPct()).isNull();
         var parado = amostras.get(3);

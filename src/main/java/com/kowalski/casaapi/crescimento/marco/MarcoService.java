@@ -68,7 +68,6 @@ public class MarcoService {
         repositorio.findByCriancaIdAndMarcoId(criancaId, marcoId).ifPresent(repositorio::delete);
     }
 
-    /** Idade para os marcos: corrigida para prematuros até 2 anos. */
     static int idadeDias(Crianca c, LocalDate hoje) {
         return Idade.diasCurva(c, hoje);
     }

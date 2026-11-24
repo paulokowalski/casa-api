@@ -40,13 +40,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/v1/auth/login").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
-                // fotos do módulo crescimento: a assinatura do link (HMAC com validade) é a autorização
                 .requestMatchers(HttpMethod.GET, FotoController.CAMINHO_ARQUIVO).permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/geracao-solar").hasAnyRole("INTEGRACAO", ADMIN)
                 .requestMatchers(HttpMethod.POST, "/v1/pessoas").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.PUT, "/v1/pessoas/**").hasRole(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/v1/pessoas/**").hasRole(ADMIN)
-                // o Home Assistant envia a leitura da ventilação do servidor (X-API-KEY)
                 .requestMatchers(HttpMethod.POST, VentilacaoController.CAMINHO).hasAnyRole("INTEGRACAO", ADMIN)
                 .requestMatchers("/v1/servidor/**").hasRole(ADMIN)
                 .requestMatchers("/v1/passagens", "/v1/passagens/**").hasRole(ADMIN)

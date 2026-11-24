@@ -6,16 +6,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Avalia a saúde de um disco a partir do SMART e explica o porquê em português.
- * <ul>
- *   <li><b>crítica</b>: sinais de que o disco está falhando ou perdendo dados — fazer backup e trocar;</li>
- *   <li><b>atenção</b>: desgaste ou defeitos já compensados, superaquecimento — acompanhar;</li>
- *   <li><b>boa</b>: nada relevante (alertas só informativos não mudam a situação).</li>
- * </ul>
- * Os critérios seguem os atributos que mais se relacionam com falha real (realocados, pendentes, irrecuperáveis
- * e erros não corrigidos, como nos estudos da Backblaze) e os limites que o próprio disco informa.
- */
 public final class AvaliacaoDisco {
 
     public enum Nivel { CRITICO, ATENCAO, INFO }
@@ -28,7 +18,6 @@ public final class AvaliacaoDisco {
     public record Resultado(Situacao situacao, List<Alerta> alertas) {
     }
 
-    /** Acima disso, setores realocados ou erros não corrigidos deixam de ser "atenção" e viram "crítica". */
     static final long MUITOS = 100;
     static final long MUITOS_ERROS_COMUNICACAO = 100;
     static final long DESGASTE_ATENCAO = 80;
@@ -126,7 +115,6 @@ public final class AvaliacaoDisco {
         }
     }
 
-    /** Alerta para contador maior que zero; a partir de {@link #MUITOS} usa o nível {@code muitos}. */
     private static void contador(List<Alerta> alertas, Long valor, Nivel nivel, Nivel muitos, String mensagem) {
         if (valor == null || valor <= 0) return;
         alertas.add(new Alerta(valor >= MUITOS ? muitos : nivel, mensagem.formatted(NUMERO.format(valor))));

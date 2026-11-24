@@ -20,21 +20,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-/**
- * Monitoramento de saúde do servidor.
- * <p>
- * A cada minuto lê os contadores do kernel e grava em {@code amostra_servidor} as médias do minuto que passou
- * (CPU, rede e disco são a diferença entre a leitura atual e a anterior). O espaço e a temperatura dos discos
- * mudam devagar e são gravados a cada 5 minutos. Com {@code monitor.docker-url} configurado, grava também uma amostra por container
- * em {@code amostra_container}. Falhas na coleta só geram um aviso no log: a API continua no ar.
- */
 @Slf4j
 @Service
 public class ServidorService {
 
     static final int MAX_DIAS_CONSULTA = 366;
     private static final long MEIO_SEGUNDO = 500;
-    /** Espaço e temperatura dos discos mudam devagar: uma linha por disco a cada 5 minutos basta. */
     private static final int MINUTOS_ENTRE_DISCOS = 5;
 
     private final LeitorSistema leitor;
@@ -92,7 +83,6 @@ public class ServidorService {
         coletarHost(agora);
     }
 
-    /** Status do host (arquivo do casa-monitor-host): uma amostra por minuto e os eventos novos. */
     private void coletarHost(LocalDateTime agora) {
         if (!prepararTabelas()) return;
         try {
@@ -111,7 +101,6 @@ public class ServidorService {
         }
     }
 
-    /** Status atual do host para a tela; 503 se o arquivo não existe. */
     public Map<String, Object> host() {
         if (!leitorHost.habilitado()) {
             throw new MonitorIndisponivelException("Status do host desligado (MONITOR_HOST_ARQUIVO vazio)", null);
@@ -125,7 +114,6 @@ public class ServidorService {
         return repository.inserirEventos(eventos);
     }
 
-    /** Eventos de um período, do mais recente para o mais antigo. */
     public List<com.kowalski.casaapi.servidor.ServidorEventoResponse> eventos(LocalDate de, LocalDate ate) {
         Assert.isTrue(!de.isAfter(ate), "A data inicial deve ser anterior ou igual à final");
         Assert.isTrue(ChronoUnit.DAYS.between(de, ate) < MAX_DIAS_CONSULTA,
@@ -138,7 +126,7 @@ public class ServidorService {
             LeitorSistema.Contadores atual = leitor.contadores();
             LeitorSistema.Contadores antes = anterior;
             anterior = atual;
-            if (antes == null) return; // primeira leitura: ainda não há intervalo para calcular as médias
+            if (antes == null) return;
 
             LeitorSistema.Instantaneo inst = leitor.instantaneo();
             if (!prepararTabelas()) return;
@@ -183,10 +171,6 @@ public class ServidorService {
         }
     }
 
-    /**
-     * Leitura ao vivo: CPU, rede e disco medidos num intervalo de meio segundo. Se o Docker não responder,
-     * a leitura do servidor sai mesmo assim, só sem os containers.
-     */
     public ServidorAgoraResponse agora() {
         try {
             LeitorSistema.Contadores antes = leitor.contadores();
@@ -233,7 +217,6 @@ public class ServidorService {
         }
     }
 
-    /** Rodando primeiro, depois os que mais usam CPU. */
     static List<ServidorContainerResponse> containersAgora(LocalDateTime agora, LeitorContainers.Leitura antes,
                                                            LeitorContainers.Leitura depois) {
         return AmostraContainer.de(agora, antes, depois).stream()
@@ -258,7 +241,6 @@ public class ServidorService {
         }
     }
 
-    /** Cria as tabelas na primeira vez que o MariaDB responde. */
     private boolean prepararTabelas() {
         if (tabelasProntas) return true;
         try {

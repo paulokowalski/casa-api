@@ -29,10 +29,6 @@ public class MedicaoService {
     private final Clock relogio;
     private final RegistroRepository registros;
 
-    /**
-     * Grava a medição que acompanha um registro do diário, ou apaga se o registro ficou sem medidas.
-     * O acesso já foi conferido por quem chama. Devolve null quando não há medidas.
-     */
     @Transactional
     public Medicao gravarDoRegistro(Crianca c, UUID medicaoId, LocalDate data, Double pesoKg, Double comprimentoCm, Double perimetroCm) {
         Medicao m = medicaoId == null ? null : medicoes.findById(medicaoId).filter(x -> x.getCriancaId().equals(c.getId())).orElse(null);
@@ -60,7 +56,6 @@ public class MedicaoService {
         return avaliacao.resposta(c, m);
     }
 
-    /** Mais recentes primeiro. */
     @Transactional(readOnly = true)
     public List<MedicaoResponse> listar(UUID criancaId) {
         Crianca c = criancas.carregar(criancaId, false);

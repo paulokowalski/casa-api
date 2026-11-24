@@ -90,7 +90,7 @@ def saltos():
             provedor = ip
             break
         elif provedor is None:
-            provedor = ip  # CGNAT (100.64/10) já é rede do provedor
+            provedor = ip
             break
     return modem, provedor
 
@@ -157,7 +157,7 @@ def publico(gateway, tem_v6):
              "cidade": m.get("city"), "regiao": m.get("region"), "pais": m.get("country"),
              "servidorCloudflare": (m.get("colo") or {}).get("iata"),
              "verificadoEm": agora_iso(), "erro": None}
-    except Exception as e:  # noqa: BLE001 - qualquer falha de rede vira só um aviso
+    except Exception as e:
         r["erro"] = str(e)[:200]
     r["ipv6"] = None
     if tem_v6:
@@ -200,13 +200,13 @@ def pihole():
                                if (u.get("statistics") or {}).get("response") is not None else None}
                               for u in (up or {}).get("upstreams", [])
                               if u.get("ip") not in ("blocklist", "cache")]}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"ok": False, "erro": str(e)[:200]}
     finally:
         if sid:
             try:
                 http_json(f"{PIHOLE}/api/auth", 3, "DELETE", cabecalhos={"sid": sid})
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
 

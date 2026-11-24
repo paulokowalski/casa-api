@@ -15,11 +15,6 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
 
-/**
- * Links temporários das fotos: {@code ?v=mini&exp=<epoch>&sig=<HMAC>}. Funcionam numa tag {@code <img>} sem
- * cabeçalho de login, no navegador e no app. O vencimento é arredondado para cima, então o mesmo link se repete
- * por um tempo e o navegador aproveita o cache.
- */
 @Slf4j
 @Component
 public class LinkAssinado {

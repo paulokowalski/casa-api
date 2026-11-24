@@ -97,9 +97,7 @@ class AvaliacaoCrescimentoTest {
         assertThat(Idade.correcao(c)).isEqualTo(56);
         assertThat(Idade.diasCurva(c, NASC.plusDays(100))).isEqualTo(44);
         assertThat(Idade.diasCurva(c, NASC.plusDays(800))).isEqualTo(800);
-        // antes de completar 40 semanas não há curva da OMS
         assertThat(avaliacao.avaliar(c, Indicador.PESO, NASC.plusDays(10), 1.8).percentil()).isNull();
-        // com a idade corrigida, um peso que seria baixo para 100 dias fica na mediana dos 44 dias
         MedidaAvaliada a = avaliacao.avaliar(c, Indicador.PESO, NASC.plusDays(100), pesoNoZ(44, 0));
         assertThat(a.percentil()).isBetween(49.0, 51.0);
     }

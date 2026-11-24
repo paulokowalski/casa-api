@@ -16,12 +16,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-/** Métricas novas do sistema (PSI, GPU, limite da CPU, latência de disco) e status do host. */
 class MonitorHostTest {
 
     @TempDir Path raiz;
-
-    // ---- sistema ----
 
     @Test
     void lePressaoGpuELimiteDaCpu() throws IOException {
@@ -65,7 +62,6 @@ class MonitorHostTest {
         var antes = LeitorSistema.parseDiskstatsPorDisco(List.of(
                 "8 48 sdd 100 0 800 1000 50 0 400 500 0 2000 1500 0 0 0 0",
                 "8 49 sdd1 100 0 800 1000 50 0 400 500 0 2000 1500 0 0 0 0"));
-        // +30 leituras (300 ms) e +10 escritas (100 ms) = 40 ops, 400 ms; ocupado +250 ms em 1 s
         var depois = LeitorSistema.parseDiskstatsPorDisco(List.of(
                 "8 48 sdd 130 0 900 1300 60 0 500 600 0 2250 1900 0 0 0 0"));
         assertThat(antes).containsOnlyKeys("sdd");
@@ -76,11 +72,9 @@ class MonitorHostTest {
         assertThat(d.latenciaDiscosMs(a)).isCloseTo(10.0, within(0.001));
         assertThat(d.ocupacaoMaxDiscosPct(a)).isCloseTo(25.0, within(0.001));
         assertThat(d.atividadeDiscos(a)).singleElement().satisfies(x -> assertThat(x.disco()).isEqualTo("sdd"));
-        assertThat(d.redeErrosDesde(a)).isZero(); // contador zerou: não vira negativo
-        assertThat(a.latenciaDiscosMs(a)).isNull(); // sem operações
+        assertThat(d.redeErrosDesde(a)).isZero();
+        assertThat(a.latenciaDiscosMs(a)).isNull();
     }
-
-    // ---- host ----
 
     private Map<String, Object> host(String json) {
         @SuppressWarnings("unchecked")
@@ -120,8 +114,8 @@ class MonitorHostTest {
         assertThat(a.internetMs()).isEqualTo(4.0);
         assertThat(a.npuPct()).isEqualTo(30.0);
         assertThat(a.alertas()).isEqualTo(1);
-        assertThat(a.servicosFalhos()).isZero(); // x.service não está instalado
-        assertThat(a.backupIdadeSeg()).isEqualTo(7200L); // a cópia mais atrasada
+        assertThat(a.servicosFalhos()).isZero();
+        assertThat(a.backupIdadeSeg()).isEqualTo(7200L);
         assertThat(a.aptSeguranca()).isEqualTo(1L);
         assertThat(a.containersReinicios()).isEqualTo(3L);
     }
@@ -148,13 +142,12 @@ class MonitorHostTest {
         var estado = new EventosHost.Estado();
         var t = LocalDateTime.of(2026, 11, 15, 14, 0);
 
-        // primeira leitura só serve de base
         assertThat(tipos(EventosHost.calcular(t, host("[\"disco cheio\"]", true, 0), estado))).doesNotContain("alerta");
 
         var e2 = EventosHost.calcular(t.plusMinutes(1), host("[]", false, 1), estado);
         assertThat(e2).filteredOn(e -> e.tipo().equals("alerta")).singleElement()
                 .satisfies(e -> assertThat(e.mensagem()).isEqualTo("Resolvido: disco cheio"));
-        assertThat(tipos(e2)).contains("container").doesNotContain("internet"); // uma leitura sem internet não é queda
+        assertThat(tipos(e2)).contains("container").doesNotContain("internet");
 
         var e3 = EventosHost.calcular(t.plusMinutes(2), host("[]", false, 1), estado);
         assertThat(e3).filteredOn(e -> e.tipo().equals("internet")).singleElement()
@@ -184,22 +177,18 @@ class MonitorHostTest {
         var estado = new EventosHost.Estado();
         var t = LocalDateTime.of(2026, 11, 16, 15, 0);
 
-        assertThat(mensagens(EventosHost.calcular(t, vpn(0, null, "eu@casa"), estado))).isEmpty(); // base
+        assertThat(mensagens(EventosHost.calcular(t, vpn(0, null, "eu@casa"), estado))).isEmpty();
 
-        // tráfego novo com o servidor: começou a acessar (online sozinho não conta: o desktop não aparece)
         assertThat(mensagens(EventosHost.calcular(t.plusMinutes(1), vpn(2048, "2026-11-16T18:01:00Z", "eu@casa"), estado)))
                 .containsExactly("ipad157 (iOS · 100.71.41.49) começou a acessar o servidor pela VPN");
-        // continua acessando: nada novo
         assertThat(mensagens(EventosHost.calcular(t.plusMinutes(3), vpn(1024 * 1024 * 3, "2026-11-16T18:01:00Z", "eu@casa"), estado)))
                 .isEmpty();
-        // parado há menos de 5 min: ainda conta como acesso
         assertThat(mensagens(EventosHost.calcular(t.plusMinutes(7), vpn(1024 * 1024 * 3, "2026-11-16T18:01:00Z", "eu@casa"), estado)))
                 .isEmpty();
         var fim = EventosHost.calcular(t.plusMinutes(8), vpn(1024 * 1024 * 3, "2026-11-16T18:01:00Z", "eu@casa"), estado);
         assertThat(mensagens(fim)).containsExactly(
                 "ipad157 (iOS · 100.71.41.49) parou de acessar o servidor pela VPN (2 min, 4,5 MB trocados)");
 
-        // contador zerado pelo Tailscale e tráfego de novo: novo acesso; aparelho de outra conta mostra o dono
         assertThat(mensagens(EventosHost.calcular(t.plusMinutes(20), vpn(100, "2026-11-16T18:20:00Z", "visita@x"), estado)))
                 .containsExactly("ipad157 (iOS · 100.71.41.49 · de visita@x) começou a acessar o servidor pela VPN");
     }
@@ -229,7 +218,6 @@ class MonitorHostTest {
             assertThat(e.nivel()).isEqualTo(EventosHost.ATENCAO);
         });
         assertThat(a).extracting(EventosHost.Evento::chave).isEqualTo(b.stream().map(EventosHost.Evento::chave).toList());
-        // criado há mais de 7 dias: não é novo
         assertThat(mensagens(EventosHost.calcular(t.plusDays(8), h, new EventosHost.Estado()))).isEmpty();
     }
 

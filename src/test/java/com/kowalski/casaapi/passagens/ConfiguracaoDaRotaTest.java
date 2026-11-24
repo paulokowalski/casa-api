@@ -33,7 +33,6 @@ class ConfiguracaoDaRotaTest {
         assertEquals(1, cfg.get("criancas"));
         assertEquals(0, cfg.get("bebesAssento"));
         assertEquals(1, cfg.get("bebesColo"));
-        // bebê no colo sem adulto suficiente e mais de 9 passageiros
         assertThrows(IllegalArgumentException.class, () -> ConfiguracaoDaRota.validar(comPassageiros(1, 0, 0, 2), HOJE));
         assertThrows(IllegalArgumentException.class, () -> ConfiguracaoDaRota.validar(comPassageiros(5, 3, 2, 0), HOJE));
     }
@@ -82,7 +81,6 @@ class ConfiguracaoDaRotaTest {
         assertThrows(IllegalArgumentException.class, () -> ConfiguracaoDaRota.validar(
                 rota(List.of("FOR"), List.of("GRU"),
                         List.of(new Data(LocalDate.of(2027, 9, 12), LocalDate.of(2027, 9, 10))), null), HOJE));
-        // datas e janela ao mesmo tempo, ou nenhum dos dois
         assertThrows(IllegalArgumentException.class, () -> ConfiguracaoDaRota.validar(
                 rota(List.of("FOR"), List.of("GRU"), List.of(ok),
                         new Janela(LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 2), 1, null, null)), HOJE));

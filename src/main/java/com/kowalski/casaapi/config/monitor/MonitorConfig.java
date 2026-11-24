@@ -9,13 +9,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 import javax.sql.DataSource;
 
-/**
- * Segundo banco da API: o MariaDB com o histórico do monitoramento.
- * <p>
- * O DataSource é {@code defaultCandidate = false}: só é injetado com {@code @Qualifier("monitor")} e não
- * substitui o PostgreSQL, que continua auto-configurado pelo Spring Boot. O pool só conecta na primeira
- * consulta, então a API sobe mesmo com o MariaDB fora do ar.
- */
 @Configuration
 @EnableScheduling
 @EnableConfigurationProperties(MonitorProperties.class)

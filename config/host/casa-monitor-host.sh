@@ -1,8 +1,4 @@
 #!/bin/bash
-# Status do host para a tela "Saúde do servidor" (casa / casa-api).
-# Grava /var/lib/casa-monitor/host.json (montado só-leitura na API em /host/smart/host.json).
-# Rodado a cada minuto por casa-monitor-host.timer. Só lê; nunca altera nada.
-# Partes mais caras (apt, Diun) ficam em cache por 1 h em /var/lib/casa-monitor-host.
 set -u
 export LC_ALL=C
 SAIDA=/var/lib/casa-monitor/host.json
@@ -10,19 +6,15 @@ CACHE=/var/lib/casa-monitor-host
 mkdir -p "$(dirname "$SAIDA")" "$CACHE"
 agora=$(date +%s)
 
-# Converte "texto livre" em string JSON
 js() { jq -Rn --arg v "$1" '$v'; }
-# Data do systemd ("Sun 2026-11-15 03:35:22 -03") -> ISO 8601, ou null
 iso() { local d; [ -n "${1:-}" ] && [ "$1" != "n/a" ] && d=$(date -d "$1" -Iseconds 2>/dev/null) && js "$d" || echo null; }
 epoch_iso() { local d; [ -n "${1:-}" ] && d=$(date -d "@$1" -Iseconds 2>/dev/null) && js "$d" || echo null; }
 idade() { [ -n "${1:-}" ] && echo $((agora - $1)) || echo null; }
-# systemctl show em chave=valor -> variaveis com prefixo (a ordem de --value nao e garantida)
-mostrar() {  # prefixo unidade campos...
+mostrar() {
   local pre=$1 u=$2; shift 2
   local IFS=,; local props="$*"; unset IFS
   while IFS='=' read -r k v; do printf -v "${pre}_$k" '%s' "$v"; done < <(systemctl show "$u" -p "$props")
 }
-# Executa e cacheia por N segundos
 cacheado() {
   local arq=$CACHE/$1 ttl=$2; shift 2
   if [ ! -s "$arq" ] || [ $((agora - $(stat -c %Y "$arq"))) -gt "$ttl" ]; then
@@ -31,8 +23,7 @@ cacheado() {
   cat "$arq" 2>/dev/null
 }
 
-# ---------- Backup (sem chamar restic: só a data dos arquivos de snapshot) ----------
-repo() {  # nome caminho-do-repo ponto-de-montagem
+repo() {
   local nome=$1 dir=$2 mnt=$3 montado=false ult qtd
   findmnt -n "$mnt" >/dev/null && montado=true
   ult=$(find "$dir/snapshots" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1); ult=${ult%.*}
@@ -55,16 +46,14 @@ backup=$(jq -n \
     ultimaExecucao: {inicio:$ini, fim:$fim, rodandoAgora:($ativo=="activating"), sucesso:($res=="success"), falhas:$falhas},
     proximaExecucao:$prox}')
 
-# ---------- Timers e serviços ----------
 TIMERS=$(systemctl list-timers --all --output=json 2>/dev/null || echo '[]')
-unidade() {  # unidade [timer]
+unidade() {
   local u=$1 t=${2:-}
   local U_ActiveState= U_SubState= U_Result= U_ExecMainExitTimestamp= U_NRestarts= U_LoadState= ativo_t=
   mostrar U "$u" ActiveState SubState Result ExecMainExitTimestamp NRestarts LoadState
   local ativo=$U_ActiveState sub=$U_SubState res=$U_Result fim=$U_ExecMainExitTimestamp nr=${U_NRestarts:-0}
   local ult=null prox=null
   if [ -n "$t" ]; then
-    # list-timers resolve tanto timers de calendário quanto de intervalo (us desde a época)
     ult=$(echo "$TIMERS" | jq --arg t "$t" '[.[]|select(.unit==$t and (.last//0)>0)|.last/1000000|floor|todateiso8601][0]')
     prox=$(echo "$TIMERS" | jq --arg t "$t" '[.[]|select(.unit==$t and (.next//0)>0)|.next/1000000|floor|todateiso8601][0]')
     ativo_t=$(systemctl is-active "$t")
@@ -88,7 +77,6 @@ servicos=$(jq -s . \
   <(unidade smbd.service) <(unidade tailscaled.service) <(unidade ssh.service))
 falhos=$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' | jq -R . | jq -s .)
 
-# ---------- Montagens (discos ext4 /mnt/* do fstab) ----------
 montagens=$(awk '$1!~/^#/ && $2~/^\/mnt\// && $3=="ext4"{print $2}' /etc/fstab | while read -r m; do
   if findmnt -n "$m" >/dev/null; then
     src=$(findmnt -n -o SOURCE "$m"); opt=$(findmnt -n -o OPTIONS "$m")
@@ -99,21 +87,18 @@ montagens=$(awk '$1!~/^#/ && $2~/^\/mnt\// && $3=="ext4"{print $2}' /etc/fstab |
   fi; done | jq -s .)
 ultRemontagem=$(find /var/lib/remontar-discos -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1)
 
-# ---------- Alertas ativos do monitorar-servidor ----------
 lista() { sed '/^$/d' "$1" 2>/dev/null | jq -R . | jq -s .; }
 alertas=$(jq -n --argjson a "$(lista /var/lib/monitorar-servidor/alertado)" \
                 --argjson p "$(lista /var/lib/monitorar-servidor/pendente)" \
                 --argjson em "$(epoch_iso "$(stat -c %Y /var/lib/monitorar-servidor/pendente 2>/dev/null)")" \
                 '{alertados:$a, pendentes:($p - $a), verificadoEm:$em}')
 
-# ---------- Kernel: erros de disco/USB/memória nas últimas 24 h ----------
 kern=$(journalctl -k -q --no-pager -o short-iso --since -24h 2>/dev/null | \
   grep -iE "I/O error|USB disconnect|uas_eh|reset (high|super)[- ]?speed|EXT4-fs error|blk_update_request|Out of memory|oom-kill")
 kernel=$(jq -n --argjson n "$(printf '%s' "$kern" | grep -c . )" \
   --argjson ult "$(printf '%s\n' "$kern" | tail -5 | cut -c1-200 | sed '/^$/d' | jq -R . | jq -s .)" \
   '{eventos24h:$n, ultimos:$ult}')
 
-# ---------- Atualizações (cache 1 h) ----------
 apt_pend() { apt list --upgradable 2>/dev/null | tail -n +2 | awk -F'[/ ]' '{print $1"|"$3"|"($2~/security/)}'; }
 pend=$(cacheado apt 3600 apt_pend)
 diun_novas() { docker logs --since 168h diun 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -i "New image found" | grep -o 'image=[^ ]*' | cut -d= -f2 | sort -u; }
@@ -126,7 +111,6 @@ atualizacoes=$(jq -n --argjson reboot $reboot \
   '{reinicioNecessario:$reboot, reinicioPor:$pk, pacotesPendentes:($apt|length),
     pacotesSeguranca:([$apt[]|select(.seguranca)]|length), pacotes:$apt, imagensNovas7d:$img}')
 
-# ---------- Conectividade ----------
 ms() { ping -c 3 -i 0.3 -W 2 -q "$1" 2>/dev/null | awk -F'/' '/^rtt|^round-trip/{print $5}'; }
 lat=$(ms 1.1.1.1); gw=$(ip route show default | awk '{print $3; exit}'); latgw=$(ms "$gw")
 dns_ini=$(date +%s%N); dns_ok=false
@@ -136,14 +120,11 @@ ts=$(tailscale status --json 2>/dev/null)
 rede=$(jq -n --argjson lat "${lat:-null}" --argjson latgw "${latgw:-null}" --arg gw "$gw" \
   --argjson dok $dns_ok --argjson dms $dns_ms \
   --argjson ts "$( [ -n "$ts" ] && echo "$ts" | jq '
-       # datas "zero" do Go (0001-01-01) viram null
        def data: if . == null or startswith("0001-") then null else . end;
        . as $r
        | {estado:.BackendState, online:.Self.Online, ip:.Self.TailscaleIPs[0],
           usuario:(.User[(.Self.UserID|tostring)].LoginName // null),
           pares:([.Peer[]?]|length), paresOnline:([.Peer[]?|select(.Online)]|length),
-          # cada aparelho da tailnet: bytes e último handshake WireGuard COM ESTE servidor (só mudam quando o
-          # aparelho troca tráfego com ele; "online" é só estar conectado à tailnet)
           aparelhos:[.Peer[]? | {id:.ID, nome:(((.DNSName // "") | split(".")[0] | if . == "" then null else . end) // .HostName),
                                 so:.OS, ip:.TailscaleIPs[0], dono:($r.User[(.UserID|tostring)].LoginName // null),
                                 online:.Online, ultimoVisto:(.LastSeen|data), ultimoHandshake:(.LastHandshake|data),
@@ -151,17 +132,13 @@ rede=$(jq -n --argjson lat "${lat:-null}" --argjson latgw "${latgw:-null}" --arg
   '{internet:{online:($lat!=null), latenciaMs:$lat}, gateway:{ip:$gw, latenciaMs:$latgw},
     dns:{ok:$dok, tempoMs:$dms}, tailscale:$ts}')
 
-# ---------- Logins SSH (7 dias) ----------
 ssh=$(journalctl -u ssh --since -7d --no-pager -q -o short-iso 2>/dev/null | grep "Accepted " | tail -10 | \
   awk '{for(i=1;i<=NF;i++){if($i=="for")u=$(i+1); if($i=="from")ip=$(i+1); if($i=="Accepted")m=$(i+1)}; print $1"|"u"|"ip"|"m}' | \
   jq -R 'split("|") | {quando:.[0], usuario:.[1], origem:.[2], metodo:.[3]}' | jq -s 'reverse')
 
-
-# ---------- NPU (debugfs; a API não enxerga) ----------
 npu=$(sed -n 's/.*NPU load://p' /sys/kernel/debug/rknpu/load 2>/dev/null | grep -o '[0-9]\+%' | tr -d '%' | jq -R 'tonumber' | jq -s .)
 [ -z "$npu" ] && npu='[]'
 
-# ---------- Docker: reinícios por container e espaço (df em cache 1 h) ----------
 reinicios=$(docker ps -aq 2>/dev/null | xargs -r docker inspect -f '{{.Name}}|{{.RestartCount}}|{{.State.StartedAt}}|{{.State.OOMKilled}}' 2>/dev/null | \
   sed 's|^/||' | jq -R 'split("|") | {nome:.[0], reinicios:(.[1]|tonumber), iniciadoEm:.[2], oomKilled:(.[3]=="true")}' | jq -s 'sort_by(.nome)')
 docker_df() { docker system df --format '{{json .}}'; }
@@ -172,11 +149,9 @@ ddf=$(echo "${ddf:-[]}" | jq -c '.[]' | while read -r l; do
   echo "$l" | jq --argjson t "$(tam "$t")" --argjson r "$(tam "$r")" '.tamanho=$t | .recuperavel=$r'
 done | jq -s .)
 
-# ---------- Inodes dos discos ----------
 inodes=$(df -i -x tmpfs -x devtmpfs -x overlay -x squashfs 2>/dev/null | awk 'NR>1 && ($6=="/" || $6 ~ /^\/mnt\//) {gsub("%","",$5); print $6"|"$2"|"$3"|"$5}' | \
   jq -R 'split("|") | {ponto:.[0], total:(.[1]|tonumber), usados:(.[2]|tonumber), pct:((.[3]|tonumber?) // 0)}' | jq -s .)
 
-# ---------- Monta e grava (atômico) ----------
 tmp=$(mktemp "$SAIDA.XXXXXX")
 if jq -n --argjson lido "$(epoch_iso "$agora")" --argjson backup "$backup" --argjson servicos "$servicos" \
       --argjson falhos "$falhos" --argjson montagens "$montagens" \

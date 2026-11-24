@@ -45,7 +45,6 @@ spring:
         ddl-auto: none
     servlet:
         multipart:
-            # fotos do módulo crescimento (até 25 MB cada)
             max-file-size: 25MB
             max-request-size: 26MB
     jackson:
@@ -78,7 +77,6 @@ app:
     cors:
         allowed-origins: ${CORS_URL:http://localhost:3000}
 
-# Monitoramento do servidor: lê /proc e /sys a cada minuto e grava o histórico no MariaDB.
 monitor:
     habilitado: ${MONITOR_HABILITADO:true}
     coleta-cron: ${MONITOR_COLETA_CRON:0 * * * * *}
@@ -87,23 +85,17 @@ monitor:
     sys-path: ${MONITOR_SYS_PATH:/sys}
     hostname-arquivo: ${MONITOR_HOSTNAME_ARQUIVO:/etc/hostname}
     discos: ${MONITOR_DISCOS:Sistema=/}
-    # API do Docker para os containers (proxy só-leitura); vazio desliga essa parte
     docker-url: ${MONITOR_DOCKER_URL:}
     retencao-containers-dias: ${MONITOR_RETENCAO_CONTAINERS_DIAS:90}
-    # JSON com a temperatura dos discos (SMART), gravado no host pelo timer casa-monitor-smart; vazio desliga
     smart-arquivo: ${MONITOR_SMART_ARQUIVO:}
-    # JSON com backup, serviços, montagens, alertas, atualizações, rede e Docker, gravado pelo timer casa-monitor-host; vazio desliga
     host-arquivo: ${MONITOR_HOST_ARQUIVO:}
     datasource:
         url: ${MONITOR_DATASOURCE_URL:jdbc:mariadb://mariadb:3306/casa_monitor}
         username: ${MONITOR_DATASOURCE_USERNAME:casa_monitor}
         password: ${MONITOR_DATASOURCE_PASSWORD:}
 
-# Módulo crescimento (acompanhamento das crianças). As fotos ficam em disco, numa pasta com o arquivo
-# .armazenamento-crescimento (sem ele o módulo recusa gravar: o disco pode ter caído).
 crescimento:
     fotos-diretorio: ${CRESCIMENTO_FOTOS_DIRETORIO:/dados/crescimento}
-    # chave dos links temporários das fotos (>= 32 caracteres); vazio usa a do JWT
     link-segredo: ${CRESCIMENTO_LINK_SEGREDO:${JWT_SECRET:}}
     link-validade: ${CRESCIMENTO_LINK_VALIDADE:6h}
     foto-max-megapixels: ${CRESCIMENTO_FOTO_MAX_MEGAPIXELS:16}

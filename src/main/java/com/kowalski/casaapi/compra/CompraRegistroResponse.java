@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** Linha de GET /v1/compras: só os campos da compra, sem carregar parcelas. */
 @Schema(description = "Compra, sem as parcelas")
 public record CompraRegistroResponse(
         @Schema(description = "Id da compra") UUID id,

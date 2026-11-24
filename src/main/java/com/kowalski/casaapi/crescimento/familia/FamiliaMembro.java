@@ -19,7 +19,6 @@ public class FamiliaMembro {
     @Column(nullable = false)
     private UUID familiaId;
 
-    /** Id do usuário no sistema de login. */
     @Column(nullable = false)
     private Long usuarioId;
 

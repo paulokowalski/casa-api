@@ -76,10 +76,8 @@ class LeitorSistemaTest {
 
         assertThat(c.cpu()).isEqualTo(new LeitorSistema.CpuTempos(10000, 8500, 500));
         assertThat(c.nucleos()).hasSize(2);
-        // só discos inteiros: mmcblk1 + nvme0n1 (partição e zram ficam de fora), em setores de 512 bytes
         assertThat(c.discoLidos()).isEqualTo((100 + 1000) * 512L);
         assertThat(c.discoEscritos()).isEqualTo((200 + 2000) * 512L);
-        // só interfaces físicas (com "device")
         assertThat(c.rede()).containsOnlyKeys("enP4p65s0");
         assertThat(c.rede().get("enP4p65s0")).isEqualTo(new LeitorSistema.Trafego(5000, 9000));
     }
@@ -99,7 +97,7 @@ class LeitorSistemaTest {
         assertThat(i.frequenciasMhz()).containsExactly(1800L, 408L);
 
         assertThat(i.temperaturas()).extracting(LeitorSistema.Temperatura::sensor)
-                .containsExactly("soc", "bigcore0", "gpu", "npu"); // ordem numérica das zonas (10 depois de 2)
+                .containsExactly("soc", "bigcore0", "gpu", "npu");
         assertThat(i.temperaturas().get(0).celsius()).isEqualTo(54.5);
         assertThat(i.temperaturaMax()).isEqualTo(61.0);
         assertThat(i.temperatura("soc")).isEqualTo(54.5);
@@ -107,7 +105,6 @@ class LeitorSistemaTest {
         assertThat(i.temperatura("gpu")).isEqualTo(50.0);
         assertThat(i.temperatura("inexistente")).isNull();
 
-        // caminho que não existe e caminho no mesmo sistema de arquivos de outro (disco desmontado) são ignorados
         assertThat(i.discos()).singleElement().satisfies(d -> {
             assertThat(d.nome()).isEqualTo("Raiz");
             assertThat(d.total()).isPositive();
@@ -126,11 +123,11 @@ class LeitorSistemaTest {
     @Test
     void usoDeCpuEhADiferencaEntreLeituras() {
         var antes = new LeitorSistema.CpuTempos(10_000, 8_500, 500);
-        var depois = new LeitorSistema.CpuTempos(11_000, 9_250, 600); // 1000 jiffies, 750 ociosos, 100 em iowait
+        var depois = new LeitorSistema.CpuTempos(11_000, 9_250, 600);
 
         assertThat(depois.usoPct(antes)).isEqualTo(25.0);
         assertThat(depois.iowaitPct(antes)).isEqualTo(10.0);
-        assertThat(antes.usoPct(antes)).isZero(); // sem intervalo não divide por zero
+        assertThat(antes.usoPct(antes)).isZero();
     }
 
     @Test
@@ -146,7 +143,7 @@ class LeitorSistemaTest {
 
         assertThat(a.intervaloSeg()).isEqualTo(60);
         assertThat(a.cpuPct()).isCloseTo(25.0, within(0.001));
-        assertThat(a.redeRxBps()).isCloseTo(1_000, within(0.001)); // interface nova não entra até ter duas leituras
+        assertThat(a.redeRxBps()).isCloseTo(1_000, within(0.001));
         assertThat(a.redeTxBps()).isCloseTo(2_000, within(0.001));
         assertThat(a.discoLeituraBps()).isCloseTo(100, within(0.001));
         assertThat(a.discoEscritaBps()).isCloseTo(200, within(0.001));
@@ -195,10 +192,9 @@ class LeitorSistemaTest {
 
     @Test
     void decodificaMajorMinorDoDevT() {
-        assertThat(LeitorSistema.majorMinor(66305)).isEqualTo("259:1");  // nvme0n1p1
-        assertThat(LeitorSistema.majorMinor(2097)).isEqualTo("8:49");    // sdd1
-        assertThat(LeitorSistema.majorMinor(45826)).isEqualTo("179:2");  // mmcblk1p2
-        // números grandes usam os bits altos (regra do makedev da glibc)
+        assertThat(LeitorSistema.majorMinor(66305)).isEqualTo("259:1");
+        assertThat(LeitorSistema.majorMinor(2097)).isEqualTo("8:49");
+        assertThat(LeitorSistema.majorMinor(45826)).isEqualTo("179:2");
         assertThat(LeitorSistema.majorMinor(makedev(4096, 256))).isEqualTo("4096:256");
         assertThat(LeitorSistema.majorMinor(makedev(300, 70000))).isEqualTo("300:70000");
     }
@@ -243,7 +239,6 @@ class LeitorSistemaTest {
 
     @Test
     void espacoEDispositivoVemDasMontagensDoHost() throws IOException {
-        // o caminho é o ponto de montagem no host; nada é medido localmente (o "8:17" não existe aqui)
         escrever(raiz.resolve("smart.json"), """
                 {"lidoEm":"%s","discos":[
                   {"dispositivo":"sdb","modelo":"WDC WD30PURX","tipo":"hdd","temperatura":57,"estado":"ativo",
@@ -254,7 +249,6 @@ class LeitorSistemaTest {
                   {"ponto":"/sem/espaco","dispositivo":"8:1"}]}
                 """.formatted(java.time.OffsetDateTime.now(), raiz + "/"));
 
-        // "Inexistente" e "Desmontado" não estão nas montagens do host: ficam de fora
         assertThat(leitor().instantaneo().discos()).singleElement().satisfies(d -> {
             assertThat(d.nome()).isEqualTo("Raiz");
             assertThat(d.total()).isEqualTo(4000);
@@ -265,7 +259,7 @@ class LeitorSistemaTest {
             assertThat(d.temperatura()).isEqualTo(57.0);
         });
         assertThat(LeitorSistema.lerArquivoSmart(raiz.resolve("smart.json"), java.time.OffsetDateTime.now())
-                .montagens()).hasSize(2); // a sem espaço é ignorada
+                .montagens()).hasSize(2);
     }
 
     @Test
@@ -278,7 +272,7 @@ class LeitorSistemaTest {
         assertThat(LeitorSistema.lerSmart(arquivo, agora)).singleElement()
                 .satisfies(s -> assertThat(s.temperatura()).isEqualTo(40.0));
 
-        smart("2026-11-15T11:50:00-03:00", disco); // 10 minutos: o timer do host parou
+        smart("2026-11-15T11:50:00-03:00", disco);
         assertThat(LeitorSistema.lerSmart(arquivo, agora)).isEmpty();
 
         escrever(arquivo, "{ isto não é json");
@@ -303,10 +297,10 @@ class LeitorSistemaTest {
 
         assertThat(s.aprovado()).isTrue();
         assertThat(s.horasLigado()).isEqualTo(7881L);
-        assertThat(s.temperaturaMinVidaValida()).isNull(); // 0 = o disco não sabe
+        assertThat(s.temperaturaMinVidaValida()).isNull();
         assertThat(s.temperaturaLimite()).isEqualTo(55.0);
         assertThat(s.atributo(SaudeSmart.ERROS_NAO_CORRIGIDOS)).isEqualTo(56_928L);
-        assertThat(s.atributos()).hasSize(3);             // "x" não é número de atributo
+        assertThat(s.atributos()).hasSize(3);
         assertThat(s.falhas()).singleElement().satisfies(f -> assertThat(f.agora()).isFalse());
         assertThat(s.nvme()).isNull();
     }

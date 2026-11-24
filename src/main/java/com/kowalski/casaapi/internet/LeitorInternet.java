@@ -15,16 +15,8 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Lê a internet da casa gravada no host, na mesma pasta do status do host ({@code monitor.host-arquivo}):
- * {@code internet.json} (timer casa-monitor-internet, a cada minuto: ping, DNS, IP público, Pi-hole, interface) e
- * {@code velocidade.json} (timer casa-monitor-velocidade, a cada 4 horas: último teste e os mais recentes).
- * Fontes em config/internet.
- */
 @Component
 public class LeitorInternet {
-
-    /** O timer roda a cada minuto; acima disso o host parou de atualizar. */
     static final Duration VALIDADE = Duration.ofMinutes(3);
 
     private final Path internet;
@@ -57,7 +49,6 @@ public class LeitorInternet {
         return ler(velocidade);
     }
 
-    /** Internet e último teste de velocidade juntos, com {@code desatualizado}, para a tela. */
     public Map<String, Object> lerParaTela() {
         Map<String, Object> i = internet();
         if (i == null) return null;

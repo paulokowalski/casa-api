@@ -100,7 +100,6 @@ public class FotoService {
         apagarDepoisDeConfirmar(List.of(f.getChave()));
     }
 
-    /** Chamado ao excluir a criança (o acesso já foi conferido). */
     @Transactional
     public void excluirTodasDaCrianca(UUID criancaId) {
         List<Foto> lista = fotos.findByCriancaIdOrderByCriadaEmDesc(criancaId);
@@ -108,10 +107,6 @@ public class FotoService {
         apagarDepoisDeConfirmar(lista.stream().map(Foto::getChave).toList());
     }
 
-    /**
-     * Coloca as fotos no registro, na ordem dada. Fotos que estavam no registro e saíram da lista são apagadas
-     * (a de perfil da criança só é desligada do registro). O acesso já foi conferido por quem chama.
-     */
     @Transactional
     public void definirFotosDoRegistro(Crianca c, UUID registroId, List<UUID> ids) {
         List<UUID> lista = ids == null ? List.of() : ids.stream().filter(java.util.Objects::nonNull).distinct().toList();
@@ -131,13 +126,11 @@ public class FotoService {
             if (!lista.contains(f.getId())) tirarDoRegistro(c, f);
     }
 
-    /** Ao excluir um registro: apaga as fotos dele (menos a de perfil, que só fica solta). */
     @Transactional
     public void excluirDoRegistro(Crianca c, UUID registroId) {
         fotos.findByRegistroIdOrderByOrdemAsc(registroId).forEach(f -> tirarDoRegistro(c, f));
     }
 
-    /** Fotos de cada registro, na ordem, com links novos. */
     @Transactional(readOnly = true)
     public java.util.Map<UUID, List<FotoResponse>> doRegistros(java.util.Collection<UUID> registroIds) {
         java.util.Map<UUID, List<FotoResponse>> r = new java.util.HashMap<>();
@@ -167,12 +160,10 @@ public class FotoService {
                 .orElseThrow(() -> new IllegalArgumentException("A foto de perfil precisa ser uma foto desta criança"));
     }
 
-    /** Resposta com links novos; sem conferir acesso (quem chama já conferiu). */
     public FotoResponse resposta(UUID fotoId) {
         return fotos.findById(fotoId).map(f -> resposta(f, false)).orElse(null);
     }
 
-    /** Arquivo de um link assinado. Não exige login: a assinatura é a autorização. */
     @Transactional(readOnly = true)
     public Resource arquivo(UUID id, Variante v, long exp, String sig) {
         if (!links.valido(id, v, exp, sig)) throw new SemPermissaoException("Link da foto inválido ou vencido");
@@ -195,7 +186,6 @@ public class FotoService {
         return base + "?v=" + v.name() + "&exp=" + a.exp() + "&sig=" + a.sig();
     }
 
-    /** Prefixo da API como o cliente a enxerga (ex.: /casa-api), para os links funcionarem atrás do proxy. */
     private static String caminhoApi() {
         try {
             String p = ServletUriComponentsBuilder.fromCurrentContextPath().build().getPath();
@@ -219,7 +209,6 @@ public class FotoService {
         return f;
     }
 
-    /** Se a transação for desfeita depois de gravar os arquivos, eles não ficam órfãos no disco. */
     private void apagarSeDesfizer(String chave) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -230,7 +219,6 @@ public class FotoService {
         });
     }
 
-    /** Só apaga os arquivos quando a exclusão no banco foi confirmada. */
     private void apagarDepoisDeConfirmar(List<String> chaves) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             chaves.forEach(this::apagarArquivos);

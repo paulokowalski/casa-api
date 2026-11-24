@@ -35,15 +35,12 @@ public class Registro {
 
     private LocalDate proximaConsulta;
 
-    /** Lugar no álbum (mêsversário, primeira vez, momento especial); null = só no diário. */
     @Column(length = 40)
     private String albumChave;
 
-    /** Nome dado pelos pais a um momento especial. */
     @Column(length = 50)
     private String albumTitulo;
 
-    /** Medidas registradas junto. */
     private UUID medicaoId;
 
     private Long criadoPor;

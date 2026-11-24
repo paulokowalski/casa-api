@@ -76,7 +76,6 @@ class ContratoEndpointsTest {
     @MockitoBean VentilacaoService ventilacaoService;
     @MockitoBean PassagensService passagensService;
     @MockitoBean RotasPassagemService rotasPassagemService;
-    // módulo crescimento: controllers carregados pelo @WebMvcTest
     @MockitoBean com.kowalski.casaapi.crescimento.familia.FamiliaService familiaService;
     @MockitoBean com.kowalski.casaapi.crescimento.crianca.CriancaService criancaService;
     @MockitoBean com.kowalski.casaapi.crescimento.medida.MedicaoService medicaoService;
