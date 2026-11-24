@@ -352,6 +352,38 @@ class CasaApiE2ETest {
                 .toBodilessEntity().getStatusCode().value()).isEqualTo(204);
     }
 
+    @Test
+    void pagarEDesfazerPagamentoDeContaCumpreAsRegrasDoBanco() {
+        String token = token();
+        Number dono = (Number) criarPessoa(token, "ELISA E2E " + System.nanoTime(), "elisa-" + System.nanoTime() + "@e2e.local").get("id");
+        var conta = http.post().uri("/v1/contas").header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("pessoaId", dono, "descricao", "Conta E2E", "tipo", "UNICA", "valor", 50,
+                        "diaVencimento", 10, "competenciaInicio", "2033-03"))
+                .retrieve().toEntity(MAPA);
+        assertThat(conta.getStatusCode().value()).isEqualTo(201);
+
+        var lancamentos = http.get().uri("/v1/contas/lancamentos?pessoaId={p}&de=2033-03&ate=2033-03", dono)
+                .header("Authorization", token).retrieve().body(LISTA);
+        assertThat(lancamentos).hasSize(1);
+        Object lancamento = lancamentos.getFirst().get("id");
+
+        var paga = http.patch().uri("/v1/contas/lancamentos/{id}", lancamento).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("paga", true, "dataPagamento", "2033-03-08"))
+                .retrieve().body(MAPA);
+        assertThat(paga).containsEntry("paga", true).containsEntry("dataPagamento", "2033-03-08");
+
+        var desfeita = http.patch().uri("/v1/contas/lancamentos/{id}", lancamento).header("Authorization", token)
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("paga", false))
+                .retrieve().body(MAPA);
+        assertThat(desfeita).containsEntry("paga", false);
+        assertThat(desfeita.get("dataPagamento")).isNull();
+
+        assertThat(http.delete().uri("/v1/contas/{id}", conta.getBody().get("id")).header("Authorization", token)
+                .retrieve().toBodilessEntity().getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(http.delete().uri("/v1/pessoas/" + dono).header("Authorization", token).retrieve()
+                .toBodilessEntity().getStatusCode().value()).isEqualTo(204);
+    }
+
     private static Map<String, Object> compra(String pessoa) {
         return Map.of("nomeProduto", "COMPRA E2E", "valorProduto", 90.00, "dataCompra", "2033-05-10",
                 "numeroParcelas", 3, "nomePessoaCompra", pessoa,

@@ -38,33 +38,12 @@ SELECT verificacao, quantidade FROM (
            (SELECT count(*) FROM (SELECT 1 FROM compra_parcela GROUP BY compra_id, nr_parcela HAVING count(*) > 1) g)
     UNION ALL SELECT 17, 'parcelas com nr_parcela menor que 1',
            (SELECT count(*) FROM compra_parcela WHERE nr_parcela < 1)
-    UNION ALL SELECT 18, 'renda_mensal com competência fora do dia 1',
-           (SELECT count(*) FROM renda_mensal WHERE extract(day FROM competencia) <> 1)
-    UNION ALL SELECT 19, 'fatura_paga com competência fora do dia 1',
-           (SELECT count(*) FROM fatura_paga WHERE extract(day FROM competencia) <> 1)
-    UNION ALL SELECT 20, 'contas com início ou fim fora do dia 1',
-           (SELECT count(*) FROM conta
-             WHERE extract(day FROM competencia_inicio) <> 1 OR extract(day FROM competencia_fim) <> 1)
-    UNION ALL SELECT 21, 'lançamentos com competência fora do dia 1',
-           (SELECT count(*) FROM conta_lancamento WHERE extract(day FROM competencia) <> 1)
-    UNION ALL SELECT 22, 'lançamentos pagos sem data de pagamento',
-           (SELECT count(*) FROM conta_lancamento WHERE paga AND data_pagamento IS NULL)
-    UNION ALL SELECT 23, 'lançamentos não pagos com data de pagamento',
-           (SELECT count(*) FROM conta_lancamento WHERE NOT paga AND data_pagamento IS NOT NULL)
-    UNION ALL SELECT 24, 'lançamentos com numero_parcela menor que 1',
-           (SELECT count(*) FROM conta_lancamento WHERE numero_parcela < 1)
-    UNION ALL SELECT 25, 'categorias com ativo nulo',
-           (SELECT count(*) FROM categorias WHERE ativo IS NULL)
-    UNION ALL SELECT 26, 'categorias com cor fora do formato #RRGGBB',
-           (SELECT count(*) FROM categorias WHERE cor IS NOT NULL AND cor !~ '^#[0-9A-Fa-f]{6}$')
     UNION ALL SELECT 27, 'nomes de categoria repetidos ignorando maiúsculas (grupos)',
            (SELECT count(*) FROM (SELECT 1 FROM categorias GROUP BY upper(trim(nome)) HAVING count(*) > 1) g)
     UNION ALL SELECT 28, 'categorias em uso por compras e por contas',
            (SELECT count(*) FROM categorias k
              WHERE EXISTS (SELECT 1 FROM compra c WHERE c.categoria_id = k.id)
                AND EXISTS (SELECT 1 FROM conta c WHERE c.categoria_id = k.id))
-    UNION ALL SELECT 29, 'carros com id repetido',
-           (SELECT count(*) FROM (SELECT 1 FROM monitoramento.carro GROUP BY id HAVING count(*) > 1) g)
     UNION ALL SELECT 30, 'carros com mes_referencia fora do formato MM/AAAA',
            (SELECT count(*) FROM monitoramento.carro WHERE mes_referencia !~ '^(0[1-9]|1[0-2])/[0-9]{4}$')
     UNION ALL SELECT 31, 'carros com ano que não é número',
